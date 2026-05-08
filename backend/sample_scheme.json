@@ -1,0 +1,105 @@
+{
+  "benefits": {
+    "financial": {
+      "amount": 12000,
+      "frequency": "One-time",
+      "currency": "PKR"
+    },
+    "nonFinancial": [],
+    "duration": "One-time payment"
+  },
+  "eligibility": {
+    "income": {
+      "min": 0,
+      "max": 30000
+    },
+    "age": {
+      "min": 18,
+      "max": 100
+    },
+    "categories": [
+      "Low Income Family",
+      "Daily Wage Worker",
+      "Unemployed"
+    ],
+    "employmentStatus": [
+      "Unemployed",
+      "Self-Employed",
+      "Daily Wage Worker"
+    ],
+    "educationLevel": [],
+    "specialConditions": []
+  },
+  "application": {
+    "method": "SMS & Online",
+    "website": "https://ehsaas.gov.pk",
+    "steps": [
+      "Send your CNIC to 8171",
+      "Wait for verification SMS",
+      "Collect cash from designated Ehsaas center with CNIC"
+    ],
+    "requiredDocuments": [
+      "CNIC (Original)"
+    ],
+    "processingTime": "3-5 days",
+    "isOpen": true
+  },
+  "contact": {
+    "helpline": [
+      "051-9245100",
+      "8171"
+    ],
+    "email": [
+      "info@ehsaas.gov.pk"
+    ],
+    "offices": [
+      {
+        "city": "Islamabad",
+        "address": "Ehsaas Program, PM Office, Constitution Avenue",
+        "phone": "051-9245100",
+        "_id": "697131192d10d7b5b2db7de7",
+        "id": "697131192d10d7b5b2db7de7"
+      }
+    ],
+    "website": "https://ehsaas.gov.pk"
+  },
+  "stats": {
+    "beneficiaries": 12000000,
+    "budgetAllocated": 144000000000,
+    "applicationsReceived": 15000000
+  },
+  "_id": "697131192d10d7b5b2db7de6",
+  "schemeId": "PKS001",
+  "schemeName": "Ehsaas Emergency Cash Program",
+  "shortName": "Ehsaas Cash",
+  "category": "Financial Assistance",
+  "subCategory": "Emergency Relief",
+  "department": "Ehsaas Program - Government of Pakistan",
+  "province": "Federal",
+  "cities": [],
+  "launchDate": "2020-03-31T00:00:00.000Z",
+  "status": "Active",
+  "description": "Emergency cash assistance for low-income families affected by economic hardship",
+  "longDescription": "The Ehsaas Emergency Cash Program provides immediate financial relief to vulnerable families across Pakistan. This initiative aims to support those facing economic difficulties by providing direct cash transfers.",
+  "faqs": [
+    {
+      "question": "Who is eligible for Ehsaas Emergency Cash?",
+      "answer": "Families earning less than PKR 30,000 per month are eligible. You must have a valid CNIC.",
+      "_id": "697131192d10d7b5b2db7de8",
+      "id": "697131192d10d7b5b2db7de8"
+    },
+    {
+      "question": "How do I apply?",
+      "answer": "Send your CNIC number to 8171 via SMS. You will receive a confirmation message if eligible.",
+      "_id": "697131192d10d7b5b2db7de9",
+      "id": "697131192d10d7b5b2db7de9"
+    }
+  ],
+  "relatedSchemes": [],
+  "lastUpdated": "2026-01-21T20:03:37.238Z",
+  "__v": 0,
+  "createdAt": "2026-01-21T20:03:37.283Z",
+  "updatedAt": "2026-01-21T20:03:37.283Z",
+  "isAcceptingApplications": true,
+  "id": "697131192d10d7b5b2db7de6"
+}

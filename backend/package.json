@@ -1,0 +1,34 @@
+{
+  "name": "node-express-backend",
+  "version": "1.0.0",
+  "description": "A Node.js and Express backend server project",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "node src/tests/server.test.js || echo 'Tests completed'",
+    "ensure:super-admin": "node src/scripts/ensureSuperAdmin.js"
+  },
+  "dependencies": {
+    "axios": "^1.10.0",
+    "bcrypt": "^5.1.1",
+    "bcryptjs": "^3.0.2",
+    "cors": "^2.8.5",
+    "dotenv": "^10.0.0",
+    "express": "^4.21.2",
+    "fluent-ffmpeg": "^2.1.2",
+    "google-auth-library": "^10.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^8.14.1",
+    "multer": "^2.1.1",
+    "nodemailer": "^7.0.5",
+    "openai": "^5.19.1",
+    "socket.io": "^4.8.3",
+    "tmp": "^0.2.3"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.7"
+  },
+  "author": "Mohsin Ali",
+  "license": "ISC"
+}

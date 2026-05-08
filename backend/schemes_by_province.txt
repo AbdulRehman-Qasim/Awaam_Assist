@@ -1,0 +1,81 @@
+Schemes by Province:
+
+Balochistan: 2 schemes
+  PKS013 - Balochistan Education Endowment Fund
+  PKS113 - Balochistan Livelihoods & Entrepreneurship Project
+
+Federal: 44 schemes
+  PKS001 - Ehsaas Emergency Cash Program
+  PKS002 - Prime Minister Youth Business Loan
+  PKS003 - Sehat Sahulat Card Program
+  PKS004 - Benazir Income Support Programme
+  PKS005 - Kamyab Pakistan Program - Kamyab Karobar
+  PKS006 - Ehsaas Undergraduate Scholarship Program
+  PKS008 - Kisan Card Scheme
+  PKS009 - Apna Ghar Housing Scheme
+  PKS011 - Laptop Scheme for Students
+  PKS014 - Ehsaas Nashonuma Program
+  PKS015 - Green Tractor Scheme
+  PKS016 - Ehsaas Interest Free Loan
+  PKS018 - Kamyab Jawan Sports Drive
+  PKS020 - Ehsaas Amdan Program
+  PKS021 - Pakistan Bait-ul-Mal Individual Financial Assistance
+  PKS022 - Hunarmand Pakistan Program
+  PKS024 - Ehsaas Kifalat Program
+  PKS025 - Youth Business Loan - Akhuwat
+  PKS026 - Clean Drinking Water for All
+  PKS029 - Women Entrepreneurship Program
+  PKS030 - Ehsaas Women Empowerment Centers
+  PKS033 - Special Persons Employment Scheme
+  PKS034 - Financial Assistance for Disabled Persons
+  PKS036 - Senior Citizens Welfare Program
+  PKS038 - Orphan Care and Support Program
+  PKS040 - 10 Billion Tree Tsunami
+  PKS042 - National Incubation Centers
+  PKS043 - DigiSkills Training Program
+  PKS045 - Tourism Development Fund
+  PKS047 - Prime Minister's Livestock Program
+  PKS049 - Fisheries Development and Support
+  PKS050 - Small Industries Development Loan
+  PKS101 - Ehsaas Langar Program
+  PKS102 - Ehsaas Panahgah Program
+  PKS103 - Prime Minister Kamyab Pakistan Program
+  PKS104 - Prime Minister Digital Pakistan Initiative
+  PKS105 - National Health Vision 2025
+  PKS106 - Prime Minister Youth Laptop Scheme
+  PKS107 - Prime Minister Youth Employment Program
+  PKS108 - National Vocational & Technical Training Program (NAVTTC)
+  PKS117 - National Poverty Graduation Initiative
+  PKS118 - Pakistan Single Window Trade Facilitation Program
+  PKS119 - Ehsaas Tahafuz Program
+  PKS120 - Prime Minister Agriculture Emergency Program
+
+KPK: 4 schemes
+  PKS012 - Khyber Pakhtunkhwa Sehat Card Plus
+  PKS041 - KP Billion Tree Honey Initiative
+  PKS046 - KP Tourism and Culture Development
+  PKS112 - KP Ehsaas Rozgar Program
+
+Punjab: 12 schemes
+  PKS007 - Punjab Rozgar Scheme
+  PKS017 - Punjab Daanish Schools Program
+  PKS023 - Punjab Masstransit Authority Free Travel for Students
+  PKS028 - Punjab Clean Water Initiative
+  PKS031 - Punjab Women Protection Authority Support
+  PKS035 - Punjab Special Education Scholarship
+  PKS037 - Punjab Senior Citizen Card
+  PKS044 - E-Rozgaar Training Centers
+  PKS048 - Punjab Livestock Development Scheme
+  PKS051 - Punjab Industrial Estates Development
+  PKS115 - Punjab Aghaz-e-Haqooq-e-Kisan Package
+  PKS116 - Punjab Zewar-e-Taleem Program
+
+Sindh: 7 schemes
+  PKS010 - Sindh People's Housing for Flood Affectees
+  PKS019 - Sindh Solar Panel Scheme
+  PKS027 - Sindh Rural Sanitation Program
+  PKS032 - Sindh Women Development Program
+  PKS039 - Sindh Orphan Education Scheme
+  PKS109 - Sindh Peoples Housing for Flood Affectees (SPHF)
+  PKS110 - Sindh Income Support Program (SISP)
+

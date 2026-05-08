@@ -1,0 +1,308 @@
+====================================================================================================
+COMPLETE LIST OF ALL 69 GOVERNMENT SCHEMES IN DATABASE
+====================================================================================================
+
+📊 BREAKDOWN BY CATEGORY:
+
+  Agriculture: 4 schemes
+  Disabled Persons: 3 schemes
+  Education: 6 schemes
+  Elderly Care: 2 schemes
+  Employment: 6 schemes
+  Energy: 1 schemes
+  Environment: 2 schemes
+  Financial Assistance: 13 schemes
+  Fisheries: 1 schemes
+  Healthcare: 5 schemes
+  Housing: 4 schemes
+  Industrial Development: 2 schemes
+  Livestock: 2 schemes
+  Orphan Support: 2 schemes
+  Sports: 1 schemes
+  Technology & Innovation: 5 schemes
+  Tourism: 2 schemes
+  Transportation: 1 schemes
+  Water & Sanitation: 3 schemes
+  Women Empowerment: 4 schemes
+
+====================================================================================================
+DETAILED LIST:
+====================================================================================================
+
+  1. PKS001 - Ehsaas Emergency Cash Program
+     Category: Financial Assistance      | Province: Federal
+     Emergency cash assistance for low-income families affected by economic hardship
+
+  2. PKS002 - Prime Minister Youth Business Loan
+     Category: Financial Assistance      | Province: Federal
+     Interest-free business loans for young entrepreneurs to start or expand their businesses
+
+  3. PKS003 - Sehat Sahulat Card Program
+     Category: Healthcare                | Province: Federal
+     Free medical treatment coverage up to PKR 1 million annually for low-income families
+
+  4. PKS004 - Benazir Income Support Programme
+     Category: Financial Assistance      | Province: Federal
+     Quarterly cash assistance for poor women to support their families
+
+  5. PKS005 - Kamyab Pakistan Program - Kamyab Karobar
+     Category: Financial Assistance      | Province: Federal
+     Low-cost business loans for small and medium enterprises
+
+  6. PKS006 - Ehsaas Undergraduate Scholarship Program
+     Category: Education                 | Province: Federal
+     Merit-cum-need based scholarships for undergraduate students from low-income families
+
+  7. PKS007 - Punjab Rozgar Scheme
+     Category: Employment                | Province: Punjab
+     Vocational training and job placement program for unemployed youth in Punjab
+
+  8. PKS008 - Kisan Card Scheme
+     Category: Agriculture               | Province: Federal
+     Interest-free credit facility for small farmers to purchase agricultural inputs
+
+  9. PKS009 - Apna Ghar Housing Scheme
+     Category: Housing                   | Province: Federal
+     Affordable housing scheme for low and middle-income families
+
+ 10. PKS010 - Sindh People's Housing for Flood Affectees
+     Category: Housing                   | Province: Sindh
+     Financial assistance for flood-affected families to rebuild their homes
+
+ 11. PKS011 - Laptop Scheme for Students
+     Category: Education                 | Province: Federal
+     Free laptops for high-achieving university students
+
+ 12. PKS012 - Khyber Pakhtunkhwa Sehat Card Plus
+     Category: Healthcare                | Province: KPK
+     Universal health coverage for all KP residents with free medical treatment
+
+ 13. PKS013 - Balochistan Education Endowment Fund
+     Category: Education                 | Province: Balochistan
+     Scholarships for talented students from Balochistan for higher education
+
+ 14. PKS014 - Ehsaas Nashonuma Program
+     Category: Healthcare                | Province: Federal
+     Nutrition program for pregnant/lactating women and children under 2 years
+
+ 15. PKS015 - Green Tractor Scheme
+     Category: Agriculture               | Province: Federal
+     Subsidized tractors for small and medium farmers to promote mechanization
+
+ 16. PKS016 - Ehsaas Interest Free Loan
+     Category: Financial Assistance      | Province: Federal
+     Interest-free microloans for poor families to start small businesses
+
+ 17. PKS017 - Punjab Daanish Schools Program
+     Category: Education                 | Province: Punjab
+     Free residential education for talented students from poor families
+
+ 18. PKS018 - Kamyab Jawan Sports Drive
+     Category: Sports                    | Province: Federal
+     Financial and technical support for young athletes from low-income families
+
+ 19. PKS019 - Sindh Solar Panel Scheme
+     Category: Energy                    | Province: Sindh
+     Subsidized solar panel installation for residential consumers
+
+ 20. PKS020 - Ehsaas Amdan Program
+     Category: Financial Assistance      | Province: Federal
+     Income generation program for poor women through skills training and asset transfer
+
+ 21. PKS021 - Pakistan Bait-ul-Mal Individual Financial Assistance
+     Category: Financial Assistance      | Province: Federal
+     Emergency financial assistance for destitute, widows, orphans, and disabled persons
+
+ 22. PKS022 - Hunarmand Pakistan Program
+     Category: Employment                | Province: Federal
+     Free vocational and technical training for youth with job placement support
+
+ 23. PKS023 - Punjab Masstransit Authority Free Travel for Students
+     Category: Transportation            | Province: Punjab
+     Free metro bus and orange line travel for students from low-income families
+
+ 24. PKS024 - Ehsaas Kifalat Program
+     Category: Financial Assistance      | Province: Federal
+     Unconditional cash transfers to poorest women for poverty alleviation
+
+ 25. PKS025 - Youth Business Loan - Akhuwat
+     Category: Financial Assistance      | Province: Federal
+     Interest-free microloans for young entrepreneurs to start small businesses
+
+ 26. PKS026 - Clean Drinking Water for All
+     Category: Water & Sanitation        | Province: Federal
+     Free water filtration plants for rural communities lacking clean drinking water
+
+ 27. PKS027 - Sindh Rural Sanitation Program
+     Category: Water & Sanitation        | Province: Sindh
+     Financial assistance for constructing toilets in rural households
+
+ 28. PKS028 - Punjab Clean Water Initiative
+     Category: Water & Sanitation        | Province: Punjab
+     Clean and safe drinking water supply to urban and peri-urban areas
+
+ 29. PKS029 - Women Entrepreneurship Program
+     Category: Women Empowerment         | Province: Federal
+     Low-interest loans and business support for women entrepreneurs
+
+ 30. PKS030 - Ehsaas Women Empowerment Centers
+     Category: Women Empowerment         | Province: Federal
+     Skills training and employment support for women
+
+ 31. PKS031 - Punjab Women Protection Authority Support
+     Category: Women Empowerment         | Province: Punjab
+     Legal aid and protection services for women facing violence
+
+ 32. PKS032 - Sindh Women Development Program
+     Category: Women Empowerment         | Province: Sindh
+     Financial grants for women to start small businesses
+
+ 33. PKS033 - Special Persons Employment Scheme
+     Category: Disabled Persons          | Province: Federal
+     Employment opportunities and support for persons with disabilities
+
+ 34. PKS034 - Financial Assistance for Disabled Persons
+     Category: Disabled Persons          | Province: Federal
+     Quarterly financial assistance for disabled persons
+
+ 35. PKS035 - Punjab Special Education Scholarship
+     Category: Disabled Persons          | Province: Punjab
+     Scholarships and educational support for disabled students
+
+ 36. PKS036 - Senior Citizens Welfare Program
+     Category: Elderly Care              | Province: Federal
+     Financial and social support for senior citizens
+
+ 37. PKS037 - Punjab Senior Citizen Card
+     Category: Elderly Care              | Province: Punjab
+     Benefits card for senior citizens with discounts and priority services
+
+ 38. PKS038 - Orphan Care and Support Program
+     Category: Orphan Support            | Province: Federal
+     Monthly financial support and welfare services for orphans
+
+ 39. PKS039 - Sindh Orphan Education Scheme
+     Category: Orphan Support            | Province: Sindh
+     Educational scholarships and support for orphaned children
+
+ 40. PKS040 - 10 Billion Tree Tsunami
+     Category: Environment               | Province: Federal
+     Employment in tree plantation and forest conservation
+
+ 41. PKS041 - KP Billion Tree Honey Initiative
+     Category: Environment               | Province: KPK
+     Support for beekeeping to promote environmental conservation and income generation
+
+ 42. PKS042 - National Incubation Centers
+     Category: Technology & Innovation   | Province: Federal
+     Incubation and seed funding for tech startups
+
+ 43. PKS043 - DigiSkills Training Program
+     Category: Technology & Innovation   | Province: Federal
+     Free online training in digital skills and freelancing
+
+ 44. PKS044 - E-Rozgaar Training Centers
+     Category: Technology & Innovation   | Province: Punjab
+     Free training in freelancing and IT skills with stipend
+
+ 45. PKS045 - Tourism Development Fund
+     Category: Tourism                   | Province: Federal
+     Loans for tourism-related businesses and infrastructure
+
+ 46. PKS046 - KP Tourism and Culture Development
+     Category: Tourism                   | Province: KPK
+     Grants for tourism infrastructure and business development in KP
+
+ 47. PKS047 - Prime Minister's Livestock Program
+     Category: Livestock                 | Province: Federal
+     Free livestock distribution to poor families for income generation
+
+ 48. PKS048 - Punjab Livestock Development Scheme
+     Category: Livestock                 | Province: Punjab
+     Free veterinary services and livestock development support
+
+ 49. PKS049 - Fisheries Development and Support
+     Category: Fisheries                 | Province: Federal
+     Loans and technical support for fish farming and aquaculture
+
+ 50. PKS050 - Small Industries Development Loan
+     Category: Industrial Development    | Province: Federal
+     Loans for small and medium manufacturing industries
+
+ 51. PKS051 - Punjab Industrial Estates Development
+     Category: Industrial Development    | Province: Punjab
+     Subsidized industrial plots and infrastructure for small industries
+
+ 52. PKS101 - Ehsaas Langar Program
+     Category: Financial Assistance      | Province: Federal
+     Free meal program providing nutritious food to the poor and needy across Pakistan
+
+ 53. PKS102 - Ehsaas Panahgah Program
+     Category: Housing                   | Province: Federal
+     Free shelter homes providing accommodation and meals for homeless and travelers
+
+ 54. PKS103 - Prime Minister Kamyab Pakistan Program
+     Category: Financial Assistance      | Province: Federal
+     Comprehensive program providing interest-free loans for business, agriculture, and housing
+
+ 55. PKS104 - Prime Minister Digital Pakistan Initiative
+     Category: Technology & Innovation   | Province: Federal
+     National digitalization program to transform Pakistan into a knowledge-based economy
+
+ 56. PKS105 - National Health Vision 2025
+     Category: Healthcare                | Province: Federal
+     Comprehensive healthcare reform program to provide universal health coverage
+
+ 57. PKS106 - Prime Minister Youth Laptop Scheme
+     Category: Education                 | Province: Federal
+     Free laptop distribution to high-achieving students in universities
+
+ 58. PKS107 - Prime Minister Youth Employment Program
+     Category: Employment                | Province: Federal
+     Job placement and skill development program for unemployed youth
+
+ 59. PKS108 - National Vocational & Technical Training Program (NAVTTC)
+     Category: Employment                | Province: Federal
+     National program providing vocational and technical training for skill development
+
+ 60. PKS109 - Sindh Peoples Housing for Flood Affectees (SPHF)
+     Category: Housing                   | Province: Sindh
+     Housing reconstruction program for families affected by floods in Sindh
+
+ 61. PKS110 - Sindh Income Support Program (SISP)
+     Category: Financial Assistance      | Province: Sindh
+     Cash transfer program for poor families in Sindh province
+
+ 62. PKS112 - KP Ehsaas Rozgar Program
+     Category: Employment                | Province: KPK
+     Employment generation program for youth in Khyber Pakhtunkhwa
+
+ 63. PKS113 - Balochistan Livelihoods & Entrepreneurship Project
+     Category: Employment                | Province: Balochistan
+     Livelihood support and entrepreneurship development for Balochistan residents
+
+ 64. PKS115 - Punjab Aghaz-e-Haqooq-e-Kisan Package
+     Category: Agriculture               | Province: Punjab
+     Comprehensive support package for small farmers in Punjab
+
+ 65. PKS116 - Punjab Zewar-e-Taleem Program
+     Category: Education                 | Province: Punjab
+     Conditional cash transfer program to promote girls education in Punjab
+
+ 66. PKS117 - National Poverty Graduation Initiative
+     Category: Financial Assistance      | Province: Federal
+     Comprehensive poverty alleviation program combining cash transfers with livelihood support
+
+ 67. PKS118 - Pakistan Single Window Trade Facilitation Program
+     Category: Technology & Innovation   | Province: Federal
+     Digital platform for streamlined import/export processes and trade facilitation
+
+ 68. PKS119 - Ehsaas Tahafuz Program
+     Category: Healthcare                | Province: Federal
+     Health insurance program for vulnerable families under Ehsaas umbrella
+
+ 69. PKS120 - Prime Minister Agriculture Emergency Program
+     Category: Agriculture               | Province: Federal
+     Emergency support program for farmers to enhance agricultural productivity
+
+====================================================================================================
