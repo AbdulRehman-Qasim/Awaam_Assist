@@ -67,6 +67,15 @@ const UniversitySchema = new mongoose.Schema({
     deadline: {
         type: String
     },
+    // v2 enriched fields
+    feeType: {
+        type: String,
+        enum: ['Annual Fee', 'Semester Fee'],
+        default: 'Annual Fee'
+    },
+    description: {
+        type: String
+    },
     admission: {
         type: String
     },
@@ -99,17 +108,13 @@ UniversitySchema.index({ ranking: 1, merit: -1 });
 UniversitySchema.index({ discipline: 1, ranking: 1 });
 
 UniversitySchema.pre('validate', function (next) {
-    const hasAnnualFee = typeof this.fee === 'number' && this.fee > 0;
+    const hasAnnualFee   = typeof this.fee === 'number' && this.fee > 0;
     const hasSemesterFee = typeof this.semesterFee === 'number' && this.semesterFee > 0;
 
     if (hasAnnualFee && hasSemesterFee) {
         return next(new Error('Provide either annual fee or semester fee, not both.'));
     }
-
-    if (!hasAnnualFee && !hasSemesterFee) {
-        return next(new Error('Either annual fee or semester fee is required.'));
-    }
-
+    // Allow null/zero fees for seeded records — admin form validates this client-side
     next();
 });
 
