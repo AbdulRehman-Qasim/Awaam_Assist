@@ -93,7 +93,7 @@ const UniversityForm: React.FC<UniversityFormProps> = ({
         province: "Punjab",
         discipline: "Computer Science",
         degree: "Bachelor",
-        feeType: "annual" as "annual" | "semester",
+        feeType: "Annual Fee" as "Annual Fee" | "Semester Fee",
         fee: 0,
         semesterFee: 0,
         merit: 0,
@@ -112,7 +112,7 @@ const UniversityForm: React.FC<UniversityFormProps> = ({
                 province: university.province || "Punjab",
                 discipline: university.discipline || "Computer Science",
                 degree: university.degree || "Bachelor",
-                feeType: university.semesterFee ? "semester" : "annual",
+                feeType: university.semesterFee ? "Semester Fee" : "Annual Fee",
                 fee: university.fee || 0,
                 semesterFee: university.semesterFee || 0,
                 merit: university.merit || 0,
@@ -136,7 +136,7 @@ const UniversityForm: React.FC<UniversityFormProps> = ({
                 province: "Punjab",
                 discipline: "Computer Science",
                 degree: "Bachelor",
-                feeType: "annual",
+                feeType: "Annual Fee",
                 fee: 0,
                 semesterFee: 0,
                 merit: 0,
@@ -169,12 +169,12 @@ const UniversityForm: React.FC<UniversityFormProps> = ({
             return;
         }
 
-        const selectedFee = formData.feeType === "annual" ? formData.fee : formData.semesterFee;
+        const selectedFee = formData.feeType === "Annual Fee" ? formData.fee : formData.semesterFee;
         if (!selectedFee || selectedFee <= 0) {
-            setErrors(prev => ({ ...prev, feeAmount: `Please enter a valid ${formData.feeType} fee amount` }));
+            setErrors(prev => ({ ...prev, feeAmount: `Please enter a valid ${formData.feeType === "Annual Fee" ? "annual" : "semester"} fee amount` }));
             toast({
                 title: "Validation Error",
-                description: `Please enter a valid ${formData.feeType} fee amount`,
+                description: `Please enter a valid ${formData.feeType === "Annual Fee" ? "annual" : "semester"} fee amount`,
                 variant: "destructive",
             });
             return;
@@ -195,8 +195,8 @@ const UniversityForm: React.FC<UniversityFormProps> = ({
             // If adding new, generate a temporary ID if required by schema
             const payload = {
                 ...formData,
-                fee: formData.feeType === "annual" ? formData.fee : null,
-                semesterFee: formData.feeType === "semester" ? formData.semesterFee : null,
+                fee: formData.feeType === "Annual Fee" ? formData.fee : null,
+                semesterFee: formData.feeType === "Semester Fee" ? formData.semesterFee : null,
                 id: university?.id || `UNI-${Date.now()}`,
                 status: university?.status !== undefined ? university.status : 1,
             };
@@ -295,12 +295,12 @@ const UniversityForm: React.FC<UniversityFormProps> = ({
                             <Label htmlFor="feeType">Fee Type</Label>
                             <Select
                                 value={formData.feeType}
-                                onValueChange={(v: "annual" | "semester") =>
+                                onValueChange={(v: "Annual Fee" | "Semester Fee") =>
                                     setFormData({
                                         ...formData,
                                         feeType: v,
-                                        fee: v === "annual" ? formData.fee : 0,
-                                        semesterFee: v === "semester" ? formData.semesterFee : 0,
+                                        fee: v === "Annual Fee" ? formData.fee : 0,
+                                        semesterFee: v === "Semester Fee" ? formData.semesterFee : 0,
                                     })
                                 }
                             >
@@ -308,27 +308,27 @@ const UniversityForm: React.FC<UniversityFormProps> = ({
                                     <SelectValue placeholder="Select fee type" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="annual">Annual Fee</SelectItem>
-                                    <SelectItem value="semester">Semester Fee</SelectItem>
+                                    <SelectItem value="Annual Fee">Annual Fee</SelectItem>
+                                    <SelectItem value="Semester Fee">Semester Fee</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="feeAmount">
-                                {formData.feeType === "annual" ? "Annual Fee (PKR)" : "Semester Fee (PKR)"} <span className="text-destructive">*</span>
+                             <Label htmlFor="feeAmount">
+                                {formData.feeType === "Annual Fee" ? "Annual Fee (PKR)" : "Semester Fee (PKR)"} <span className="text-destructive">*</span>
                             </Label>
                             <Input
                                 id="feeAmount"
                                 type="number"
                                 min={0}
-                                value={formData.feeType === "annual" ? formData.fee : formData.semesterFee}
+                                value={formData.feeType === "Annual Fee" ? formData.fee : formData.semesterFee}
                                 onChange={(e) =>
                                     setFormData({
                                         ...formData,
-                                        fee: formData.feeType === "annual" ? Number(e.target.value) : 0,
+                                        fee: formData.feeType === "Annual Fee" ? Number(e.target.value) : 0,
                                         semesterFee:
-                                            formData.feeType === "semester" ? Number(e.target.value) : 0,
+                                            formData.feeType === "Semester Fee" ? Number(e.target.value) : 0,
                                     })
                                 }
                                 required

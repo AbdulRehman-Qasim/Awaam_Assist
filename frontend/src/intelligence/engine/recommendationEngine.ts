@@ -10,6 +10,7 @@ export interface RecommendationEngineInput {
   universities?: any[];
   schemes?: any[];
   hospitals?: any[];
+  feedback?: any[];
   renderCount: number;
 }
 
@@ -19,7 +20,14 @@ export class RecommendationEngine {
    */
   static generateRecommendations(input: RecommendationEngineInput): RecommendationEngineOutput {
     const startTime = performance.now();
-    const { user, universities: rawUniversities = [], schemes: rawSchemes = [], hospitals: rawHospitals = [], renderCount } = input;
+    const { 
+      user, 
+      universities: rawUniversities = [], 
+      schemes: rawSchemes = [], 
+      hospitals: rawHospitals = [], 
+      feedback: userFeedback = [],
+      renderCount 
+    } = input;
     
     // --- ENGINE HEARTBEAT: VERIFYING CONTEXT (PHASE 5 REFINEMENT) ---
     console.info(`[Intelligence Engine] Heartbeat - Context: ${user.location.city || 'National'} | Degree: ${user.education.degree || 'Not Set'}`);
@@ -45,12 +53,23 @@ export class RecommendationEngine {
     const sortRecommendations = (recs: RecommendationResult[]) => {
       const profile = EngagementManager.getProfile();
       
+      // Map feedback for O(1) lookup
+      const feedbackMap = new Map<string, string>();
+      userFeedback.forEach(f => feedbackMap.set(f.recommendationId, f.reaction));
+
       return recs
+        .filter(rec => feedbackMap.get(rec.id) !== 'not_relevant') // CRITICAL: Filter out not relevant
         .map(rec => {
           // Apply Engagement Influence Layer (Secondary)
           const category = rec.type; 
           const influence = EngagementManager.getEngagementInfluence(rec.id, category);
-          const baseScore = typeof rec.score === 'number' ? rec.score : 0;
+          let baseScore = typeof rec.score === 'number' ? rec.score : 0;
+          
+          // Apply Feedback Boost
+          if (feedbackMap.get(rec.id) === 'helpful') {
+            baseScore += 15; // Significant boost for previously helpful items
+          }
+
           return {
             ...rec,
             score: Math.max(0, Math.min(100, baseScore + influence))
@@ -68,22 +87,34 @@ export class RecommendationEngine {
     // 1. Process Universities (Strict Education Intent)
     const baseUniversities = hasEducationIntent ? sortRecommendations(
       rawUniversities
-        .map(uni => calculateUniversityScore(uni, user))
-        .filter(res => res.score >= 30)
+        .filter(u => u && typeof u === 'object')
+        .map(uni => {
+          try { return calculateUniversityScore(uni, user); }
+          catch (e) { console.error("Score Error (Uni):", e); return null; }
+        })
+        .filter((res): res is RecommendationResult => res !== null && res.score >= 30)
     ).slice(0, 3) : [];
 
     // 2. Process Schemes (Strict Financial Intent)
     const baseSchemes = hasFinancialIntent ? sortRecommendations(
       rawSchemes
-        .map(scheme => calculateSchemeScore(scheme, user))
-        .filter(res => res.score >= 30)
+        .filter(s => s && typeof s === 'object')
+        .map(scheme => {
+          try { return calculateSchemeScore(scheme, user); }
+          catch (e) { console.error("Score Error (Scheme):", e); return null; }
+        })
+        .filter((res): res is RecommendationResult => res !== null && res.score >= 30)
     ).slice(0, 3) : [];
 
     // 3. Process Hospitals (Strict Health Intent)
     const baseHospitals = hasHealthIntent ? sortRecommendations(
       rawHospitals
-        .map(hosp => calculateHospitalScore(hosp, user))
-        .filter(res => res.score >= 30)
+        .filter(h => h && typeof h === 'object')
+        .map(hosp => {
+          try { return calculateHospitalScore(hosp, user); }
+          catch (e) { console.error("Score Error (Hosp):", e); return null; }
+        })
+        .filter((res): res is RecommendationResult => res !== null && res.score >= 30)
     ).slice(0, 3) : [];
 
     // --- STEP 3: UNIQUE REASON GENERATION (Duplication Control) ---

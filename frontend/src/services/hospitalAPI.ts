@@ -1,19 +1,70 @@
 import api from './schemeAPI';
 
-export interface HospitalAdminRecord {
+// ── Types ────────────────────────────────────────────────────────────────────
+
+export interface HospitalTreatment {
   _id: string;
-  SerialNum: number;
-  City: string;
-  Tehsil: string;
-  hospitalName: string;
-  category: string;
-  treatmentCost?: number;
-  availability?: string;
-  info?: string;
-  website?: string;
-  status?: any;
+  treatmentName: string;
+  specialization: string;
+  treatmentCost: number;
+  costRange: { min: number; max: number };
+  availability: 'Available' | 'Limited' | 'Unavailable' | 'By Appointment';
+  requirements: string;
+  estimatedWaitTime: string;
+  doctorCount: number;
+  isEmergency: boolean;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface HospitalRecord {
+  _id: string;
+  SerialNum: number;
+  // Legacy field names (DB)
+  City: string;
+  Tehsil: string;
+  'Hospital Name': string;
+  Cateogry: string;
+  // Normalized aliases
+  hospitalName: string;
+  category: string;
+  // Contact & web
+  website: string;
+  contactNumber: string;
+  email: string;
+  address: string;
+  hospitalLink?: string;
+  // Profile
+  description: string;
+  hospitalImage: string;
+  emergencyServices: boolean;
+  bedCapacity: number;
+  // Quality
+  rating: number;
+  totalReviews: number;
+  isVerified: boolean;
+  // Legacy flat treatment
+  treatmentCost: number;
+  availability: string;
+  info: string;
+  // Enriched
+  treatments: HospitalTreatment[];
+  tags: string[];
+  // Recommendation
+  matchScore?: number;
+  reasons?: string[];
+  status?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/** Alias kept for backward compat with hospital admin pages */
+export type HospitalAdminRecord = HospitalRecord;
+
+export interface HospitalFilters {
+  cities: string[];
+  categories: string[];
+  specializations: string[];
 }
 
 export interface HospitalDashboardStats {
@@ -21,9 +72,49 @@ export interface HospitalDashboardStats {
     totalHospitals: number;
     totalCities: number;
     totalCategories: number;
+    totalTreatments: number;
   };
-  recentHospitals: HospitalAdminRecord[];
+  recentHospitals: HospitalRecord[];
 }
+
+export interface HospitalQueryParams {
+  city?: string;
+  category?: string;
+  q?: string;
+  availability?: string;
+  maxCost?: string;
+  treatmentType?: string;
+}
+
+// ── Public API ────────────────────────────────────────────────────────────────
+
+const BASE = 'http://localhost:5001';
+
+export const hospitalPublicAPI = {
+  /** Fetch all hospitals with optional filter params */
+  getAll: async (params: HospitalQueryParams = {}): Promise<HospitalRecord[]> => {
+    const sp = new URLSearchParams();
+    if (params.city         && params.city         !== 'all') sp.append('city',          params.city);
+    if (params.category     && params.category     !== 'all') sp.append('category',      params.category);
+    if (params.q            && params.q.trim())               sp.append('q',             params.q.trim());
+    if (params.availability && params.availability !== 'all') sp.append('availability',  params.availability);
+    if (params.maxCost      && Number(params.maxCost) > 0)    sp.append('maxCost',       params.maxCost);
+    if (params.treatmentType && params.treatmentType !== 'all') sp.append('treatmentType', params.treatmentType);
+
+    const res = await fetch(`${BASE}/api/hospitals?${sp.toString()}`);
+    const json = await res.json();
+    return json.data ?? [];
+  },
+
+  /** Fetch dynamic filter options from the database */
+  getFilters: async (): Promise<HospitalFilters> => {
+    const res = await fetch(`${BASE}/api/hospitals/filters`);
+    const json = await res.json();
+    return json.data ?? { cities: [], categories: [], specializations: [] };
+  },
+};
+
+// ── Admin API (authenticated, uses axios instance) ────────────────────────────
 
 export const hospitalAdminAPI = {
   getAllHospitals: async (params: Record<string, string> = {}) => {
@@ -36,18 +127,35 @@ export const hospitalAdminAPI = {
     return response.data;
   },
 
-  createHospital: async (hospitalData: Partial<HospitalAdminRecord>) => {
-    const response = await api.post('/hospital-admin/hospitals', hospitalData);
+  createHospital: async (data: Partial<HospitalRecord>) => {
+    const response = await api.post('/hospital-admin/hospitals', data);
     return response.data;
   },
 
-  updateHospital: async (id: string, hospitalData: Partial<HospitalAdminRecord>) => {
-    const response = await api.put(`/hospital-admin/hospitals/${id}`, hospitalData);
+  updateHospital: async (id: string, data: Partial<HospitalRecord>) => {
+    const response = await api.put(`/hospital-admin/hospitals/${id}`, data);
     return response.data;
   },
 
   deleteHospital: async (id: string) => {
     const response = await api.delete(`/hospital-admin/hospitals/${id}`);
+    return response.data;
+  },
+
+  // ── Treatment CRUD ─────────────────────────────────────────────────────────
+
+  addTreatment: async (hospitalId: string, treatment: Partial<HospitalTreatment>) => {
+    const response = await api.post(`/hospital-admin/hospitals/${hospitalId}/treatments`, treatment);
+    return response.data;
+  },
+
+  updateTreatment: async (hospitalId: string, treatmentId: string, treatment: Partial<HospitalTreatment>) => {
+    const response = await api.put(`/hospital-admin/hospitals/${hospitalId}/treatments/${treatmentId}`, treatment);
+    return response.data;
+  },
+
+  deleteTreatment: async (hospitalId: string, treatmentId: string) => {
+    const response = await api.delete(`/hospital-admin/hospitals/${hospitalId}/treatments/${treatmentId}`);
     return response.data;
   },
 };

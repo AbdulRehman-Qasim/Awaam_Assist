@@ -16,11 +16,33 @@ import {
     Calendar,
     PieChart,
     Activity,
+    Star,
+    ThumbsUp,
+    ThumbsDown,
+    MessageSquare,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { FeedbackService } from "@/services/feedbackService";
+import { Progress } from "@/components/ui/progress";
 
 const AnalyticsPage = () => {
     const [timeRange, setTimeRange] = useState("month");
+    const [feedbackData, setFeedbackData] = useState<any>(null);
+    const [loadingFeedback, setLoadingFeedback] = useState(true);
+
+    useEffect(() => {
+        const fetchFeedback = async () => {
+            try {
+                const res = await FeedbackService.getFeedbackAnalytics();
+                if (res.success) setFeedbackData(res.data);
+            } catch (err) {
+                console.error("Failed to fetch feedback analytics:", err);
+            } finally {
+                setLoadingFeedback(false);
+            }
+        };
+        fetchFeedback();
+    }, []);
 
     const stats = [
         {
@@ -215,23 +237,93 @@ const AnalyticsPage = () => {
                         </div>
                     </CardContent>
                 </Card>
+            </div>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Success Rate</CardTitle>
-                        <CardDescription>Scheme completion and satisfaction</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="h-64 flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg">
-                            <div className="text-center">
-                                <TrendingUp className="h-16 w-16 text-green-600 mx-auto mb-4" />
-                                <p className="text-gray-600">Success metrics would appear here</p>
-                                <p className="text-sm text-gray-500 mt-2">Integration with charting library required</p>
+            {/* User Satisfaction Intelligence */}
+            <Card className="border-2 border-purple-100 shadow-xl shadow-purple-500/5">
+                <CardHeader className="bg-gradient-to-r from-purple-50 to-blue-50/30">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <CardTitle className="flex items-center gap-2">
+                                <Activity className="h-5 w-5 text-purple-600" />
+                                User Satisfaction Intelligence
+                            </CardTitle>
+                            <CardDescription>Real-time feedback and recommendation performance</CardDescription>
+                        </div>
+                        <div className="flex items-center gap-2 px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-black uppercase tracking-widest">
+                            Live Feed
+                        </div>
+                    </div>
+                </CardHeader>
+                <CardContent className="pt-6">
+                    {loadingFeedback ? (
+                        <div className="h-40 flex items-center justify-center">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            {/* Module Ratings */}
+                            <div className="space-y-6">
+                                <h3 className="text-sm font-black text-slate-400 uppercase tracking-[0.2em]">Module Satisfaction</h3>
+                                <div className="space-y-4">
+                                    {feedbackData?.moduleRatings?.map((item: any) => (
+                                        <div key={item._id} className="p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:border-purple-200 transition-all group">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <span className="font-black text-slate-900 uppercase tracking-wider text-xs">{item._id}</span>
+                                                <div className="flex items-center gap-1">
+                                                    <Star className="h-3.5 w-3.5 text-amber-400 fill-amber-400" />
+                                                    <span className="text-sm font-black">{item.avgRating.toFixed(1)}</span>
+                                                </div>
+                                            </div>
+                                            <Progress value={item.avgRating * 20} className="h-1.5 bg-slate-200" />
+                                            <div className="mt-2 text-[10px] font-bold text-slate-400">
+                                                Based on {item.count} user ratings
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Recommendation Reactions */}
+                            <div className="space-y-6">
+                                <h3 className="text-sm font-black text-slate-400 uppercase tracking-[0.2em]">AI Match Accuracy</h3>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="p-6 rounded-3xl bg-emerald-50 border border-emerald-100 text-center space-y-2">
+                                        <div className="w-10 h-10 rounded-2xl bg-emerald-500 flex items-center justify-center mx-auto mb-3">
+                                            <ThumbsUp className="h-5 w-5 text-white" />
+                                        </div>
+                                        <div className="text-3xl font-black text-emerald-700">
+                                            {feedbackData?.recommendationReactions?.find((r: any) => r._id === 'helpful')?.count || 0}
+                                        </div>
+                                        <div className="text-[10px] font-black uppercase tracking-widest text-emerald-600/60">Helpful Matches</div>
+                                    </div>
+                                    <div className="p-6 rounded-3xl bg-rose-50 border border-rose-100 text-center space-y-2">
+                                        <div className="w-10 h-10 rounded-2xl bg-rose-500 flex items-center justify-center mx-auto mb-3">
+                                            <ThumbsDown className="h-5 w-5 text-white" />
+                                        </div>
+                                        <div className="text-3xl font-black text-rose-700">
+                                            {feedbackData?.recommendationReactions?.find((r: any) => r._id === 'not_relevant')?.count || 0}
+                                        </div>
+                                        <div className="text-[10px] font-black uppercase tracking-widest text-rose-600/60">Not Relevant</div>
+                                    </div>
+                                </div>
+                                <div className="p-6 rounded-3xl bg-slate-900 text-white space-y-4">
+                                    <div className="flex items-center gap-2">
+                                        <MessageSquare className="h-4 w-4 text-purple-400" />
+                                        <span className="text-xs font-black uppercase tracking-widest">Platform Feedback</span>
+                                    </div>
+                                    <div className="text-sm font-medium text-slate-300 italic">
+                                        "Collects general suggestions and improves system-wide logic."
+                                    </div>
+                                    <Button variant="outline" className="w-full h-10 rounded-xl border-white/20 hover:bg-white/10 text-white font-bold text-xs">
+                                        View All Comments
+                                    </Button>
+                                </div>
                             </div>
                         </div>
-                    </CardContent>
-                </Card>
-            </div>
+                    )}
+                </CardContent>
+            </Card>
         </div>
     );
 };

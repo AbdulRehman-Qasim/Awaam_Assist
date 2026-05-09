@@ -4,7 +4,8 @@ import { weightedAverage, getRelevanceLevel, NEARBY_CITIES, getTieBreaker } from
 export const calculateUniversityScore = (
   university: any,
   user: UserProfileContext
-): RecommendationResult => {
+): RecommendationResult | null => {
+  if (!university || typeof university !== 'object') return null;
   const reasons: string[] = [];
   const tags: string[] = [];
   

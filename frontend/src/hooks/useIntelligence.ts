@@ -4,6 +4,7 @@ import { RecommendationEngine } from '@/intelligence/engine/recommendationEngine
 export const useIntelligence = (userProfile: any, userBasics: any, profileVersion: number = 0) => {
   const [loading, setLoading] = useState(true);
   const [fetchedData, setFetchedData] = useState<{unis: any[], schemes: any[], hosps: any[]}>({ unis: [], schemes: [], hosps: [] });
+  const [feedbackHistory, setFeedbackHistory] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
   const renderCountRef = useRef(0);
 
@@ -33,25 +34,30 @@ export const useIntelligence = (userProfile: any, userBasics: any, profileVersio
         // Cache buster tied to profileVersion ensures browser never serves stale responses
         const cacheBuster = `v=${profileVersion}&t=${Date.now()}`;
 
-        console.info(`[Intelligence Engine] Re-fetch triggered. Profile version: ${profileVersion}`);
-
-        const [uniRes, schemeRes, hospRes] = await Promise.all([
+        const [uniRes, schemeRes, hospRes, feedbackRes] = await Promise.all([
           fetch(`${apiUrl}/api/universities?${cacheBuster}`, { headers, signal: abortController.signal }),
           fetch(`${apiUrl}/api/schemes?${cacheBuster}`, { headers, signal: abortController.signal }),
-          fetch(`${apiUrl}/api/hospitals?${cacheBuster}`, { headers, signal: abortController.signal })
+          fetch(`${apiUrl}/api/hospitals?${cacheBuster}`, { headers, signal: abortController.signal }),
+          fetch(`${apiUrl}/api/feedback/user-history`, { headers, signal: abortController.signal })
         ]);
 
-        const [unis, schemes, hosps] = await Promise.all([
+        const [unis, schemes, hosps, feedback] = await Promise.all([
           uniRes.ok ? uniRes.json() : { data: [] },
           schemeRes.ok ? schemeRes.json() : { data: [] },
-          hospRes.ok ? hospRes.json() : { data: [] }
+          hospRes.ok ? hospRes.json() : { data: [] },
+          feedbackRes.ok ? feedbackRes.json() : { data: [] }
         ]);
 
+        const safeUnis = Array.isArray(unis) ? unis : (unis?.data && Array.isArray(unis.data) ? unis.data : []);
+        const safeSchemes = Array.isArray(schemes) ? schemes : (schemes?.data && Array.isArray(schemes.data) ? schemes.data : []);
+        const safeHosps = Array.isArray(hosps) ? hosps : (hosps?.data && Array.isArray(hosps.data) ? hosps.data : []);
+
         setFetchedData({
-          unis: Array.isArray(unis) ? unis : (unis.data || []),
-          schemes: Array.isArray(schemes) ? schemes : (schemes.data || []),
-          hosps: Array.isArray(hosps) ? hosps : (hosps.data || [])
+          unis: safeUnis,
+          schemes: safeSchemes,
+          hosps: safeHosps
         });
+        setFeedbackHistory(Array.isArray(feedback.data) ? feedback.data : []);
       } catch (err: any) {
         if (err.name === 'AbortError') return;
         console.error("Intelligence Fetch Error:", err);
@@ -82,10 +88,11 @@ export const useIntelligence = (userProfile: any, userBasics: any, profileVersio
       universities: fetchedData.unis,
       schemes: fetchedData.schemes,
       hospitals: fetchedData.hosps,
+      feedback: feedbackHistory,
       renderCount: renderCountRef.current
     });
   // fetchedData reference changes every fetch (new array objects), profile changes after fetchProfile()
-  }, [fetchedData, userProfile, userBasics, loading]);
+  }, [fetchedData, userProfile, userBasics, loading, feedbackHistory]);
 
   return {
     loading,

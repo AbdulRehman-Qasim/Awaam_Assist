@@ -29,6 +29,10 @@ const createUniversity = async (req, res) => {
       data.degree = "N/A";
     }
 
+    // Map feeType to schema enum if necessary
+    if (data.feeType === "annual") data.feeType = "Annual Fee";
+    if (data.feeType === "semester") data.feeType = "Semester Fee";
+
     const hasAnnualFee = typeof data.fee === 'number' && data.fee > 0;
     const hasSemesterFee = typeof data.semesterFee === 'number' && data.semesterFee > 0;
 
@@ -76,6 +80,7 @@ const createUniversity = async (req, res) => {
       success: false,
       message: 'Server error while creating university',
       error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 };

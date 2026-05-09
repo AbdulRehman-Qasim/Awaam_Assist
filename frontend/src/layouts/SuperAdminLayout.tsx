@@ -24,7 +24,8 @@ import {
     X,
     Clock3,
     Bell,
-    ChevronLeft
+    ChevronLeft,
+    MessageSquare
 } from "lucide-react";
 
 type NavigationItem = {
@@ -48,6 +49,7 @@ const SuperAdminLayout = () => {
         { name: "Pending Approvals", href: "/super-admin/approvals", icon: Clock3 },
         { name: "All Data Overview", href: "/super-admin/data", icon: Database },
         { name: "Analytics", href: "/super-admin/analytics", icon: BarChart3 },
+        { name: "Feedback Intelligence", href: "/super-admin/feedback", icon: MessageSquare },
         { name: "Settings", href: "/super-admin/settings", icon: Settings },
     ];
 

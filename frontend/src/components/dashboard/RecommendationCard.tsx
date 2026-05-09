@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import {
   Sparkles, CheckCircle2, ArrowUpRight, Trophy,
   ChevronDown, ChevronUp, BrainCircuit, MapPin,
-  Star, X, Ban, Zap, Medal
+  Star, X, Ban, Zap, Medal, ThumbsUp, ThumbsDown, Check
 } from "lucide-react";
+import { FeedbackService } from "@/services/feedbackService";
 import { EngagementManager } from "@/intelligence/engagement/engagementManager";
 import { toast } from "sonner";
 import { RecommendationResult } from "@/intelligence/types";
@@ -75,6 +76,7 @@ export const RecommendationCard: React.FC<RecommendationCardProps> = ({
     EngagementManager.getProfile().savedItems.includes(recommendation.id)
   );
   const [isHidden, setIsHidden] = useState(false);
+  const [feedback, setFeedback] = useState<'helpful' | 'not_relevant' | null>(null);
 
   const {
     id         = '',
@@ -241,6 +243,56 @@ export const RecommendationCard: React.FC<RecommendationCardProps> = ({
                 </motion.div>
               )}
             </AnimatePresence>
+          </div>
+
+          {/* ── Recommendation Feedback ── */}
+          <div className="flex items-center gap-2 pt-1">
+            <button
+              onClick={async (e) => {
+                e.stopPropagation();
+                if (feedback === 'helpful') return;
+                setFeedback('helpful');
+                try {
+                  await FeedbackService.submitRecommendationFeedback({
+                    recommendationId: id,
+                    moduleType: type as any,
+                    reaction: 'helpful',
+                    metadata: { matchPercentage, priorityLevel }
+                  });
+                } catch {}
+              }}
+              className={`flex-1 h-9 rounded-xl border flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all ${
+                feedback === 'helpful' 
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-600' 
+                  : 'bg-slate-50 border-slate-100 text-slate-400 hover:bg-emerald-50 hover:text-emerald-500 hover:border-emerald-100'
+              }`}
+            >
+              {feedback === 'helpful' ? <Check className="w-3 h-3" /> : <ThumbsUp className="w-3 h-3" />}
+              Helpful
+            </button>
+            <button
+              onClick={async (e) => {
+                e.stopPropagation();
+                if (feedback === 'not_relevant') return;
+                setFeedback('not_relevant');
+                try {
+                  await FeedbackService.submitRecommendationFeedback({
+                    recommendationId: id,
+                    moduleType: type as any,
+                    reaction: 'not_relevant',
+                    metadata: { matchPercentage, priorityLevel }
+                  });
+                } catch {}
+              }}
+              className={`flex-1 h-9 rounded-xl border flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all ${
+                feedback === 'not_relevant' 
+                  ? 'bg-rose-50 border-rose-200 text-rose-600' 
+                  : 'bg-slate-50 border-slate-100 text-slate-400 hover:bg-rose-50 hover:text-rose-500 hover:border-rose-100'
+              }`}
+            >
+              {feedback === 'not_relevant' ? <X className="w-3 h-3" /> : <ThumbsDown className="w-3 h-3" />}
+              Not Relevant
+            </button>
           </div>
 
           {/* View Details CTA */}

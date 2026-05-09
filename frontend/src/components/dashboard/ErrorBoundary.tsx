@@ -38,9 +38,17 @@ class ErrorBoundary extends Component<Props, State> {
             <AlertCircle className="w-10 h-10 text-rose-500" />
           </div>
           <h2 className="text-2xl font-bold text-slate-900">Something went wrong</h2>
-          <p className="text-slate-500 max-w-md mt-2 mb-8">
+          <p className="text-slate-500 max-w-md mt-2 mb-4">
             The dashboard encountered an unexpected error. This might be due to a temporary connection issue or a rendering problem.
           </p>
+          {this.state.error && (
+            <div className="mb-8 p-4 bg-rose-50 rounded-xl border border-rose-100 text-left max-w-2xl overflow-auto max-h-40">
+              <p className="text-rose-700 font-bold text-xs mb-1">Error: {this.state.error.message}</p>
+              <pre className="text-[10px] text-rose-600 font-mono">
+                {this.state.error.stack}
+              </pre>
+            </div>
+          )}
           <Button onClick={this.handleRetry} variant="default" className="gap-2 bg-slate-900">
             <RefreshCcw className="w-4 h-4" />
             Reload Dashboard

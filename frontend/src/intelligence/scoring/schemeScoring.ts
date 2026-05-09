@@ -4,7 +4,8 @@ import { weightedAverage, getRelevanceLevel, getTieBreaker } from "../utils/scor
 export const calculateSchemeScore = (
   scheme: any,
   user: UserProfileContext
-): RecommendationResult => {
+): RecommendationResult | null => {
+  if (!scheme || typeof scheme !== 'object') return null;
   const reasons: string[] = [];
   const tags: string[] = [];
   const userProvince = (user.schemes?.province || user.location?.province || '').toLowerCase();

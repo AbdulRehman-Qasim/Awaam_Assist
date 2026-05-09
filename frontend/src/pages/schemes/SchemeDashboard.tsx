@@ -39,6 +39,7 @@ import {
     Users,
     DollarSign,
 } from "lucide-react";
+import { ModuleFeedback } from "@/components/shared/ModuleFeedback";
 import { checkSchemeEligibility, getSchemeCategories, getSchemeProvinces, type Scheme } from "@/data/schemes";
 import { schemeAPI } from "@/services/schemeAPI";
 import { useEffect } from "react";
@@ -247,88 +248,67 @@ const SchemeDashboard = () => {
     };
 
     return (
-        <div className="space-y-8">
-            {loading ? (
-                <div className="flex items-center justify-center min-h-[60vh]">
-                    <div className="text-center">
-                        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-[#7c3aed] mx-auto mb-4"></div>
-                        <p className="text-lg text-gray-600">Loading schemes...</p>
-                    </div>
-                </div>
-            ) : (
-                <>
-                    {/* Hero Section */}
-                    <section className="relative min-h-[40vh] flex items-center justify-center overflow-hidden bg-gradient-to-br from-[#7c3aed]/10 to-[#a855f7]/10 rounded-2xl">
-                        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(124,58,237,0.15),transparent)]" />
+        <div className="space-y-8 animate-fade-in">
+            {/* ── All static content renders immediately, no loader gate ── */}
+            <>
+                {/* Hero Section */}
+                    <section className="module-hero hero-gradient-schemes">
+                        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 25% 50%, rgba(255,255,255,0.3) 0%, transparent 60%)' }} />
+                        <div className="absolute top-6 right-8 w-32 h-32 rounded-full bg-white/5 animate-float" />
+                        <div className="absolute bottom-8 left-10 w-20 h-20 rounded-2xl bg-white/5 animate-float delay-300" />
 
                         <div className="container relative z-10 px-4 py-12">
                             <div className="max-w-4xl mx-auto text-center">
-                                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#7c3aed]/10 border border-[#7c3aed]/20 text-[#7c3aed] text-sm font-medium mb-6">
+                                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-6 text-sm font-semibold" style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: '1px solid rgba(255,255,255,0.25)' }}>
                                     <Award className="h-4 w-4" />
                                     <span>Government Schemes & Citizen Benefits</span>
                                 </div>
 
-                                <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-gray-900 mb-6">
-                                    Discover <span className="text-gradient bg-gradient-to-r from-[#7c3aed] to-[#a855f7] bg-clip-text text-transparent">Government Schemes</span>
+                                <h1 className="text-4xl sm:text-5xl md:text-6xl font-black text-white mb-6 tracking-tight">
+                                    Discover{" "}<span style={{ color: '#c4b5fd' }}>Government Schemes</span>
                                 </h1>
 
-                                <p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto mb-10">
+                                <p className="text-lg sm:text-xl text-white/80 max-w-2xl mx-auto mb-10">
                                     Find government programs and benefits you're eligible for. Check eligibility, compare schemes, and apply with confidence.
                                 </p>
 
                                 {/* Search Bar */}
                                 <div className="max-w-2xl mx-auto">
                                     <div className="relative flex items-center">
-                                        <Search className="absolute left-4 h-5 w-5 text-gray-400" />
+                                        <Search className="absolute left-4 h-5 w-5 text-white/60" />
                                         <Input
                                             type="text"
                                             placeholder="Search schemes by name, category, or department..."
                                             value={searchQuery}
                                             onChange={(e) => setSearchQuery(e.target.value)}
-                                            className="h-14 pl-12 pr-4 text-base rounded-2xl border-2 border-gray-200 bg-white shadow-sm focus:border-[#7c3aed] focus:shadow-md transition-all"
+                                            className="h-14 pl-12 pr-4 text-base rounded-2xl border-2 border-white/25 bg-white/15 text-white placeholder:text-white/50 focus:border-white/50 focus:bg-white/20 backdrop-blur-sm transition-all"
                                         />
                                     </div>
                                 </div>
 
                                 {/* Stats */}
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl mx-auto mt-12">
-                                    <div className="text-center group">
-                                        <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[#7c3aed]/10 text-[#7c3aed] mb-3 group-hover:scale-110 transition-transform">
-                                            <Building2 className="h-5 w-5" />
+                                <div className="flex flex-wrap items-center justify-center gap-8 mt-10">
+                                    {[
+                                        { icon: Building2, value: `${schemes.length}+`, label: 'Active Schemes' },
+                                        { icon: Users,     value: '30M+',             label: 'Beneficiaries' },
+                                        { icon: DollarSign, value: '1T+ PKR',         label: 'Allocated' },
+                                        { icon: TrendingUp, value: `${categories.length}`,  label: 'Categories' },
+                                    ].map(({ icon: Icon, value, label }) => (
+                                        <div key={label} className="text-center">
+                                            <div className="text-2xl font-black text-white">{value}</div>
+                                            <div className="text-xs font-semibold text-white/60 uppercase tracking-wider">{label}</div>
                                         </div>
-                                        <div className="text-2xl md:text-3xl font-bold text-gray-900">{schemes.length}</div>
-                                        <div className="text-sm text-gray-600">Active Schemes</div>
-                                    </div>
-                                    <div className="text-center group">
-                                        <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[#7c3aed]/10 text-[#7c3aed] mb-3 group-hover:scale-110 transition-transform">
-                                            <Users className="h-5 w-5" />
-                                        </div>
-                                        <div className="text-2xl md:text-3xl font-bold text-gray-900">30M+</div>
-                                        <div className="text-sm text-gray-600">Beneficiaries</div>
-                                    </div>
-                                    <div className="text-center group">
-                                        <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[#7c3aed]/10 text-[#7c3aed] mb-3 group-hover:scale-110 transition-transform">
-                                            <DollarSign className="h-5 w-5" />
-                                        </div>
-                                        <div className="text-2xl md:text-3xl font-bold text-gray-900">1T+</div>
-                                        <div className="text-sm text-gray-600">PKR Allocated</div>
-                                    </div>
-                                    <div className="text-center group">
-                                        <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[#7c3aed]/10 text-[#7c3aed] mb-3 group-hover:scale-110 transition-transform">
-                                            <TrendingUp className="h-5 w-5" />
-                                        </div>
-                                        <div className="text-2xl md:text-3xl font-bold text-gray-900">{categories.length}</div>
-                                        <div className="text-sm text-gray-600">Categories</div>
-                                    </div>
+                                    ))}
                                 </div>
                             </div>
                         </div>
                     </section>
 
                     {/* Eligibility Checker */}
-                    <Card className="border-2 border-[#7c3aed]/20 overflow-hidden shadow-lg">
+                    <Card className="border-2 overflow-hidden shadow-lg" style={{ borderColor: 'rgba(124,58,237,0.2)' }}>
                         <CardHeader
-                            className="bg-gradient-to-r from-[#7c3aed] to-[#a855f7] text-white cursor-pointer"
+                            className="text-white cursor-pointer"
+                            style={{ background: 'linear-gradient(135deg, #1e1b4b, #7c3aed)' }}
                             onClick={() => setIsEligibilityExpanded(!isEligibilityExpanded)}
                         >
                             <div className="flex items-center justify-between">
@@ -541,7 +521,8 @@ const SchemeDashboard = () => {
 
                                 <Button
                                     size="lg"
-                                    className="w-full mt-6 bg-gradient-to-r from-[#7c3aed] to-[#a855f7] hover:from-[#6d28d9] hover:to-[#9333ea] text-white shadow-lg"
+                                    className="w-full mt-6 text-white shadow-lg"
+                                    style={{ background: 'linear-gradient(135deg, #7c3aed, #a855f7)' }}
                                     onClick={handleEligibilityCheck}
                                 >
                                     <Sparkles className="h-4 w-4 mr-2" />
@@ -549,8 +530,8 @@ const SchemeDashboard = () => {
                                 </Button>
 
                                 {showEligibilityResults && (
-                                    <div className="mt-4 p-4 rounded-lg bg-[#7c3aed]/10 border border-[#7c3aed]/20">
-                                        <p className="text-sm text-center text-[#7c3aed] font-medium">
+                                    <div className="mt-4 p-4 rounded-xl border" style={{ background: 'rgba(124,58,237,0.08)', borderColor: 'rgba(124,58,237,0.2)' }}>
+                                        <p className="text-sm text-center font-semibold" style={{ color: '#7c3aed' }}>
                                             <CheckCircle2 className="inline h-4 w-4 mr-1" />
                                             Showing {filteredSchemes.length} schemes matching your eligibility criteria
                                         </p>
@@ -565,10 +546,15 @@ const SchemeDashboard = () => {
                         {/* Filter Bar */}
                         <div className="flex flex-wrap items-center justify-between gap-4">
                             <div className="flex items-center gap-3">
-                                <h2 className="text-2xl font-bold text-gray-900">Available Schemes</h2>
-                                <Badge className="bg-[#7c3aed] text-white">
-                                    {filteredSchemes.length} Results
-                                </Badge>
+                                <h2 className="text-2xl font-extrabold text-foreground">Available Schemes</h2>
+                                {!loading && (
+                                    <Badge className="text-sm font-bold px-3 py-1 rounded-full" style={{ background: 'rgba(124,58,237,0.1)', color: '#7c3aed', border: '1px solid rgba(124,58,237,0.2)' }}>
+                                        {filteredSchemes.length} Results
+                                    </Badge>
+                                )}
+                                {loading && (
+                                    <div className="h-6 w-20 rounded-full skeleton" />
+                                )}
                             </div>
 
                             <div className="flex items-center gap-3 flex-wrap">
@@ -614,52 +600,103 @@ const SchemeDashboard = () => {
                             </div>
                         </div>
 
-                        {/* Scheme Cards Grid */}
-                        {filteredSchemes.length === 0 ? (
-                            <Card className="p-12 text-center">
-                                <div className="flex flex-col items-center gap-4">
-                                    <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center">
-                                        <Search className="h-8 w-8 text-gray-400" />
-                                    </div>
-                                    <div>
-                                        <h3 className="text-lg font-semibold text-gray-900 mb-2">No Schemes Found</h3>
-                                        <p className="text-gray-600">
-                                            Try adjusting your filters or search criteria to find more schemes.
-                                        </p>
-                                    </div>
-                                    <Button
-                                        variant="outline"
-                                        onClick={() => {
-                                            setSearchQuery("");
-                                            setSelectedCategory("all");
-                                            setSelectedProvince("all");
-                                            setShowEligibilityResults(false);
+                        {/* Scheme Cards Grid — skeleton while loading, real cards after */}
+                        {loading ? (
+                            // ── SKELETON LOADERS ──
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                                {Array.from({ length: 6 }).map((_, i) => (
+                                    <div
+                                        key={i}
+                                        className="rounded-2xl border border-border/60 bg-card overflow-hidden"
+                                        style={{
+                                            borderTop: '3px solid rgba(124,58,237,0.25)',
+                                            opacity: 1 - i * 0.08,
+                                            animationDelay: `${i * 80}ms`
                                         }}
                                     >
-                                        Clear All Filters
-                                    </Button>
+                                        {/* Card header skeleton */}
+                                        <div className="p-5 pb-3 space-y-3">
+                                            <div className="flex items-start justify-between">
+                                                <div className="h-5 w-20 rounded-full skeleton" />
+                                                <div className="flex gap-1.5">
+                                                    <div className="h-7 w-7 rounded-full skeleton" />
+                                                    <div className="h-7 w-7 rounded-full skeleton" />
+                                                </div>
+                                            </div>
+                                            {/* Title lines */}
+                                            <div className="h-5 w-full rounded-lg skeleton" />
+                                            <div className="h-5 w-3/4 rounded-lg skeleton" />
+                                            {/* Dept label */}
+                                            <div className="h-3 w-28 rounded skeleton" />
+                                            {/* Description lines */}
+                                            <div className="h-3.5 w-full rounded skeleton" />
+                                            <div className="h-3.5 w-5/6 rounded skeleton" />
+                                        </div>
+                                        {/* Divider */}
+                                        <div className="mx-5 border-t border-border/40" />
+                                        {/* Card content skeleton */}
+                                        <div className="p-5 pt-4 space-y-3">
+                                            <div className="flex items-center gap-2">
+                                                <div className="h-4 w-4 rounded-full skeleton flex-shrink-0" />
+                                                <div className="h-4 w-32 rounded skeleton" />
+                                                <div className="h-3.5 w-20 rounded skeleton" />
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <div className="h-4 w-4 rounded-full skeleton flex-shrink-0" />
+                                                <div className="h-3.5 w-24 rounded skeleton" />
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <div className="h-4 w-4 rounded-full skeleton flex-shrink-0" />
+                                                <div className="h-3.5 w-36 rounded skeleton" />
+                                            </div>
+                                            <div className="pt-3 border-t border-border/40">
+                                                <div className="h-9 w-full rounded-xl skeleton" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : filteredSchemes.length === 0 ? (
+                            // ── EMPTY STATE ──
+                            <div className="empty-state">
+                                <div className="empty-state-icon" style={{ background: 'rgba(124,58,237,0.1)' }}>
+                                    <Search className="h-8 w-8" style={{ color: '#7c3aed' }} />
                                 </div>
-                            </Card>
+                                <div>
+                                    <h3 className="text-lg font-bold text-foreground mb-2">No Schemes Found</h3>
+                                    <p className="text-muted-foreground">Try adjusting your filters or search criteria.</p>
+                                </div>
+                                <Button
+                                    variant="outline"
+                                    className="rounded-xl"
+                                    onClick={() => { setSearchQuery(""); setSelectedCategory("all"); setSelectedProvince("all"); setShowEligibilityResults(false); }}
+                                >
+                                    Clear All Filters
+                                </Button>
+                            </div>
                         ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {filteredSchemes.map((scheme) => (
+                            // ── REAL CARDS (fade in after load) ──
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                                {filteredSchemes.map((scheme, idx) => (
                                     <Card
                                         key={scheme.schemeId}
-                                        className="group relative overflow-hidden border-2 border-gray-200 hover:border-[#7c3aed] transition-all duration-300 hover:shadow-xl cursor-pointer"
+                                        className="group relative overflow-hidden rounded-2xl border border-border/60 bg-card cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-xl animate-fade-in-up"
+                                        style={{ borderTop: '3px solid #7c3aed', animationDelay: `${Math.min(idx * 50, 400)}ms`, animationFillMode: 'both' }}
                                         onClick={() => openSchemeDetails(scheme)}
                                     >
-                                        <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-[#7c3aed] to-[#a855f7] opacity-10 rounded-bl-[100px]" />
+                                        <div className="absolute top-0 right-0 w-24 h-24 opacity-5 rounded-bl-[100px]" style={{ background: 'linear-gradient(135deg, #7c3aed, #a855f7)' }} />
 
                                         <CardHeader className="pb-4">
                                             <div className="flex items-start justify-between mb-3">
-                                                <Badge className="bg-[#7c3aed] text-white">
+                                                <Badge className="text-[10px] font-black uppercase tracking-wide px-2.5 py-1 rounded-full" style={{ background: 'rgba(124,58,237,0.1)', color: '#7c3aed', border: '1px solid rgba(124,58,237,0.2)' }}>
                                                     {scheme.category}
                                                 </Badge>
                                                 <div className="flex items-center gap-1">
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
-                                                        className={`h-8 w-8 ${compareList.includes(scheme.schemeId) ? "text-[#7c3aed] bg-[#7c3aed]/10" : "text-gray-400 hover:text-[#7c3aed]"}`}
+                                                        className={`h-8 w-8 ${compareList.includes(scheme.schemeId) ? "bg-purple-50" : "text-slate-300 hover:bg-purple-50"}`}
+                                                        style={{ color: compareList.includes(scheme.schemeId) ? '#7c3aed' : undefined }}
                                                         onClick={(e) => toggleCompare(e, scheme)}
                                                         title={compareList.includes(scheme.schemeId) ? "Remove from Compare" : "Add to Compare"}
                                                     >
@@ -684,24 +721,24 @@ const SchemeDashboard = () => {
                                                 </div>
                                             </div>
 
-                                            <CardTitle className="text-lg font-bold text-gray-900 mb-2 line-clamp-2">
+                                            <CardTitle className="text-base font-bold text-foreground mb-2 line-clamp-2 group-hover:text-purple-700 transition-colors">
                                                 {scheme.schemeName}
                                             </CardTitle>
-                                            <p className="text-sm text-gray-600 mb-2">{scheme.department}</p>
-                                            <p className="text-sm text-gray-700 line-clamp-2">{scheme.description}</p>
+                                            <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">{scheme.department}</p>
+                                            <p className="text-sm text-muted-foreground line-clamp-2">{scheme.description}</p>
                                         </CardHeader>
 
                                         <CardContent className="space-y-3">
                                             <div className="flex items-center gap-2 text-sm">
-                                                <DollarSign className="h-4 w-4 text-[#7c3aed]" />
-                                                <span className="font-semibold text-gray-900">
+                                                <DollarSign className="h-4 w-4 flex-shrink-0" style={{ color: '#7c3aed' }} />
+                                                <span className="font-bold text-foreground">
                                                     PKR {scheme.benefits.financial.amount.toLocaleString()}
                                                 </span>
-                                                <span className="text-gray-600">({scheme.benefits.financial.frequency})</span>
+                                                <span className="text-muted-foreground text-xs">({scheme.benefits.financial.frequency})</span>
                                             </div>
 
-                                            <div className="flex items-center gap-2 text-sm text-gray-600">
-                                                <MapPin className="h-4 w-4 text-[#7c3aed]" />
+                                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                                <MapPin className="h-4 w-4 flex-shrink-0" style={{ color: '#7c3aed' }} />
                                                 <span>{scheme.province}</span>
                                             </div>
 
@@ -712,10 +749,11 @@ const SchemeDashboard = () => {
                                                 </span>
                                             </div>
 
-                                            <div className="pt-3 border-t border-gray-200">
+                                            <div className="pt-3 border-t border-border/50">
                                                 <Button
                                                     size="sm"
-                                                    className="w-full bg-gradient-to-r from-[#7c3aed] to-[#a855f7] hover:from-[#6d28d9] hover:to-[#9333ea] text-white"
+                                                    className="w-full text-white rounded-xl font-semibold"
+                                                    style={{ background: 'linear-gradient(135deg, #7c3aed, #a855f7)' }}
                                                     onClick={(e) => {
                                                         e.stopPropagation();
                                                         openSchemeDetails(scheme);
@@ -745,7 +783,7 @@ const SchemeDashboard = () => {
                                                 </DialogTitle>
                                                 <p className="text-sm text-gray-600">{selectedScheme.department}</p>
                                             </div>
-                                            <Badge className="bg-[#7c3aed] text-white">
+                                            <Badge className="text-[10px] font-black uppercase tracking-wide px-2.5 py-1 rounded-full" style={{ background: 'rgba(124,58,237,0.1)', color: '#7c3aed', border: '1px solid rgba(124,58,237,0.2)' }}>
                                                 {selectedScheme.category}
                                             </Badge>
                                         </div>
@@ -829,7 +867,7 @@ const SchemeDashboard = () => {
                                                 <div className="space-y-2">
                                                     {selectedScheme.application.steps.map((step, idx) => (
                                                         <div key={idx} className="flex items-start gap-3">
-                                                            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-[#7c3aed] text-white flex items-center justify-center text-xs font-bold">
+                                                            <div className="flex-shrink-0 w-6 h-6 rounded-full text-white flex items-center justify-center text-xs font-black" style={{ background: '#7c3aed' }}>
                                                                 {idx + 1}
                                                             </div>
                                                             <p className="text-sm text-gray-700 flex-1">{step}</p>
@@ -897,9 +935,10 @@ const SchemeDashboard = () => {
                                         )}
 
                                         {/* Actions */}
-                                        <div className="flex gap-3 pt-4 border-t border-gray-200">
+                                        <div className="flex gap-3 pt-4 border-t border-border">
                                             <Button
-                                                className="flex-1 bg-gradient-to-r from-[#7c3aed] to-[#a855f7] hover:from-[#6d28d9] hover:to-[#9333ea] text-white"
+                                                className="flex-1 text-white rounded-xl font-semibold"
+                                                style={{ background: 'linear-gradient(135deg, #7c3aed, #a855f7)' }}
                                                 onClick={() => window.open(selectedScheme.application.website, "_blank")}
                                             >
                                                 <ExternalLink className="mr-2 h-4 w-4" />
@@ -923,7 +962,11 @@ const SchemeDashboard = () => {
                         </DialogContent>
                     </Dialog>
                 </>
-            )}
+
+            {/* Module Feedback Section */}
+            <div className="container max-w-4xl mx-auto pt-10 pb-20">
+                <ModuleFeedback moduleName="schemes" />
+            </div>
         </div>
     );
 };

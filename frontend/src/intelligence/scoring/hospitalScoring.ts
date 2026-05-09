@@ -4,7 +4,8 @@ import { weightedAverage, getRelevanceLevel, NEARBY_CITIES, getTieBreaker } from
 export const calculateHospitalScore = (
   hospital: any,
   user: UserProfileContext
-): RecommendationResult => {
+): RecommendationResult | null => {
+  if (!hospital || typeof hospital !== 'object') return null;
   const reasons: string[] = [];
   const tags: string[] = [];
   const userCity = (user.healthcare?.city || user.location?.city || '').toLowerCase();

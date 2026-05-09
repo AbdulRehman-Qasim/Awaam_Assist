@@ -32,24 +32,31 @@ const buildPublicApprovalQuery = (type, baseQuery = {}) => {
         return baseQuery;
     }
 
+    let approvalOr = [];
     if (type === 'schemes') {
-        return {
-            ...baseQuery,
-            $or: [
-                { approvalStatus: 'approved' },
-                { approvalStatus: { $exists: false }, status: 'Active' },
-            ],
-        };
-    }
-
-    return {
-        ...baseQuery,
-        $or: [
+        approvalOr = [
+            { approvalStatus: 'approved' },
+            { approvalStatus: { $exists: false }, status: 'Active' },
+        ];
+    } else {
+        approvalOr = [
             { [target.statusField]: 'approved' },
             { [target.statusField]: { $exists: false } },
             { [target.statusField]: 1 },
             { [target.statusField]: '1' },
-        ],
+        ];
+    }
+
+    // Merge using $and to prevent overwriting baseQuery's own $or (e.g. from search)
+    if (Object.keys(baseQuery).length === 0) {
+        return { $or: approvalOr };
+    }
+
+    return {
+        $and: [
+            baseQuery,
+            { $or: approvalOr }
+        ]
     };
 };
 

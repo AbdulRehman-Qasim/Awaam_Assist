@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { University } from "@/types/university";
+import { ModuleFeedback } from "@/components/shared/ModuleFeedback";
 
 const DisciplineSearch = () => {
   const [universities, setUniversities] = useState<University[]>([]);
@@ -170,7 +171,14 @@ const DisciplineSearch = () => {
                       {/* Image Section */}
                       <div className="relative h-48 overflow-hidden">
                         <img
-                          src={university.url}
+                          src={(() => {
+                            const apiUrl = import.meta.env.VITE_API_URL || '';
+                            const s = university.url || university.logo;
+                            if (!s) return "https://images.unsplash.com/photo-1562774053-701939374585?w=800&auto=format&fit=crop";
+                            if (s.startsWith('data:') || s.startsWith('http')) return s;
+                            const path = s.startsWith('/') ? s : `/${s}`;
+                            return `${apiUrl}${path}`;
+                          })()}
                           alt={university.title}
                           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                           onError={(e) => {
@@ -250,6 +258,11 @@ const DisciplineSearch = () => {
             </p>
           </Card>
         )}
+
+        {/* Module Feedback Section */}
+        <div className="container max-w-4xl mx-auto pt-10 pb-20">
+          <ModuleFeedback moduleName="education" />
+        </div>
       </main>
     </div>
   );

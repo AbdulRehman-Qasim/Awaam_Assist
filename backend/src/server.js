@@ -12,7 +12,8 @@ const {
   getUniversityStats,
   getUniversitiesByCity,
   getUniversitiesByProvince,
-  getUniversitiesByDiscipline
+  getUniversitiesByDiscipline,
+  getLiveStats,
 } = require("./controllers/universityController");
 
 // Import university search controllers
@@ -38,6 +39,9 @@ const {
   updateHospital,
   deleteHospital,
   getHospitalDashboardStats,
+  addTreatment,
+  updateTreatment,
+  deleteTreatment,
 } = require("./controllers/hospitalController");
 
 // Import company authentication controllers
@@ -111,6 +115,16 @@ const { completeOnboarding, getProfile } = require("./controllers/userOnboarding
 const { completeProfile, getUserProfile } = require("./controllers/userController");
 const { getRecommendations } = require("./controllers/recommendationController");
 const userAuth = require("./middleware/userAuth");
+
+// Import feedback controllers
+const {
+  submitModuleRating,
+  submitRecommendationFeedback,
+  submitPlatformFeedback,
+  getFeedbackAnalytics,
+  getUserFeedbackHistory,
+  getAllFeedback
+} = require("./controllers/feedbackController");
 
 const superAdminRoutes = require('./modules/superAdmin/routes/superAdminRoutes');
 
@@ -263,20 +277,29 @@ app.post("/api/user/complete-profile", userAuth, completeProfile);
 app.get("/api/user/profile", userAuth, getUserProfile);
 app.get("/api/user/recommendations", userAuth, getRecommendations);
 
+// Feedback routes
+app.post("/api/feedback/module", userAuth, submitModuleRating);
+app.post("/api/feedback/recommendation", userAuth, submitRecommendationFeedback);
+app.post("/api/feedback/platform", userAuth, submitPlatformFeedback);
+app.get("/api/feedback/user-history", userAuth, getUserFeedbackHistory);
+app.get("/api/feedback/analytics", adminAuthMiddleware, getFeedbackAnalytics);
+app.get("/api/feedback/all", adminAuthMiddleware, getAllFeedback);
+
 // Hospital admin authentication routes
 app.post("/hospital-admin/register", registerHospitalAdmin);
 app.post("/hospital-admin/login", loginHospitalAdmin);
 app.post("/hospital-admin/bootstrap-existing-logins", bootstrapHospitalAdminsFromExistingHospitals);
 
-// University routes - specific routes first
+// University routes - specific named routes MUST come before /:id
 app.get("/api/universities/search", searchUniversitiesByName);
 app.get("/api/universities/ranking", getUniversitiesByRanking);
 app.get("/api/universities/top", getTopUniversitiesOptimized);
+app.get("/api/universities/stats", getUniversityStats);
+app.get("/api/universities/live-stats", getLiveStats);       // live stats for hero section
 app.get("/api/universities/city/:city", getUniversitiesByCity);
 app.get("/api/universities/province/:province", getUniversitiesByProvince);
 app.get("/api/universities/discipline/:discipline", getUniversitiesByDiscipline);
 app.get("/api/universities", getAllUniversities);
-app.get("/api/universities/stats", getUniversityStats);
 app.get("/api/universities/:id", getUniversityById);
 
 // Disciplines endpoint
@@ -352,6 +375,10 @@ app.get("/admin/hospitals/dashboard-stats", requireRole(['hospital_admin', 'supe
 app.post("/admin/hospitals", requireRole(['hospital_admin', 'super_admin']), createHospital);
 app.put("/admin/hospitals/:id", requireRole(['hospital_admin', 'super_admin']), updateHospital);
 app.delete("/admin/hospitals/:id", requireRole(['hospital_admin', 'super_admin']), deleteHospital);
+// Treatment sub-routes
+app.post("/admin/hospitals/:id/treatments", requireRole(['hospital_admin', 'super_admin']), addTreatment);
+app.put("/admin/hospitals/:id/treatments/:treatmentId", requireRole(['hospital_admin', 'super_admin']), updateTreatment);
+app.delete("/admin/hospitals/:id/treatments/:treatmentId", requireRole(['hospital_admin', 'super_admin']), deleteTreatment);
 
 // Unified Hospital Admin Routes
 app.get("/hospital-admin/hospitals", adminAuthMiddleware, getAllHospitalsAdmin);
@@ -359,6 +386,10 @@ app.get("/hospital-admin/dashboard-stats", adminAuthMiddleware, getHospitalDashb
 app.post("/hospital-admin/hospitals", adminAuthMiddleware, createHospital);
 app.put("/hospital-admin/hospitals/:id", adminAuthMiddleware, updateHospital);
 app.delete("/hospital-admin/hospitals/:id", adminAuthMiddleware, deleteHospital);
+// Treatment sub-routes for hospital admin portal
+app.post("/hospital-admin/hospitals/:id/treatments", adminAuthMiddleware, addTreatment);
+app.put("/hospital-admin/hospitals/:id/treatments/:treatmentId", adminAuthMiddleware, updateTreatment);
+app.delete("/hospital-admin/hospitals/:id/treatments/:treatmentId", adminAuthMiddleware, deleteTreatment);
 
 // Company profile management routes
 app.get("/company/profile", getCompanyProfile);

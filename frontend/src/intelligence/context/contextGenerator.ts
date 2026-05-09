@@ -15,10 +15,20 @@ export class ContextGenerator {
    * Generates a conversational summary of the user's profile status.
    */
   static generateProfileNarrative(user: UserProfileContext): string {
-    const city = user.location?.city || "your city";
-    const field = user.education?.discipline || "your field";
+    const city = user.location?.city;
+    const field = user.education?.discipline;
     
-    return `We found matches for you in ${city} for ${field}. Your profile is ready for better recommendations.`;
+    if (city && field) {
+      return `We found matches for you in ${city} for ${field}. Your profile is ready for better recommendations.`;
+    }
+    if (city) {
+      return `We found relevant opportunities near ${city}. Complete your educational details for higher precision.`;
+    }
+    if (field) {
+      return `We found matches for ${field} across multiple regions. Set your city to find local options.`;
+    }
+    
+    return "Our AI is analyzing available datasets. Complete your profile to unlock personalized matches.";
   }
 
   /**
@@ -111,7 +121,7 @@ export class ContextGenerator {
     const isSameCity = userCity && itemCity === userCity;
     const isNearby = userCity && NEARBY_CITIES[userCity]?.includes(itemCity);
     const userField = (user.education?.discipline || '').toLowerCase();
-    const itemField = (rec.details.discipline || rec.details.Cateogry || rec.details.Category || '').toLowerCase();
+    const itemField = (rec.details?.discipline || rec.details?.Category || rec.details?.Cateogry || '').toLowerCase();
     
     const id = String(rec.id || rec.title);
 

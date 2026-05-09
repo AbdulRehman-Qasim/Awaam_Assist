@@ -1,9 +1,9 @@
-import { useState, useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import {
   Sparkles, AlertCircle, MapPin, GraduationCap, ShieldCheck,
   HeartPulse, CheckCircle2, ChevronRight, BrainCircuit,
-  ArrowUpRight, LayoutDashboard, Settings, User, Zap,
+  LayoutDashboard, Settings, Zap, Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
@@ -13,14 +13,14 @@ import { InsightCards } from "./InsightCards";
 import { DashboardFeed } from "./DashboardFeed";
 import { AIInsights } from "./AIInsights";
 import { SmartLoading } from "./SmartLoading";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
-  DialogDescription, DialogFooter,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { CORE_MODULES, CORE_MODULE_IDS, type CoreModuleId, type ProfileFieldDef } from "@/config/profileModules";
 
 const PersonalizedDashboard = () => {
   const [loadingProfile, setLoadingProfile] = useState(true);
@@ -29,6 +29,10 @@ const PersonalizedDashboard = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [profileVersion, setProfileVersion] = useState(0);
+  const [activeTab, setActiveTab] = useState<string>("overview");
+  const [localDraft, setLocalDraft] = useState<any>(null);
+  const [pendingModuleAdd, setPendingModuleAdd] = useState<CoreModuleId[]>([]);
+  const debouncedSaveTimer = useRef<number | null>(null);
 
   const userBasics = useMemo(() => {
     const userStr = localStorage.getItem("user");
@@ -59,19 +63,42 @@ const PersonalizedDashboard = () => {
 
   useEffect(() => { fetchProfile(); }, [token]);
 
-  const handleUpdateProfile = async (updatedData: any) => {
+  const persistUserLocalStorage = (nextSelectedModules?: string[]) => {
+    try {
+      const userStr = localStorage.getItem("user");
+      if (!userStr) return;
+      const parsed = JSON.parse(userStr);
+      const next = {
+        ...parsed,
+        data: {
+          ...(parsed.data || {}),
+          onboardingCompleted: true,
+          ...(nextSelectedModules ? { selectedModules: nextSelectedModules } : {}),
+        },
+      };
+      localStorage.setItem("user", JSON.stringify(next));
+    } catch {
+      // ignore localStorage parse issues
+    }
+  };
+
+  const handleUpdateProfile = async (
+    updatedData: { selectedModules?: string[]; profile?: any },
+    options: { closeOnSuccess?: boolean } = {}
+  ) => {
     if (!token || !profile) return;
     setIsUpdating(true);
     try {
-      const mergedProfile = {
-        education: { ...profile.profile?.education, ...updatedData.education },
-        schemes: { ...profile.profile?.schemes, ...updatedData.schemes },
-        healthcare: { ...profile.profile?.healthcare, ...updatedData.healthcare }
+      const nextSelectedModules = updatedData.selectedModules || profile.selectedModules;
+      const mergedProfile = updatedData.profile || {
+        education: { ...profile.profile?.education },
+        schemes: { ...profile.profile?.schemes },
+        healthcare: { ...profile.profile?.healthcare },
       };
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/user/complete-profile`, {
         method: 'POST',
         headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ selectedModules: profile.selectedModules, profile: mergedProfile })
+        body: JSON.stringify({ selectedModules: nextSelectedModules, profile: mergedProfile })
       });
       if (!response.ok) {
         const errorData = await response.json();
@@ -79,10 +106,11 @@ const PersonalizedDashboard = () => {
       }
       await fetchProfile();
       setProfileVersion(v => v + 1);
+      persistUserLocalStorage(nextSelectedModules);
       toast.success("Recommendations updated", {
         description: "Intelligence Engine has adapted to your new profile."
       });
-      setIsEditModalOpen(false);
+      if (options.closeOnSuccess !== false) setIsEditModalOpen(false);
     } catch (err: any) {
       toast.error(err.message || "Profile update failed");
     } finally {
@@ -93,25 +121,31 @@ const PersonalizedDashboard = () => {
   const { loading: loadingIntelligence, data: recommendations, error: intelligenceError } =
     useIntelligence(profile, userBasics, profileVersion);
 
-  const readiness = useMemo(() => {
-    const missing: string[] = [];
-    if (!userBasics?.data?.student_name) missing.push("Full Name");
-    if (!profile) {
-      if (!loadingProfile) missing.push("Complete Onboarding");
-      return { isComplete: false, missing };
-    }
-    const { selectedModules, profile: details } = profile;
-    if (!selectedModules?.length) missing.push("Interests/Modules");
-    if (selectedModules?.includes("education") && !details?.education?.degree) missing.push("Education Level");
-    if (selectedModules?.includes("schemes") && !details?.schemes?.income) missing.push("Income Detail");
-    return { isComplete: missing.length === 0, missing };
-  }, [profile, userBasics, loadingProfile]);
+  const rawModules = profile?.selectedModules || [];
+  const details = profile?.profile || {};
+
+  const availableToAdd = useMemo(() => {
+    const current = new Set<string>(rawModules || []);
+    return CORE_MODULE_IDS.filter((m) => !current.has(m));
+  }, [rawModules]);
+
+  useEffect(() => {
+    if (!profile) return;
+    setLocalDraft({
+      selectedModules: profile.selectedModules || [],
+      profile: {
+        education: { ...(profile.profile?.education || {}) },
+        schemes: { ...(profile.profile?.schemes || {}) },
+        healthcare: { ...(profile.profile?.healthcare || {}) },
+      },
+    });
+  }, [profile?._id]);
 
   const isInitialLoad = loadingProfile || (loadingIntelligence && !recommendations);
   const hasNoMatches = !loadingIntelligence && recommendations &&
-    recommendations.universities.length === 0 &&
-    recommendations.schemes.length === 0 &&
-    recommendations.hospitals.length === 0;
+    (recommendations.universities?.length || 0) === 0 &&
+    (recommendations.schemes?.length || 0) === 0 &&
+    (recommendations.hospitals?.length || 0) === 0;
 
   /* ── ERROR STATES ── */
   if (profileError) {
@@ -151,12 +185,10 @@ const PersonalizedDashboard = () => {
     return <div className="max-w-7xl mx-auto pt-20"><SmartLoading /></div>;
   }
 
-  const displayName = userBasics?.data?.student_name || "Guest User";
-  const displayEmail = profile?.userId?.student_email || userBasics?.data?.student_email || "Verified Citizen";
-  const firstName = displayName.split(' ')[0];
+  const displayName = String(userBasics?.data?.student_name || "Guest User");
+  const displayEmail = String(profile?.userId?.student_email || userBasics?.data?.student_email || "Verified Citizen");
+  const firstName = displayName.split(' ')[0] || "Guest";
 
-  const rawModules = profile?.selectedModules || [];
-  const details = profile?.profile || {};
   const selectedModules = rawModules.filter((mod: string) => {
     if (mod === 'education') return !!(details.education?.degree || details.education?.marks);
     if (mod === 'schemes') return !!(details.schemes?.income);
@@ -164,11 +196,64 @@ const PersonalizedDashboard = () => {
     return true;
   });
 
+
+  const getByPath = (obj: any, path: string) => {
+    const parts = path.split(".");
+    let cur = obj;
+    for (const p of parts) cur = cur?.[p];
+    return cur;
+  };
+
+  const setByPath = (obj: any, path: string, value: any) => {
+    const parts = path.split(".");
+    const next = { ...(obj || {}) };
+    let cur = next;
+    for (let i = 0; i < parts.length - 1; i++) {
+      const key = parts[i];
+      cur[key] = { ...(cur[key] || {}) };
+      cur = cur[key];
+    }
+    cur[parts[parts.length - 1]] = value;
+    return next;
+  };
+
+  const ensureModuleDefaults = (draft: any, moduleId: CoreModuleId) => {
+    const next = { ...(draft || {}) };
+    next.profile = next.profile || {};
+    if (moduleId === "education") next.profile.education = next.profile.education || {};
+    if (moduleId === "schemes") next.profile.schemes = next.profile.schemes || {};
+    if (moduleId === "healthcare") next.profile.healthcare = next.profile.healthcare || {};
+    return next;
+  };
+
+  const scheduleAutosave = (nextDraft: any) => {
+    if (debouncedSaveTimer.current) window.clearTimeout(debouncedSaveTimer.current);
+    debouncedSaveTimer.current = window.setTimeout(async () => {
+      if (!profile) return;
+      await handleUpdateProfile({
+        selectedModules: nextDraft.selectedModules,
+        profile: nextDraft.profile,
+      }, { closeOnSuccess: false });
+    }, 800);
+  };
+
+  const updateField = (field: ProfileFieldDef, rawValue: any) => {
+    if (!localDraft) return;
+    const isNumber = field.type === "number";
+    const value = isNumber ? (rawValue === "" ? "" : Number(rawValue)) : rawValue;
+    const next = {
+      ...localDraft,
+      profile: setByPath(localDraft.profile, field.path, value),
+    };
+    setLocalDraft(next);
+    scheduleAutosave(next);
+  };
+
   const metrics = {
     universities: recommendations?.universities?.length || 0,
     schemes: recommendations?.schemes?.length || 0,
     hospitals: recommendations?.hospitals?.length || 0,
-    confidence: recommendations?.overallConfidence || 0
+    confidence: Number(recommendations?.overallConfidence) || 0
   };
 
   const hour = new Date().getHours();
@@ -211,7 +296,7 @@ const PersonalizedDashboard = () => {
             <p className="text-white/60 font-medium text-sm max-w-lg leading-relaxed">
               {hasNoMatches
                 ? "Our AI is ready to find opportunities for you. Complete your profile to unlock precision matching."
-                : `We found high-confidence matches in ${recommendations?.profileNarrative?.includes('in ') ? recommendations.profileNarrative.split('in ')[1]?.split(' ')[0] : 'your region'}. Your personalized intelligence is ready.`
+                : `We found high-confidence matches in ${recommendations?.profileNarrative && recommendations.profileNarrative.includes('in ') ? (recommendations.profileNarrative.split('in ')[1]?.split(' for')[0]?.split('.')[0] || 'your region') : 'your region'}. Your personalized intelligence is ready.`
               }
             </p>
           </div>
@@ -315,48 +400,7 @@ const PersonalizedDashboard = () => {
           </div>
         </div>
 
-        {/* Readiness Card */}
-        <div className="lg:col-span-4">
-          <div className={`relative h-full rounded-2xl overflow-hidden p-6 flex flex-col shadow-lg ${readiness.isComplete
-            ? 'bg-gradient-to-br from-emerald-500 to-emerald-600'
-            : 'bg-gradient-to-br from-amber-500 to-orange-500'
-            }`}>
-            <div className="absolute top-0 right-0 p-4 opacity-10">
-              <BrainCircuit className="w-24 h-24" />
-            </div>
-            <div className="relative z-10 flex flex-col h-full">
-              <div className="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center mb-4">
-                {readiness.isComplete
-                  ? <CheckCircle2 className="w-6 h-6 text-white" />
-                  : <AlertCircle className="w-6 h-6 text-white" />}
-              </div>
-              <h3 className="text-lg font-black text-white tracking-tight mb-1.5">
-                {readiness.isComplete ? "Profile Ready" : "Context Needed"}
-              </h3>
-              <p className="text-white/70 text-xs font-bold leading-relaxed mb-4">
-                {readiness.isComplete
-                  ? "Your profile is optimized for precision matching."
-                  : "Add more context for higher-confidence results."}
-              </p>
-              {!readiness.isComplete && (
-                <div className="space-y-2 flex-grow">
-                  {readiness.missing.map((item, i) => (
-                    <div key={i} className="flex items-center gap-2 bg-black/15 border border-white/10 p-2.5 rounded-xl">
-                      <ArrowUpRight className="w-3.5 h-3.5 text-white/60 flex-shrink-0" />
-                      <span className="text-[11px] font-black text-white/90">{item}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <button
-                onClick={() => setIsEditModalOpen(true)}
-                className="mt-4 w-full h-9 rounded-xl bg-white/20 border border-white/20 text-white font-black text-xs hover:bg-white/30 transition-all flex items-center justify-center gap-1.5"
-              >
-                Update Profile <ChevronRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
-        </div>
+        {/* Removed: Profile Ready / Context Needed card (deprecated) */}
       </div>
 
       {/* ═══════════════════════════════════
@@ -385,11 +429,10 @@ const PersonalizedDashboard = () => {
       </div>
 
       {/* ═══════════════════════════════════
-           UPDATE PROFILE DIALOG
+           PROFILE & MODULE MANAGER (Dynamic)
       ═══════════════════════════════════ */}
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-        <DialogContent className="sm:max-w-[500px] rounded-3xl border-none shadow-2xl p-0 overflow-hidden">
-          {/* Dialog header */}
+        <DialogContent className="sm:max-w-[980px] rounded-3xl border-none shadow-2xl p-0 overflow-hidden">
           <div className="hero-gradient p-7 relative overflow-hidden">
             <div className="absolute top-0 right-0 p-6 opacity-10">
               <Settings className="w-24 h-24 rotate-12" />
@@ -398,87 +441,264 @@ const PersonalizedDashboard = () => {
               <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center mb-3">
                 <BrainCircuit className="w-5 h-5 text-white" />
               </div>
-              <DialogTitle className="text-2xl font-black tracking-tight text-white">Update Profile</DialogTitle>
+              <DialogTitle className="text-2xl font-black tracking-tight text-white">Profile & Modules</DialogTitle>
               <DialogDescription className="text-white/50 font-bold text-sm mt-1">
-                Adjust your context to refresh AI recommendations instantly.
+                Edit preferences per module. Changes auto-sync and re-rank recommendations in real time.
               </DialogDescription>
             </div>
           </div>
 
-          <form onSubmit={(e) => {
-            e.preventDefault();
-            const fd = new FormData(e.currentTarget);
-            handleUpdateProfile({
-              education: {
-                degree: fd.get('degree'),
-                city: fd.get('city'),
-                marks: Number(fd.get('marks')),
-                discipline: fd.get('discipline'),
-              },
-              schemes: {
-                income: Number(fd.get('income')),
-                province: profile?.profile?.schemes?.province || 'Federal',
-              }
-            });
-          }} className="p-7 space-y-5 bg-white">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Education Level</Label>
-                <Select name="degree" defaultValue={profile?.profile?.education?.degree}>
-                  <SelectTrigger className="h-11 rounded-xl border-slate-200 bg-slate-50/50 font-bold">
-                    <SelectValue placeholder="Select Degree" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl shadow-xl">
-                    <SelectItem value="Matric">Matric</SelectItem>
-                    <SelectItem value="Intermediate">Intermediate</SelectItem>
-                    <SelectItem value="Bachelor">Bachelor</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Total Marks %</Label>
-                <Input name="marks" type="number" defaultValue={profile?.profile?.education?.marks}
-                  className="h-11 rounded-xl border-slate-200 bg-slate-50/50 font-bold" />
-              </div>
-            </div>
+          <div className="p-7 bg-white">
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+                <TabsList className="rounded-2xl bg-slate-50 p-1.5 border border-slate-100">
+                  <TabsTrigger value="overview" className="rounded-xl font-black text-xs uppercase tracking-widest px-4">
+                    Overview
+                  </TabsTrigger>
+                  {(localDraft?.selectedModules || rawModules || [])
+                    .filter((m: string) => CORE_MODULE_IDS.includes(m as CoreModuleId))
+                    .map((m: string) => (
+                      <TabsTrigger
+                        key={m}
+                        value={m}
+                        className="rounded-xl font-black text-xs uppercase tracking-widest px-4"
+                      >
+                        {m === "healthcare" ? "Hospitals" : m === "schemes" ? "Schemes" : "Education"}
+                      </TabsTrigger>
+                    ))}
+                </TabsList>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">City</Label>
-                <Input name="city" defaultValue={profile?.profile?.education?.city}
-                  placeholder="e.g. Lahore"
-                  className="h-11 rounded-xl border-slate-200 bg-slate-50/50 font-bold" />
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="outline"
+                    className="rounded-2xl font-black"
+                    onClick={() => setActiveTab("overview")}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Another Module
+                  </Button>
+                  <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                    {isUpdating ? "Syncing…" : "Synced"}
+                  </div>
+                </div>
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Monthly Income</Label>
-                <Input name="income" type="number" defaultValue={profile?.profile?.schemes?.income}
-                  placeholder="PKR"
-                  className="h-11 rounded-xl border-slate-200 bg-slate-50/50 font-bold" />
-              </div>
-            </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Discipline / Interest</Label>
-              <Input name="discipline" defaultValue={profile?.profile?.education?.discipline}
-                placeholder="Engineering, Medical, Commerce…"
-                className="h-11 rounded-xl border-slate-200 bg-slate-50/50 font-bold" />
-            </div>
+              <TabsContent value="overview" className="m-0">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="rounded-3xl border border-slate-100 bg-white shadow-sm overflow-hidden">
+                    <div className="p-6 border-b border-slate-100 bg-slate-50/40">
+                      <h3 className="text-sm font-black text-slate-900 tracking-tight">Active Modules</h3>
+                      <p className="text-xs font-bold text-slate-400 mt-1">
+                        Manage what the Intelligence Engine personalizes for you.
+                      </p>
+                    </div>
+                    <div className="p-6 space-y-3">
+                      {(localDraft?.selectedModules || rawModules || []).length === 0 ? (
+                        <div className="text-sm font-bold text-slate-500">No modules active.</div>
+                      ) : (
+                        <div className="flex flex-wrap gap-2">
+                          {(localDraft?.selectedModules || rawModules || []).map((m: string) => (
+                            <span
+                              key={m}
+                              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/5 border border-primary/10 text-[11px] font-black text-primary"
+                            >
+                              <Sparkles className="w-3.5 h-3.5" />
+                              {m}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
 
-            <DialogFooter className="pt-2">
-              <button
-                type="submit"
-                disabled={isUpdating}
-                className="w-full h-12 rounded-xl bg-primary text-white font-black text-sm flex items-center justify-center gap-2 hover:bg-primary/90 transition-all active:scale-[0.98] disabled:opacity-60 shadow-lg"
-                style={{ boxShadow: '0 6px 20px hsl(var(--primary) / 0.28)' }}
-              >
-                {isUpdating ? (
-                  <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Optimizing…</>
-                ) : (
-                  <>Save & Adapt Intelligence <Sparkles className="w-4 h-4" /></>
-                )}
-              </button>
-            </DialogFooter>
-          </form>
+                  <div className="rounded-3xl border border-slate-100 bg-white shadow-sm overflow-hidden">
+                    <div className="p-6 border-b border-slate-100 bg-slate-50/40">
+                      <h3 className="text-sm font-black text-slate-900 tracking-tight">Add Module Preferences</h3>
+                      <p className="text-xs font-bold text-slate-400 mt-1">
+                        Activate new modules and start generating recommendations instantly.
+                      </p>
+                    </div>
+                    <div className="p-6 space-y-4">
+                      {availableToAdd.length === 0 ? (
+                        <div className="text-sm font-bold text-slate-500">
+                          You already have all core modules enabled.
+                        </div>
+                      ) : (
+                        <>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            {availableToAdd.map((m) => {
+                              const def = CORE_MODULES.find((d) => d.id === m)!;
+                              const Icon = def.icon;
+                              const isSelected = pendingModuleAdd.includes(m);
+                              return (
+                                <button
+                                  key={m}
+                                  type="button"
+                                  onClick={() =>
+                                    setPendingModuleAdd((prev) =>
+                                      prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m]
+                                    )
+                                  }
+                                  className={`text-left p-4 rounded-2xl border-2 transition-all ${
+                                    isSelected
+                                      ? "border-primary bg-primary/5 shadow-sm"
+                                      : "border-slate-100 bg-white hover:border-slate-200"
+                                  }`}
+                                >
+                                  <div className={`rounded-2xl p-3 bg-gradient-to-br ${def.accentClass} inline-flex`}>
+                                    <Icon className="w-5 h-5 text-slate-900/70" />
+                                  </div>
+                                  <div className="mt-3">
+                                    <div className="text-sm font-black text-slate-900">{def.title}</div>
+                                    <div className="text-xs font-bold text-slate-400 mt-0.5">{def.subtitle}</div>
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          <Button
+                            disabled={pendingModuleAdd.length === 0 || isUpdating}
+                            className="w-full h-12 rounded-2xl font-black"
+                            onClick={async () => {
+                              if (!localDraft) return;
+                              const nextSelected = Array.from(
+                                new Set<string>([...(localDraft.selectedModules || []), ...pendingModuleAdd])
+                              );
+                              let nextDraft = { ...localDraft, selectedModules: nextSelected };
+                              pendingModuleAdd.forEach((m) => {
+                                nextDraft = ensureModuleDefaults(nextDraft, m);
+                              });
+                              setLocalDraft(nextDraft);
+                              await handleUpdateProfile({
+                                selectedModules: nextSelected,
+                                profile: nextDraft.profile,
+                              }, { closeOnSuccess: false });
+                              const jumpTo = pendingModuleAdd[0] || "overview";
+                              setPendingModuleAdd([]);
+                              setActiveTab(jumpTo);
+                            }}
+                            style={{ boxShadow: "0 10px 30px hsl(var(--primary) / 0.18)" }}
+                          >
+                            {isUpdating ? "Activating…" : "Save & Update Profile"}
+                            <ChevronRight className="w-4 h-4 ml-2" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
+
+              {(localDraft?.selectedModules || rawModules || [])
+                .filter((m: string) => CORE_MODULE_IDS.includes(m as CoreModuleId))
+                .map((moduleId: string) => {
+                  const def = CORE_MODULES.find((d) => d.id === (moduleId as CoreModuleId));
+                  if (!def) return null;
+                  const Icon = def.icon;
+                  const fields = def.fields;
+                  const valuesRoot = localDraft?.profile || profile?.profile || {};
+
+                  return (
+                    <TabsContent key={moduleId} value={moduleId} className="m-0">
+                      <div className="rounded-3xl border border-slate-100 bg-white shadow-sm overflow-hidden">
+                        <div className={`p-6 border-b border-slate-100 bg-gradient-to-br ${def.accentClass}`}>
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex items-start gap-4">
+                              <div className="w-12 h-12 rounded-2xl bg-white/60 border border-white/40 flex items-center justify-center">
+                                <Icon className="w-6 h-6 text-slate-900/70" />
+                              </div>
+                              <div>
+                                <h3 className="text-lg font-black text-slate-900 tracking-tight">{def.title}</h3>
+                                <p className="text-xs font-bold text-slate-600/70 mt-1">{def.subtitle}</p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                                {isUpdating ? "Syncing…" : "Live Sync"}
+                              </div>
+                              <div className="text-[11px] font-bold text-slate-500 mt-1">
+                                Updates adapt recommendations automatically
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="p-6">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            {fields.map((f) => {
+                              const v = getByPath(valuesRoot, f.path);
+                              const id = `profile-${moduleId}-${f.path}`;
+
+                              const commonClass =
+                                "h-11 rounded-2xl border-slate-200 bg-slate-50/50 font-bold focus-visible:ring-primary";
+
+                              return (
+                                <div key={f.path} className="space-y-2">
+                                  <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500" htmlFor={id}>
+                                    {f.label}
+                                  </Label>
+
+                                  {f.type === "select" ? (
+                                    <Select
+                                      value={(v ?? "") as string}
+                                      onValueChange={(next) => updateField(f, next)}
+                                    >
+                                      <SelectTrigger className={commonClass}>
+                                        <SelectValue placeholder={f.placeholder || "Select"} />
+                                      </SelectTrigger>
+                                      <SelectContent className="rounded-2xl">
+                                        {(f.options || []).map((opt) => (
+                                          <SelectItem key={opt.value} value={opt.value}>
+                                            {opt.label}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  ) : f.type === "textarea" ? (
+                                    <Textarea
+                                      id={id}
+                                      value={(v ?? "") as string}
+                                      placeholder={f.placeholder}
+                                      className="min-h-[120px] rounded-2xl border-slate-200 bg-slate-50/50 font-bold focus-visible:ring-primary"
+                                      onChange={(e) => updateField(f, e.target.value)}
+                                    />
+                                  ) : (
+                                    <Input
+                                      id={id}
+                                      type={f.type === "number" ? "number" : "text"}
+                                      value={v ?? ""}
+                                      placeholder={f.placeholder}
+                                      className={commonClass}
+                                      onChange={(e) => updateField(f, e.target.value)}
+                                    />
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          <div className="mt-6 pt-5 border-t border-slate-100 flex items-center justify-between gap-4">
+                            <div className="text-[11px] font-bold text-slate-500">
+                              Tip: edits are saved automatically. You can close this dialog anytime.
+                            </div>
+                            <Button
+                              variant="outline"
+                              className="rounded-2xl font-black"
+                              onClick={() => setIsEditModalOpen(false)}
+                            >
+                              Done
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </TabsContent>
+                  );
+                })}
+            </Tabs>
+
+            <DialogFooter className="pt-0" />
+          </div>
         </DialogContent>
       </Dialog>
 

@@ -1,247 +1,367 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Building2, Activity, Info, Heart, Scale, ExternalLink } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import {
-    Dialog,
-    DialogContent,
-    DialogTrigger,
-} from "@/components/ui/dialog";
+  MapPin, Building2, Activity, Info, Heart, Scale, ExternalLink,
+  Stethoscope, Star, ShieldCheck, Zap, Phone, Globe
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import api from "@/services/schemeAPI";
-
-interface Hospital {
-    _id: string;
-    "Hospital Name": string;
-    City: string;
-    Tehsil: string;
-    Cateogry: string;
-    SerialNum: number;
-    treatmentCost?: number;
-    availability?: string;
-    info?: string;
-    hospitalLink?: string;
-}
+import { HospitalRecord } from "@/services/hospitalAPI";
 
 interface HospitalCardProps {
-    hospital: Hospital;
+  hospital: HospitalRecord;
 }
 
+// ── Star Rating display ──────────────────────────────────────────────────────
+const StarRating = ({ rating }: { rating: number }) => (
+  <div className="flex items-center gap-0.5">
+    {[1, 2, 3, 4, 5].map(i => (
+      <Star key={i} className={`h-3 w-3 ${i <= Math.round(rating) ? 'text-amber-400 fill-current' : 'text-muted-foreground/30'}`} />
+    ))}
+    {rating > 0 && <span className="ml-1 text-[10px] font-bold text-muted-foreground">{rating.toFixed(1)}</span>}
+  </div>
+);
+
 export const HospitalCard: React.FC<HospitalCardProps> = ({ hospital }) => {
-    const { toast } = useToast();
-    const [isFavorite, setIsFavorite] = useState(false);
-    const [inCompare, setInCompare] = useState(false);
-    const [isOpeningWebsite, setIsOpeningWebsite] = useState(false);
+  const { toast } = useToast();
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [inCompare, setInCompare] = useState(false);
+  const [isOpeningWebsite, setIsOpeningWebsite] = useState(false);
 
-    useEffect(() => {
-        const favs: Hospital[] = JSON.parse(localStorage.getItem("hospital_favorites") || "[]");
-        setIsFavorite(favs.some((h) => h._id === hospital._id));
-        const compareIds: string[] = JSON.parse(localStorage.getItem("hospital_compare_list") || "[]");
-        setInCompare(compareIds.includes(hospital._id));
-    }, [hospital._id]);
+  const name = hospital['Hospital Name'] || hospital.hospitalName || '';
+  const category = hospital.Cateogry || hospital.category || '';
+  const isPrivate = category === 'Private';
+  const hasTreatments = hospital.treatments && hospital.treatments.length > 0;
 
-    const toggleFavorite = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        const favs: Hospital[] = JSON.parse(localStorage.getItem("hospital_favorites") || "[]");
-        if (isFavorite) {
-            const updated = favs.filter((h) => h._id !== hospital._id);
-            localStorage.setItem("hospital_favorites", JSON.stringify(updated));
-            setIsFavorite(false);
-            toast({ title: "Removed from Favorites", description: "Hospital removed from your favorites." });
-        } else {
-            localStorage.setItem("hospital_favorites", JSON.stringify([...favs, hospital]));
-            setIsFavorite(true);
-            toast({ title: "Added to Favorites", description: "Hospital saved to your favorites." });
-        }
-    };
+  useEffect(() => {
+    const favs: HospitalRecord[] = JSON.parse(localStorage.getItem("hospital_favorites") || "[]");
+    setIsFavorite(favs.some(h => h._id === hospital._id));
+    const compareIds: string[] = JSON.parse(localStorage.getItem("hospital_compare_list") || "[]");
+    setInCompare(compareIds.includes(hospital._id));
+  }, [hospital._id]);
 
-    const toggleCompare = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        const compareIds: string[] = JSON.parse(localStorage.getItem("hospital_compare_list") || "[]");
-        const compareData: Hospital[] = JSON.parse(localStorage.getItem("hospital_compare_data") || "[]");
-        if (inCompare) {
-            const newIds = compareIds.filter((id) => id !== hospital._id);
-            const newData = compareData.filter((h) => h._id !== hospital._id);
-            localStorage.setItem("hospital_compare_list", JSON.stringify(newIds));
-            localStorage.setItem("hospital_compare_data", JSON.stringify(newData));
-            setInCompare(false);
-            toast({ title: "Removed from Compare", description: "Hospital removed from comparison list." });
-        } else {
-            if (compareIds.length >= 3) {
-                toast({ title: "Comparison Limit Reached", description: "You can compare up to 3 hospitals at a time.", variant: "destructive" });
-                return;
-            }
-            localStorage.setItem("hospital_compare_list", JSON.stringify([...compareIds, hospital._id]));
-            localStorage.setItem("hospital_compare_data", JSON.stringify([...compareData.filter((h) => h._id !== hospital._id), hospital]));
-            setInCompare(true);
-            toast({ title: "Added to Compare", description: "Hospital added to comparison list." });
-        }
-    };
+  const toggleFavorite = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const favs: HospitalRecord[] = JSON.parse(localStorage.getItem("hospital_favorites") || "[]");
+    if (isFavorite) {
+      localStorage.setItem("hospital_favorites", JSON.stringify(favs.filter(h => h._id !== hospital._id)));
+      setIsFavorite(false);
+      toast({ title: "Removed from Favorites" });
+    } else {
+      localStorage.setItem("hospital_favorites", JSON.stringify([...favs, hospital]));
+      setIsFavorite(true);
+      toast({ title: "Added to Favorites", description: "Hospital saved to your favorites." });
+    }
+  };
 
-    const openHospitalLink = async (e: React.MouseEvent) => {
-        e.stopPropagation();
+  const toggleCompare = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const compareIds: string[] = JSON.parse(localStorage.getItem("hospital_compare_list") || "[]");
+    const compareData: HospitalRecord[] = JSON.parse(localStorage.getItem("hospital_compare_data") || "[]");
+    if (inCompare) {
+      localStorage.setItem("hospital_compare_list", JSON.stringify(compareIds.filter(id => id !== hospital._id)));
+      localStorage.setItem("hospital_compare_data", JSON.stringify(compareData.filter(h => h._id !== hospital._id)));
+      setInCompare(false);
+      toast({ title: "Removed from Compare" });
+    } else {
+      if (compareIds.length >= 3) {
+        toast({ title: "Limit Reached", description: "Compare up to 3 hospitals.", variant: "destructive" });
+        return;
+      }
+      localStorage.setItem("hospital_compare_list", JSON.stringify([...compareIds, hospital._id]));
+      localStorage.setItem("hospital_compare_data", JSON.stringify([...compareData.filter(h => h._id !== hospital._id), hospital]));
+      setInCompare(true);
+      toast({ title: "Added to Compare" });
+    }
+  };
 
-        try {
-            setIsOpeningWebsite(true);
-            const response = await api.get(`/api/hospitals/${hospital._id}/website`);
-            const website = response.data?.data?.website;
+  const openHospitalLink = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      setIsOpeningWebsite(true);
+      const response = await api.get(`/api/hospitals/${hospital._id}/website`);
+      const website = response.data?.data?.website;
+      if (!website) throw new Error('No website returned');
+      window.open(website, "_blank", "noopener,noreferrer");
+    } catch {
+      toast({ title: "Website unavailable", description: "Could not open the hospital website.", variant: "destructive" });
+    } finally {
+      setIsOpeningWebsite(false);
+    }
+  };
 
-            if (!website) {
-                throw new Error('No website returned');
-            }
+  return (
+    <Card className="group h-full flex flex-col overflow-hidden border border-border/60 rounded-2xl bg-card transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-cyan-200">
 
-            window.open(website, "_blank", "noopener,noreferrer");
-        } catch (error) {
-            toast({
-                title: "Website open failed",
-                description: "Hospital website resolve nahin ho saki.",
-                variant: "destructive",
-            });
-        } finally {
-            setIsOpeningWebsite(false);
-        }
-    };
+      {/* Top accent bar */}
+      <div className="h-1 w-full rounded-t-2xl"
+        style={{ background: isPrivate ? 'linear-gradient(90deg, #7c3aed, #a855f7)' : 'linear-gradient(90deg, hsl(194 100% 43%), hsl(194 100% 35%))' }}
+      />
 
-    return (
-        <Card className="h-full hover:shadow-lg transition-all duration-300 group overflow-hidden border-border/50">
-            <CardHeader className="pb-2">
-                <div className="flex justify-between items-start gap-2 mb-2">
-                    <Badge variant={hospital.Cateogry === 'Private' ? 'secondary' : 'default'} className="font-medium">
-                        <Activity className="h-3 w-3 mr-1" />
-                        {hospital.Cateogry}
+      <CardHeader className="pb-3 pt-4">
+        {/* Category + badges row */}
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <div className="flex flex-wrap gap-1.5">
+            <Badge className="text-[10px] font-black uppercase tracking-wide px-2.5 py-1 rounded-full border"
+              style={isPrivate
+                ? { background: '#f5f3ff', color: '#7c3aed', borderColor: '#ddd6fe' }
+                : { background: 'hsl(194 100% 43% / 0.10)', color: 'hsl(194 100% 32%)', borderColor: 'hsl(194 100% 43% / 0.25)' }}>
+              <Activity className="h-3 w-3 mr-1" />{category}
+            </Badge>
+            {hospital.emergencyServices && (
+              <Badge className="text-[10px] font-black uppercase tracking-wide px-2 py-1 rounded-full bg-rose-50 text-rose-600 border border-rose-200">
+                <Zap className="h-3 w-3 mr-1" />24/7
+              </Badge>
+            )}
+            {hospital.isVerified && (
+              <Badge className="text-[10px] font-black uppercase px-2 py-1 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200">
+                <ShieldCheck className="h-3 w-3 mr-1" />Verified
+              </Badge>
+            )}
+          </div>
+
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <button onClick={toggleCompare} title="Compare"
+              className={`p-1.5 rounded-full transition-all ${inCompare ? 'text-cyan-600 bg-cyan-50' : 'text-slate-300 hover:text-cyan-500 hover:bg-cyan-50'}`}>
+              <Scale className="h-4 w-4" />
+            </button>
+            <button onClick={toggleFavorite} title="Favorite"
+              className={`p-1.5 rounded-full transition-all ${isFavorite ? 'text-rose-500 bg-rose-50' : 'text-slate-300 hover:text-rose-400 hover:bg-rose-50'}`}>
+              <Heart className={`h-4 w-4 ${isFavorite ? 'fill-current' : ''}`} />
+            </button>
+          </div>
+        </div>
+
+        <h3 className="font-bold text-base text-foreground line-clamp-2 leading-snug min-h-[2.8rem] group-hover:text-cyan-700 transition-colors">
+          {name}
+        </h3>
+
+        {hospital.rating > 0 && (
+          <div className="mt-1">
+            <StarRating rating={hospital.rating} />
+          </div>
+        )}
+      </CardHeader>
+
+      <CardContent className="flex flex-col flex-1 space-y-2.5 pb-4">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <MapPin className="h-4 w-4 flex-shrink-0 text-cyan-500" />
+          <span className="text-sm font-semibold truncate">{hospital.City}</span>
+          {hospital.Tehsil && <span className="text-xs text-muted-foreground/60">• {hospital.Tehsil}</span>}
+        </div>
+
+        {hospital.availability && (
+          <div className="flex items-center gap-2">
+            <span className={`h-2 w-2 rounded-full flex-shrink-0 ${
+              hospital.availability === 'Available' ? 'bg-emerald-400' :
+              hospital.availability === 'Limited' ? 'bg-amber-400' : 'bg-slate-300'
+            }`} />
+            <span className="text-xs font-semibold text-muted-foreground">{hospital.availability}</span>
+          </div>
+        )}
+
+        {/* Treatment cost */}
+        {hospital.treatmentCost > 0 && (
+          <div className="flex items-center gap-2">
+            <Stethoscope className="h-3.5 w-3.5 text-cyan-500" />
+            <span className="text-xs font-bold text-emerald-600">From PKR {hospital.treatmentCost.toLocaleString()}</span>
+          </div>
+        )}
+
+        {/* Treatment tags */}
+        {hasTreatments && (
+          <div className="flex flex-wrap gap-1 mt-1">
+            {hospital.treatments.slice(0, 3).map(t => (
+              <span key={t._id} className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-cyan-50 text-cyan-700 border border-cyan-200">
+                {t.specialization || t.treatmentName}
+              </span>
+            ))}
+            {hospital.treatments.length > 3 && (
+              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                +{hospital.treatments.length - 3}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Recommendation score */}
+        {hospital.matchScore !== undefined && hospital.matchScore > 0 && (
+          <div className="flex items-center gap-1.5 mt-1">
+            <div className="h-1.5 flex-1 bg-muted rounded-full overflow-hidden">
+              <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${hospital.matchScore}%` }} />
+            </div>
+            <span className="text-[10px] font-black text-primary">{hospital.matchScore}% Match</span>
+          </div>
+        )}
+
+        {/* View details dialog */}
+        <div className="mt-auto pt-3">
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="w-full rounded-xl border-border/70 font-semibold text-sm group-hover:bg-cyan-50 group-hover:border-cyan-200 group-hover:text-cyan-700 transition-all">
+                <Info className="h-4 w-4 mr-2" />View Details
+              </Button>
+            </DialogTrigger>
+
+            <DialogContent className="sm:max-w-[640px] p-0 overflow-hidden border-none shadow-2xl rounded-2xl max-h-[90vh] overflow-y-auto">
+              {/* Hero banner */}
+              <div className="relative h-48 flex items-end overflow-hidden"
+                style={{ background: isPrivate ? 'linear-gradient(135deg, #1e1b4b, #7c3aed)' : 'linear-gradient(135deg, #042f4a, #0e7490)' }}>
+                <div className="absolute top-4 right-8 w-24 h-24 rounded-full bg-white/5" />
+                <div className="relative z-10 p-6 w-full">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Badge style={{ background: 'rgba(255,255,255,0.2)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)' }}
+                      className="text-[10px] font-black uppercase px-3 py-1 rounded-full">
+                      {category} Hospital
                     </Badge>
-                    <div className="flex items-center gap-1">
-                        <button
-                            onClick={toggleCompare}
-                            title={inCompare ? "Remove from Compare" : "Add to Compare"}
-                            className={`p-1.5 rounded-full transition-colors ${inCompare ? 'text-cyan-600 bg-cyan-50' : 'text-gray-400 hover:text-cyan-500 hover:bg-cyan-50'}`}
-                        >
-                            <Scale className="h-4 w-4" />
-                        </button>
-                        <button
-                            onClick={toggleFavorite}
-                            title={isFavorite ? "Remove from Favorites" : "Add to Favorites"}
-                            className={`p-1.5 rounded-full transition-colors ${isFavorite ? 'text-red-500 bg-red-50' : 'text-gray-400 hover:text-red-400 hover:bg-red-50'}`}
-                        >
-                            <Heart className={`h-4 w-4 ${isFavorite ? 'fill-current' : ''}`} />
-                        </button>
+                    {hospital.isVerified && (
+                      <Badge className="text-[10px] font-black bg-emerald-400/30 text-white border-emerald-300/40 px-2 py-1 rounded-full">
+                        <ShieldCheck className="h-3 w-3 mr-1" /> Verified
+                      </Badge>
+                    )}
+                  </div>
+                  <h2 className="text-xl md:text-2xl font-black text-white tracking-tight">{name}</h2>
+                  {hospital.rating > 0 && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <StarRating rating={hospital.rating} />
+                      {hospital.totalReviews > 0 && <span className="text-white/60 text-xs">({hospital.totalReviews} reviews)</span>}
                     </div>
+                  )}
                 </div>
-                <h3 className="font-bold text-lg text-foreground line-clamp-2 min-h-[3.5rem] group-hover:text-primary transition-colors">
-                    {hospital["Hospital Name"]}
-                </h3>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                    <MapPin className="h-4 w-4 flex-shrink-0 text-primary" />
-                    <span className="text-sm font-medium">
-                        {hospital.City}
-                    </span>
+              </div>
+
+              <div className="p-6 space-y-5 bg-card">
+                {/* Basic info grid */}
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { label: 'Location', icon: MapPin,    value: hospital.City },
+                    { label: 'Tehsil',   icon: Building2, value: hospital.Tehsil },
+                    { label: 'Category', icon: Activity,  value: category },
+                    { label: 'Reg. No',  icon: Stethoscope, value: `#${hospital.SerialNum}` },
+                  ].map(({ label, icon: Icon, value }) => (
+                    <div key={label} className="p-4 rounded-xl bg-muted/50 border border-border/50">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">{label}</p>
+                      <div className="flex items-center gap-2">
+                        <Icon className="h-4 w-4 text-cyan-500 flex-shrink-0" />
+                        <p className="text-sm font-bold text-foreground">{value}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
 
-                <div className="flex items-center gap-2 text-muted-foreground">
-                    <Building2 className="h-4 w-4 flex-shrink-0 text-primary" />
-                    <span className="text-sm">
-                        Tehsil: {hospital.Tehsil}
-                    </span>
-                </div>
+                {/* Description */}
+                {hospital.description && (
+                  <div className="p-4 rounded-xl bg-muted/50 border border-border/50">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">About</p>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{hospital.description}</p>
+                  </div>
+                )}
 
-                <div className="mt-4">
-                    <Dialog>
-                        <DialogTrigger asChild>
-                            <Button variant="outline" className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-all">
-                                <Info className="h-4 w-4 mr-2" />
-                                View Details
-                            </Button>
-                        </DialogTrigger>
-                    <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden border-none shadow-2xl max-h-[90vh] overflow-y-auto">
-                        <div className="relative h-48 bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center overflow-hidden">
-                            <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1586773860418-d3b9785132d9?auto=format&fit=crop&q=80&w=800')] bg-cover bg-center opacity-30 mix-blend-overlay" />
-                            <div className="relative z-10 text-center p-6">
-                                <Badge variant="secondary" className="mb-3 px-3 py-1 text-sm font-semibold tracking-wide">
-                                    {hospital.Cateogry} Hospital
-                                </Badge>
-                                <h1 className="text-2xl md:text-3xl font-extrabold text-foreground tracking-tight drop-shadow-sm">
-                                    {hospital["Hospital Name"]}
-                                </h1>
-                            </div>
+                {/* Contact row */}
+                {(hospital.contactNumber || hospital.email) && (
+                  <div className="grid grid-cols-2 gap-3">
+                    {hospital.contactNumber && (
+                      <div className="p-4 rounded-xl bg-muted/50 border border-border/50">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Contact</p>
+                        <div className="flex items-center gap-2">
+                          <Phone className="h-4 w-4 text-cyan-500" />
+                          <p className="text-sm font-bold">{hospital.contactNumber}</p>
                         </div>
-
-                        <div className="p-8 space-y-8 bg-card">
-                            <div className="grid grid-cols-2 gap-6">
-                                <div className="space-y-2 p-4 rounded-xl bg-muted/50 border border-border/50 transition-colors hover:bg-muted">
-                                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Location</p>
-                                    <div className="flex items-center gap-2">
-                                        <MapPin className="h-5 w-5 text-primary" />
-                                        <p className="text-base font-semibold text-foreground">{hospital.City}</p>
-                                    </div>
-                                </div>
-                                <div className="space-y-2 p-4 rounded-xl bg-muted/50 border border-border/50 transition-colors hover:bg-muted">
-                                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Tehsil</p>
-                                    <div className="flex items-center gap-2">
-                                        <Building2 className="h-5 w-5 text-primary" />
-                                        <p className="text-base font-semibold text-foreground">{hospital.Tehsil}</p>
-                                    </div>
-                                </div>
-                                <div className="space-y-2 p-4 rounded-xl bg-muted/50 border border-border/50 transition-colors hover:bg-muted">
-                                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Category</p>
-                                    <div className="flex items-center gap-2">
-                                        <Activity className="h-5 w-5 text-primary" />
-                                        <p className="text-base font-semibold text-foreground">{hospital.Cateogry}</p>
-                                    </div>
-                                </div>
-                                <div className="space-y-2 p-4 rounded-xl bg-muted/50 border border-border/50 transition-colors hover:bg-muted">
-                                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Serial Number</p>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-lg font-bold text-primary">#{hospital.SerialNum}</span>
-                                    </div>
-                                </div>
-                                <div className="space-y-2 p-4 rounded-xl bg-muted/50 border border-border/50 transition-colors hover:bg-muted col-span-2">
-                                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Treatment Details</p>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <p className="text-xs text-muted-foreground">Estimated Cost</p>
-                                            <p className="text-lg font-bold text-emerald-600">PKR {hospital.treatmentCost?.toLocaleString() || '0'}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-muted-foreground">Availability</p>
-                                            <p className="text-lg font-semibold text-foreground">{hospital.availability || 'Available'}</p>
-                                        </div>
-                                    </div>
-                                    {hospital.info && (
-                                        <div className="mt-3 p-3 bg-white/50 rounded-lg border text-sm text-gray-700">
-                                            {hospital.info}
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="space-y-2 p-4 rounded-xl bg-muted/50 border border-border/50 transition-colors hover:bg-muted col-span-2">
-                                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Website</p>
-                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                                        <p className="text-sm font-medium text-foreground">
-                                            Open the hospital website in a new tab.
-                                        </p>
-                                        <Button variant="outline" className="sm:w-auto w-full" onClick={openHospitalLink} disabled={isOpeningWebsite}>
-                                            <ExternalLink className="h-4 w-4 mr-2" />
-                                            {isOpeningWebsite ? 'Opening...' : 'Visit Website'}
-                                        </Button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="pt-4 flex justify-end">
-                                <DialogTrigger asChild>
-                                    <Button variant="outline" className="px-8 rounded-full">Close Information</Button>
-                                </DialogTrigger>
-                            </div>
+                      </div>
+                    )}
+                    {hospital.email && (
+                      <div className="p-4 rounded-xl bg-muted/50 border border-border/50">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Email</p>
+                        <div className="flex items-center gap-2">
+                          <Globe className="h-4 w-4 text-cyan-500" />
+                          <p className="text-sm font-bold truncate">{hospital.email}</p>
                         </div>
-                    </DialogContent>
-                    </Dialog>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Treatments */}
+                {hasTreatments && (
+                  <div className="p-4 rounded-xl bg-muted/50 border border-border/50">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-3">
+                      Available Treatments ({hospital.treatments.length})
+                    </p>
+                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                      {hospital.treatments.map(t => (
+                        <div key={t._id} className="flex items-center justify-between p-3 rounded-xl bg-card border border-border/50">
+                          <div>
+                            <p className="text-sm font-bold text-foreground">{t.treatmentName}</p>
+                            {t.specialization && <p className="text-xs text-muted-foreground">{t.specialization}</p>}
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className={`h-1.5 w-1.5 rounded-full ${
+                                t.availability === 'Available' ? 'bg-emerald-400' :
+                                t.availability === 'Limited' ? 'bg-amber-400' : 'bg-slate-300'
+                              }`} />
+                              <span className="text-[10px] font-semibold text-muted-foreground">{t.availability}</span>
+                              {t.isEmergency && <span className="text-[10px] font-black text-rose-600">• Emergency</span>}
+                            </div>
+                          </div>
+                          {t.treatmentCost > 0 && (
+                            <div className="text-right">
+                              <p className="text-sm font-black text-emerald-600">PKR {t.treatmentCost.toLocaleString()}</p>
+                              {t.estimatedWaitTime && <p className="text-[10px] text-muted-foreground">{t.estimatedWaitTime}</p>}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Flat treatment fallback */}
+                {!hasTreatments && (
+                  <div className="p-4 rounded-xl bg-muted/50 border border-border/50">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-3">Treatment Details</p>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Estimated Cost</p>
+                        <p className="text-lg font-black text-emerald-600">PKR {(hospital.treatmentCost || 0).toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Availability</p>
+                        <p className="text-base font-bold">{hospital.availability || 'Available'}</p>
+                      </div>
+                    </div>
+                    {hospital.info && (
+                      <p className="mt-3 text-sm text-muted-foreground leading-relaxed p-3 bg-background/60 rounded-lg">{hospital.info}</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Website */}
+                <div className="p-4 rounded-xl bg-muted/50 border border-border/50">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-3">Official Website</p>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <p className="text-sm text-muted-foreground">Open the hospital's official website.</p>
+                    <Button variant="outline" className="sm:w-auto w-full rounded-xl font-semibold"
+                      onClick={openHospitalLink} disabled={isOpeningWebsite}>
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      {isOpeningWebsite ? 'Opening...' : 'Visit Website'}
+                    </Button>
+                  </div>
                 </div>
-            </CardContent>
-        </Card>
-    );
+
+                <div className="flex justify-end pt-2">
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="px-8 rounded-xl font-semibold">Close</Button>
+                  </DialogTrigger>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </CardContent>
+    </Card>
+  );
 };
 
 export default HospitalCard;

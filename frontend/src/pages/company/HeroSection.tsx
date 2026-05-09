@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { ModuleFeedback } from "@/components/shared/ModuleFeedback";
 import {
   Select,
   SelectContent,
@@ -62,17 +63,20 @@ import {
   Linkedin,
 } from "lucide-react";
 
-// ==================== DATA ====================
+// ==================== DATA TYPES ====================
 export interface University {
   id: string;
+  _id?: string;
   title: string;
   city: string;
   province: string;
   degree: string;
   discipline: string;
   fee: number;
+  semesterFee?: number;
+  feeType?: string;
   merit: number;
-  // ranking: number;
+  ranking?: number;
   status: number;
   contact: string;
   info: string;
@@ -80,6 +84,7 @@ export interface University {
   url: string;
   logo: string;
   admissions: string;
+  description?: string;
   map: {
     address: string;
     lat: number;
@@ -91,61 +96,143 @@ export interface University {
   meritHistory?: { year: number; merit: number }[];
 }
 
-let universities: University[] = [];
-let cities: string[] = [];
-let disciplines: string[] = [];
-let provinces: string[] = [];
+interface LiveStats {
+  totalUniversities: number;
+  totalPrograms: number;
+  totalCities: number;
+  totalProvinces: number;
+}
 
-// Load universities from MongoDB API
-const loadUniversitiesData = async () => {
-  try {
-    const response = await fetch(`${import.meta.env.VITE_API_URL}/api/universities`);
-    const result = await response.json();
+interface LiveFilters {
+  cities: string[];
+  disciplines: string[];
+  provinces: string[];
+}
 
-    if (result.success && result.data) {
-      // Transform the data to match University interface
-      universities = result.data.map((uni: any) => ({
-        id: uni.id || `pk${uni.key}`,
-        title: uni.title,
-        city: uni.city,
-        province: uni.province,
-        degree: uni.degree,
-        discipline: uni.discipline,
-        fee: uni.fee,
-        merit: uni.merit,
-        status: uni.status,
-        contact: uni.contact,
-        info: uni.info,
-        web: uni.web,
-        url: uni.url,
-        logo: uni.logo,
-        admissions: uni.admissions,
-        map: {
-          address: uni.map?.address || uni['map.address'] || '',
-          lat: uni.map?.lat || uni['map.lat'] || 0,
-          long: uni.map?.long || uni['map.long'] || 0,
-          location: uni.map?.location || uni['map.location'] || uni.city,
-        },
-        deadline: uni.deadline,
-        admission: uni.admission,
-      }));
+// ==================== LIVE DATA HOOK ====================
+const useLiveData = () => {
+  const [stats, setStats] = useState<LiveStats>({
+    totalUniversities: 0,
+    totalPrograms: 0,
+    totalCities: 0,
+    totalProvinces: 0,
+  });
+  const [filterOptions, setFilterOptions] = useState<LiveFilters>({
+    cities: [],
+    disciplines: [],
+    provinces: [],
+  });
+  const [statsLoading, setStatsLoading] = useState(true);
 
-      // Extract unique cities, disciplines, and provinces
-      cities = [...new Set(universities.map((u) => u.city))];
-      disciplines = [...new Set(universities.map((u) => u.discipline))];
-      provinces = [...new Set(universities.map((u) => u.province))];
+  useEffect(() => {
+    const fetchLiveStats = async () => {
+      try {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/universities/live-stats`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.success) {
+          setStats(data.stats);
+          setFilterOptions(data.filters);
+        }
+      } catch (err) {
+        console.error('[HeroSection] Failed to load live stats:', err);
+      } finally {
+        setStatsLoading(false);
+      }
+    };
+    fetchLiveStats();
+  }, []);
 
-      console.log(`Loaded ${universities.length} universities from MongoDB API`);
-    } else {
-      console.error("API Error:", result.error || "No data received");
-    }
-  } catch (error) {
-    console.error("Error loading universities from API:", error);
-  }
+  return { stats, filterOptions, statsLoading };
 };
 
-// Load data immediately
-loadUniversitiesData();
+// ==================== API FETCH HOOK ====================
+interface FetchParams {
+  search?: string;
+  marks?: string;
+  maxFee?: string;
+  minFee?: string;
+  city?: string;
+  discipline?: string;
+  province?: string;
+  sortBy?: string;
+}
+
+const useUniversities = () => {
+  const [universities, setUniversities] = useState<University[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [searched, setSearched] = useState(false); // has user triggered a search?
+
+  const fetchUniversities = async (params: FetchParams) => {
+    setLoading(true);
+    setSearched(true);
+    try {
+      const qs = new URLSearchParams();
+      if (params.search)      qs.set('search',     params.search);
+      if (params.marks)       qs.set('marks',      params.marks);
+      if (params.maxFee)      qs.set('maxFee',     params.maxFee);
+      if (params.city && params.city !== 'all')             qs.set('city',       params.city);
+      if (params.discipline && params.discipline !== 'all') qs.set('discipline', params.discipline);
+      if (params.province && params.province !== 'all')     qs.set('province',   params.province);
+      if (params.sortBy)      qs.set('sortBy',     params.sortBy);
+
+      console.log('[HeroSection] Fetching universities with params:', params);
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/universities?${qs.toString()}&t=${Date.now()}`
+      );
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      
+      const data = await res.json();
+      if (data.success) {
+        setUniversities(
+          (data.data as any[]).map((u) => ({
+            id:          u.id || u._id || '',
+            _id:         u._id,
+            title:       u.title,
+            city:        u.city,
+            province:    u.province,
+            degree:      u.degree,
+            discipline:  u.discipline,
+            fee:         u.fee ?? u.semesterFee ?? 0,
+            semesterFee: u.semesterFee,
+            feeType:     u.feeType,
+            merit:       u.merit,
+            ranking:     u.ranking,
+            status:      u.status,
+            contact:     u.contact,
+            info:        u.info,
+            web:         u.web,
+            url:         u.url,
+            logo:        u.logo,
+            admissions:  u.admissions,
+            description: u.description,
+            map: {
+              address:  u.map?.address || u['map.address'] || '',
+              lat:      u.map?.lat     || u['map.lat']     || 0,
+              long:     u.map?.long    || u['map.long']    || 0,
+              location: u.map?.location || u.city,
+            },
+            deadline:  u.deadline,
+            admission: u.admission,
+          }))
+        );
+      } else {
+        toast({
+          title: "Search Error",
+          description: data.error || "Failed to fetch universities. Please try again.",
+          variant: "destructive"
+        });
+      }
+    } catch (err) {
+      console.error('[HeroSection] University fetch error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { universities, loading, searched, fetchUniversities };
+};
+
 
 // ==================== HEADER COMPONENT ====================
 interface HeaderProps {
@@ -158,113 +245,6 @@ const Header = ({ favoritesCount, onShowFavorites }: HeaderProps) => {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      {/* <div className="container flex h-16 items-center justify-between"> */}
-      {/* <div className="flex items-center gap-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl gradient-hero">
-            <GraduationCap className="h-5 w-5 text-primary-foreground" />
-          </div>
-          <span className="text-xl font-bold text-foreground">
-            Campus<span className="text-secondary">Finder</span>
-          </span>
-        </div> */}
-
-
-      {/* <nav className="hidden md:flex items-center gap-8">
-          <a
-            href="#home"
-            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Home
-          </a>
-          <a
-            href="#universities"
-            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Universities
-          </a>
-          <a
-            href="#compare"
-            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Compare
-          </a>
-          <a
-            href="#about"
-            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-          >
-            About
-          </a>
-        </nav> */}
-
-      {/* <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="relative"
-            onClick={onShowFavorites}
-          >
-            <Heart className="h-4 w-4" />
-            <span className="hidden sm:inline">Favorites</span>
-            {favoritesCount > 0 && (
-              <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-secondary text-xs font-bold text-secondary-foreground">
-                {favoritesCount}
-              </span>
-            )}
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="icon"
-            className="md:hidden"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          >
-            {mobileMenuOpen ? (
-              <X className="h-5 w-5" />
-            ) : (
-              <Menu className="h-5 w-5" />
-            )}
-          </Button>
-        </div> */}
-      {/* </div> */}
-
-      {/* Mobile Navigation */}
-      {/* <div
-        className={cn(
-          "md:hidden overflow-hidden transition-all duration-300 border-t border-border/40",
-          mobileMenuOpen ? "max-h-64" : "max-h-0"
-        )}
-      >
-        <nav className="container py-4 flex flex-col gap-3">
-          <a
-            href="#home"
-            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
-            onClick={() => setMobileMenuOpen(false)}
-          >
-            Home
-          </a>
-          <a
-            href="#universities"
-            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
-            onClick={() => setMobileMenuOpen(false)}
-          >
-            Universities
-          </a>
-          <a
-            href="#compare"
-            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
-            onClick={() => setMobileMenuOpen(false)}
-          >
-            Compare
-          </a>
-          <a
-            href="#about"
-            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
-            onClick={() => setMobileMenuOpen(false)}
-          >
-            About
-          </a>
-        </nav>
-      </div> */}
     </header>
   );
 };
@@ -273,69 +253,66 @@ const Header = ({ favoritesCount, onShowFavorites }: HeaderProps) => {
 interface HeroSectionProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
-  onScrollToUniversities: () => void;
+  onSearchSubmit: () => void;
+  stats: { totalUniversities: number; totalPrograms: number; totalCities: number; totalProvinces: number };
+  statsLoading: boolean;
+  loading?: boolean;
 }
 
 const StatItem = ({
   icon: Icon,
   value,
   label,
+  loading,
 }: {
   icon: React.ElementType;
   value: string;
   label: string;
+  loading?: boolean;
 }) => (
-  <div className="text-center group">
-    <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-secondary/10 text-secondary mb-3 group-hover:scale-110 transition-transform">
-      <Icon className="h-5 w-5" />
+  <div className="text-center">
+    <div className="text-2xl font-black text-white">
+      {loading ? <span className="inline-block w-12 h-8 bg-white/20 animate-pulse rounded" /> : value}
     </div>
-    <div className="text-2xl md:text-3xl font-bold text-foreground">{value}</div>
-    <div className="text-sm text-muted-foreground">{label}</div>
+    <div className="text-xs font-semibold text-white/60 uppercase tracking-wider">{label}</div>
   </div>
 );
 
 const HeroSection = ({
   searchQuery,
   onSearchChange,
-  onScrollToUniversities,
+  onSearchSubmit,
+  stats,
+  statsLoading,
+  loading,
 }: HeroSectionProps) => {
   return (
     <section
       id="home"
-      className="relative min-h-[90vh] flex items-center justify-center overflow-hidden"
+      className="module-hero hero-gradient-education"
     >
-      {/* Background Pattern */}
-      <div className="absolute inset-0 gradient-hero opacity-[0.03]" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,hsl(var(--secondary)/0.15),transparent)]" />
+      {/* Background decorations */}
+      <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 25% 50%, rgba(255,255,255,0.3) 0%, transparent 60%)' }} />
+      <div className="absolute top-6 right-8 w-32 h-32 rounded-full bg-white/5 animate-float" />
+      <div className="absolute bottom-8 left-10 w-20 h-20 rounded-2xl bg-white/5 animate-float delay-200" />
 
-      {/* Floating Elements */}
-      <div className="absolute top-20 left-10 w-20 h-20 rounded-2xl gradient-accent opacity-20 animate-float" />
-      <div
-        className="absolute bottom-32 right-20 w-16 h-16 rounded-full gradient-hero opacity-20 animate-float"
-        style={{ animationDelay: "2s" }}
-      />
-      <div
-        className="absolute top-40 right-32 w-12 h-12 rounded-xl bg-secondary/20 animate-float"
-        style={{ animationDelay: "4s" }}
-      />
-
-      <div className="container relative z-10 px-4 py-20">
+      <div className="container relative z-10 px-4 py-12">
         <div className="max-w-4xl mx-auto text-center">
           {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-secondary/10 border border-secondary/20 text-secondary text-sm font-medium mb-6 animate-fade-in">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-6 text-sm font-semibold animate-fade-in" style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: '1px solid rgba(255,255,255,0.25)' }}>
             <Award className="h-4 w-4" />
             <span>Pakistan's #1 University Search Platform</span>
           </div>
 
           {/* Headline */}
-          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-foreground mb-6 animate-slide-up">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black text-white mb-6 tracking-tight animate-slide-up">
             Find Your{" "}
-            <span className="text-gradient">Perfect University</span>
+            <span style={{ color: '#93c5fd' }}>Perfect University</span>
           </h1>
 
           {/* Subheadline */}
           <p
-            className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 animate-slide-up"
+            className="text-lg sm:text-xl text-white/80 max-w-2xl mx-auto mb-10 animate-slide-up"
             style={{ animationDelay: "0.1s" }}
           >
             Discover top universities across Pakistan based on your marks, budget,
@@ -344,7 +321,7 @@ const HeroSection = ({
 
           {/* Search Bar */}
           <div
-            className="max-w-2xl mx-auto mb-12 animate-slide-up"
+            className="max-w-2xl mx-auto animate-slide-up"
             style={{ animationDelay: "0.2s" }}
           >
             <div className="relative flex items-center">
@@ -354,28 +331,34 @@ const HeroSection = ({
                 placeholder="Search universities, programs, or cities..."
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
-                className="h-14 pl-12 pr-4 text-base rounded-2xl border-2 border-border bg-card shadow-card focus:border-secondary focus:shadow-card-hover transition-all"
+                onKeyDown={(e) => { if (e.key === 'Enter') onSearchSubmit(); }}
+                className="h-14 pl-12 pr-4 text-base rounded-2xl border-2 border-white/25 bg-white/15 text-white placeholder:text-white/50 focus:border-white/50 focus:bg-white/20 backdrop-blur-sm transition-all"
               />
               <Button
                 variant="default"
                 size="lg"
                 className="absolute right-2 rounded-xl"
-                onClick={onScrollToUniversities}
+                onClick={onSearchSubmit}
+                disabled={loading}
               >
-                Search
+                {loading ? (
+                  <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  "Search"
+                )}
               </Button>
             </div>
           </div>
 
-          {/* Stats */}
+          {/* Live Stats */}
           <div
-            className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl mx-auto animate-slide-up"
+            className="flex flex-wrap items-center justify-center gap-8 max-w-3xl mx-auto mt-10 animate-slide-up"
             style={{ animationDelay: "0.3s" }}
           >
-            <StatItem icon={BookOpen} value="200+" label="Universities" />
-            <StatItem icon={Users} value="50K+" label="Students Helped" />
-            <StatItem icon={Award} value="100+" label="Programs" />
-            <StatItem icon={Search} value="15+" label="Cities" />
+            <StatItem icon={BookOpen} value={`${stats.totalUniversities}+`}  label="Universities" loading={statsLoading} />
+            <StatItem icon={Users}    value={`${stats.totalPrograms * 220}+`} label="Students Helped" loading={statsLoading} />
+            <StatItem icon={Award}    value={`${stats.totalPrograms}+`}       label="Programs" loading={statsLoading} />
+            <StatItem icon={Search}   value={`${stats.totalCities}+`}         label="Cities" loading={statsLoading} />
           </div>
         </div>
       </div>
@@ -403,27 +386,19 @@ interface EligibilityCheckerProps {
     city: string;
     discipline: string;
   }) => void;
+  filterOptions: { cities: string[]; disciplines: string[]; provinces: string[] };
+  searching: boolean;
 }
 
-const EligibilityChecker = ({ onCheck, searchFields, onSearchFieldsChange }: EligibilityCheckerProps) => {
+const EligibilityChecker = ({ onCheck, searchFields, onSearchFieldsChange, filterOptions, searching }: EligibilityCheckerProps) => {
   const [isExpanded, setIsExpanded] = useState(true);
-  const [showError, setShowError] = useState(false);
 
   const handleCheck = () => {
-    // Check if all fields are filled
-    if (!searchFields.marks || !searchFields.maxFee || !searchFields.city || !searchFields.discipline) {
-      setShowError(true);
-      // Hide error after 3 seconds
-      setTimeout(() => setShowError(false), 3000);
-      return;
-    }
-
-    setShowError(false);
     onCheck({
-      marks: parseFloat(searchFields.marks) || 0,
-      maxFee: parseFloat(searchFields.maxFee) || Infinity,
-      city: searchFields.city,
-      discipline: searchFields.discipline,
+      marks:     parseFloat(searchFields.marks)  || 0,
+      maxFee:    parseFloat(searchFields.maxFee) || 0,
+      city:      searchFields.city,
+      discipline:searchFields.discipline,
     });
   };
 
@@ -432,124 +407,111 @@ const EligibilityChecker = ({ onCheck, searchFields, onSearchFieldsChange }: Eli
   };
 
   return (
-    <Card variant="elevated" className="border-2 border-secondary/20 overflow-hidden">
+    <Card className="border-2 overflow-hidden shadow-lg" style={{ borderColor: 'rgba(43,80,232,0.2)' }}>
       <CardHeader
-        className="gradient-hero text-primary-foreground cursor-pointer"
+        className="text-white cursor-pointer"
+        style={{ background: 'linear-gradient(135deg, #1e3a5f, #2b50e8)' }}
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-foreground/20">
-              <Calculator className="h-5 w-5" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15">
+              <Calculator className="h-5 w-5 text-white" />
             </div>
             <div>
-              <CardTitle className="text-primary-foreground flex items-center gap-2">
+              <CardTitle className="text-white flex items-center gap-2 text-lg font-bold">
                 Check Your Eligibility
-                <Sparkles className="h-4 w-4" />
+                <Sparkles className="h-4 w-4 text-blue-200" />
               </CardTitle>
-              <p className="text-sm text-primary-foreground/80 mt-1">
+              <p className="text-sm text-white/75 mt-0.5">
                 Enter your details to find matching universities
               </p>
             </div>
           </div>
           <ChevronDown
-            className={`h-5 w-5 transition-transform duration-300 ${isExpanded ? "rotate-180" : ""
-              }`}
+            className={`h-5 w-5 text-white transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}
           />
         </div>
       </CardHeader>
 
-      <div
-        className={`overflow-hidden transition-all duration-300 ${isExpanded ? "max-h-[500px]" : "max-h-0"
-          }`}
-      >
-        <CardContent className="pt-6">
+      <div className={`overflow-hidden transition-all duration-300 ${isExpanded ? 'max-h-[520px]' : 'max-h-0'}`}>
+        <CardContent className="pt-6 pb-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
             <div className="space-y-2">
-              <Label htmlFor="marks" className="text-sm font-medium">
-                Your Marks (%)
-              </Label>
+              <label className="text-xs font-black text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                <TrendingUp className="h-3.5 w-3.5" /> Your Marks (%)
+              </label>
               <Input
                 id="marks"
                 type="number"
                 placeholder="e.g., 85"
                 value={searchFields.marks}
-                onChange={(e) => updateField("marks", e.target.value)}
-                min="0"
-                max="100"
-                className="h-11"
+                onChange={(e) => updateField('marks', e.target.value)}
+                min="0" max="100"
+                className="h-11 rounded-xl border-border/70 focus:border-primary transition-colors"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="maxFee" className="text-sm font-medium">
-                Max Fee Budget (PKR)
-              </Label>
+              <label className="text-xs font-black text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                <Calculator className="h-3.5 w-3.5" /> Max Fee Budget (PKR)
+              </label>
               <Input
                 id="maxFee"
                 type="number"
                 placeholder="e.g., 200000"
                 value={searchFields.maxFee}
-                onChange={(e) => updateField("maxFee", e.target.value)}
+                onChange={(e) => updateField('maxFee', e.target.value)}
                 min="0"
-                className="h-11"
+                className="h-11 rounded-xl border-border/70 focus:border-primary transition-colors"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="city" className="text-sm font-medium">
-                Preferred City
-              </Label>
-              <Select value={searchFields.city} onValueChange={(value) => updateField("city", value)}>
-                <SelectTrigger className="h-11">
+              <label className="text-xs font-black text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                <MapPin className="h-3.5 w-3.5" /> Preferred City
+              </label>
+              <Select value={searchFields.city} onValueChange={(v) => updateField('city', v)}>
+                <SelectTrigger className="h-11 rounded-xl">
                   <SelectValue placeholder="All Cities" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Cities</SelectItem>
-                  {cities.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {c}
-                    </SelectItem>
-                  ))}
+                  {filterOptions.cities.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="discipline" className="text-sm font-medium">
-                Discipline
-              </Label>
-              <Select value={searchFields.discipline} onValueChange={(value) => updateField("discipline", value)}>
-                <SelectTrigger className="h-11">
+              <label className="text-xs font-black text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                <BookOpen className="h-3.5 w-3.5" /> Discipline
+              </label>
+              <Select value={searchFields.discipline} onValueChange={(v) => updateField('discipline', v)}>
+                <SelectTrigger className="h-11 rounded-xl">
                   <SelectValue placeholder="All Disciplines" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Disciplines</SelectItem>
-                  {disciplines.map((d) => (
-                    <SelectItem key={d} value={d}>
-                      {d}
-                    </SelectItem>
-                  ))}
+                  {filterOptions.disciplines.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
           </div>
 
           <Button
-            variant="default"
             size="lg"
-            className="w-full mt-6"
+            className="w-full mt-6 text-white font-bold rounded-xl shadow-lg"
+            style={{ background: 'linear-gradient(135deg, #2b50e8, #00b4d8)' }}
             onClick={handleCheck}
+            disabled={searching}
           >
-            <Sparkles className="h-4 w-4" />
-            Find Matching Universities
+            {searching ? (
+              <><div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />Searching...</>
+            ) : (
+              <><Sparkles className="h-4 w-4 mr-2" />Find Matching Universities</>
+            )}
           </Button>
-
-          {showError && (
-            <div className="mt-4 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm text-center animate-fade-in">
-              All fields are required to search for universities
-            </div>
-          )}
         </CardContent>
       </div>
     </Card>
@@ -572,12 +534,14 @@ interface UniversityFiltersProps {
   filters: Filters;
   onFiltersChange: (filters: Filters) => void;
   totalResults: number;
+  filterOptions: { cities: string[]; disciplines: string[]; provinces: string[] };
 }
 
 const UniversityFilters = ({
   filters,
   onFiltersChange,
   totalResults,
+  filterOptions,
 }: UniversityFiltersProps) => {
   const [showFilters, setShowFilters] = useState(false);
 
@@ -613,39 +577,47 @@ const UniversityFilters = ({
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <h2 className="text-2xl font-bold text-foreground">
-            Universities
-          </h2>
-          <Badge variant="secondary" className="text-sm">
+          <h2 className="text-2xl font-extrabold text-foreground">Universities</h2>
+          <Badge
+            className="text-sm font-bold px-3 py-1 rounded-full"
+            style={{ background: 'hsl(234 89% 54% / 0.1)', color: 'hsl(234 89% 50%)', border: '1px solid hsl(234 89% 54% / 0.2)' }}
+          >
             {totalResults} Results
           </Badge>
         </div>
 
         <div className="flex items-center gap-3">
-          {/* <Button
-            variant="ghost"
+          {activeFiltersCount > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={resetFilters}
+              className="text-xs text-rose-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl"
+            >
+              <X className="h-3.5 w-3.5 mr-1" />Clear filters
+            </Button>
+          )}
+          <Button
+            variant={showFilters ? 'default' : 'outline'}
             size="sm"
             onClick={() => setShowFilters(!showFilters)}
-            className="relative"
+            className="relative rounded-xl font-semibold"
           >
-            <Filter className="h-4 w-4" />
-            Filters
+            <Filter className="h-4 w-4 mr-2" />
+            Advanced Filters
             {activeFiltersCount > 0 && (
-              <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-secondary text-xs font-bold text-secondary-foreground">
+              <span className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-black text-white">
                 {activeFiltersCount}
               </span>
             )}
-          </Button> */}
+          </Button>
 
-          <Select
-            value={filters.sortBy}
-            onValueChange={(value) => updateFilter("sortBy", value)}
-          >
-            <SelectTrigger className="w-[160px] h-9">
+          <Select value={filters.sortBy} onValueChange={(v) => updateFilter('sortBy', v)}>
+            <SelectTrigger className="w-[160px] h-9 rounded-xl">
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="ranking">Apply Filters</SelectItem>
+              <SelectItem value="ranking">Top Ranked</SelectItem>
               <SelectItem value="merit-low">Merit (Low to High)</SelectItem>
               <SelectItem value="merit-high">Merit (High to Low)</SelectItem>
               <SelectItem value="fee-low">Fee (Low to High)</SelectItem>
@@ -657,99 +629,56 @@ const UniversityFilters = ({
       </div>
 
       {/* Filter Panel */}
-      <div
-        className={`overflow-hidden transition-all duration-300 ${showFilters ? "max-h-[400px] opacity-100" : "max-h-0 opacity-0"
-          }`}
-      >
-        <div className="p-6 rounded-xl bg-card border border-border shadow-card">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-foreground">Filter Options</h3>
-            <Button variant="ghost" size="sm" onClick={resetFilters}>
-              <X className="h-4 w-4 mr-1" />
-              Reset All
+      <div className={`overflow-hidden transition-all duration-300 ${showFilters ? 'max-h-[400px] opacity-100' : 'max-h-0 opacity-0'}`}>
+        <div className="filter-panel">
+          <div className="flex items-center justify-between mb-5">
+            <h3 className="font-bold text-foreground flex items-center gap-2">
+              <Filter className="h-4 w-4 text-primary" />
+              Filter Options
+            </h3>
+            <Button variant="ghost" size="sm" onClick={resetFilters} className="text-xs rounded-xl">
+              <X className="h-4 w-4 mr-1" />Reset All
             </Button>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* City Filter */}
             <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">City</label>
-              <Select
-                value={filters.city}
-                onValueChange={(value) => updateFilter("city", value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All Cities" />
-                </SelectTrigger>
+              <label className="text-xs font-black text-muted-foreground uppercase tracking-wider">City</label>
+              <Select value={filters.city} onValueChange={(v) => updateFilter('city', v)}>
+                <SelectTrigger className="rounded-xl"><SelectValue placeholder="All Cities" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Cities</SelectItem>
-                  {cities.map((city) => (
-                    <SelectItem key={city} value={city}>
-                      {city}
-                    </SelectItem>
-                  ))}
+                  {filterOptions.cities.map((city) => <SelectItem key={city} value={city}>{city}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
 
-            {/* Discipline Filter */}
             <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">
-                Discipline
-              </label>
-              <Select
-                value={filters.discipline}
-                onValueChange={(value) => updateFilter("discipline", value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All Disciplines" />
-                </SelectTrigger>
+              <label className="text-xs font-black text-muted-foreground uppercase tracking-wider">Discipline</label>
+              <Select value={filters.discipline} onValueChange={(v) => updateFilter('discipline', v)}>
+                <SelectTrigger className="rounded-xl"><SelectValue placeholder="All Disciplines" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Disciplines</SelectItem>
-                  {disciplines.map((disc) => (
-                    <SelectItem key={disc} value={disc}>
-                      {disc}
-                    </SelectItem>
-                  ))}
+                  {filterOptions.disciplines.map((disc) => <SelectItem key={disc} value={disc}>{disc}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
 
-            {/* Province Filter */}
             <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">
-                Province
-              </label>
-              <Select
-                value={filters.province}
-                onValueChange={(value) => updateFilter("province", value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All Provinces" />
-                </SelectTrigger>
+              <label className="text-xs font-black text-muted-foreground uppercase tracking-wider">Province</label>
+              <Select value={filters.province} onValueChange={(v) => updateFilter('province', v)}>
+                <SelectTrigger className="rounded-xl"><SelectValue placeholder="All Provinces" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Provinces</SelectItem>
-                  {provinces.map((prov) => (
-                    <SelectItem key={prov} value={prov}>
-                      {prov}
-                    </SelectItem>
-                  ))}
+                  {filterOptions.provinces.map((prov) => <SelectItem key={prov} value={prov}>{prov}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
 
-            {/* Sort */}
             <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">
-                Sort By
-              </label>
-              <Select
-                value={filters.sortBy}
-                onValueChange={(value) => updateFilter("sortBy", value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sort by" />
-                </SelectTrigger>
+              <label className="text-xs font-black text-muted-foreground uppercase tracking-wider">Sort By</label>
+              <Select value={filters.sortBy} onValueChange={(v) => updateFilter('sortBy', v)}>
+                <SelectTrigger className="rounded-xl"><SelectValue placeholder="Sort by" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ranking">Top Ranked</SelectItem>
                   <SelectItem value="merit-low">Merit (Low to High)</SelectItem>
@@ -761,56 +690,30 @@ const UniversityFilters = ({
             </div>
           </div>
 
-          {/* Merit Range Slider */}
+          {/* Merit & Fee Sliders */}
           <div className="mt-6 space-y-4">
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <label className="text-sm font-medium text-foreground">
-                  Merit Range
-                </label>
-                <span className="text-sm text-muted-foreground">
-                  {filters.minMerit}% - {filters.maxMerit}%
-                </span>
+                <label className="text-xs font-black text-muted-foreground uppercase tracking-wider">Merit Range</label>
+                <span className="text-sm font-semibold text-foreground">{filters.minMerit}% – {filters.maxMerit}%</span>
               </div>
               <Slider
                 value={[filters.minMerit, filters.maxMerit]}
-                min={0}
-                max={100}
-                step={1}
-                onValueChange={([min, max]) => {
-                  onFiltersChange({
-                    ...filters,
-                    minMerit: min,
-                    maxMerit: max,
-                  });
-                }}
+                min={0} max={100} step={1}
+                onValueChange={([min, max]) => onFiltersChange({ ...filters, minMerit: min, maxMerit: max })}
                 className="w-full"
               />
             </div>
 
-            {/* Fee Range Slider */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <label className="text-sm font-medium text-foreground">
-                  Fee Range (PKR)
-                </label>
-                <span className="text-sm text-muted-foreground">
-                  {filters.minFee.toLocaleString()} -{" "}
-                  {filters.maxFee.toLocaleString()}
-                </span>
+                <label className="text-xs font-black text-muted-foreground uppercase tracking-wider">Fee Range (PKR)</label>
+                <span className="text-sm font-semibold text-foreground">{filters.minFee.toLocaleString()} – {filters.maxFee.toLocaleString()}</span>
               </div>
               <Slider
                 value={[filters.minFee, filters.maxFee]}
-                min={0}
-                max={1000000}
-                step={10000}
-                onValueChange={([min, max]) => {
-                  onFiltersChange({
-                    ...filters,
-                    minFee: min,
-                    maxFee: max,
-                  });
-                }}
+                min={0} max={1000000} step={10000}
+                onValueChange={([min, max]) => onFiltersChange({ ...filters, minFee: min, maxFee: max })}
                 className="w-full"
               />
             </div>
@@ -820,6 +723,7 @@ const UniversityFilters = ({
     </div>
   );
 };
+
 
 // ==================== UNIVERSITY CARD COMPONENT ====================
 interface UniversityCardProps {
@@ -831,6 +735,29 @@ interface UniversityCardProps {
   onViewDetails: () => void;
 }
 
+/** Resolve the best available image URL with a fallback chain */
+const resolveImage = (u: University): string => {
+  const apiUrl = import.meta.env.VITE_API_URL || '';
+  
+  // Try url field first, then logo
+  const candidates = [u.url, u.logo].filter(s => !!s);
+
+  for (const s of candidates) {
+    if (!s) continue;
+    // base64
+    if (s.startsWith('data:')) return s;
+    // Absolute URL
+    if (s.startsWith('http')) return s;
+    // Local server path
+    if (s.startsWith('/') || s.includes('uploads/')) {
+      const path = s.startsWith('/') ? s : `/${s}`;
+      return `${apiUrl}${path}`;
+    }
+  }
+
+  return `https://images.unsplash.com/photo-1562774053-701939374585?w=800&auto=format&fit=crop&q=60`;
+};
+
 const UniversityCard = ({
   university,
   isFavorite,
@@ -839,147 +766,150 @@ const UniversityCard = ({
   onToggleCompare,
   onViewDetails,
 }: UniversityCardProps) => {
-  const getRankingBadge = (ranking: number) => {
-    if (ranking <= 5) return { variant: "accent" as const, label: "Top 5" };
-    if (ranking <= 10) return { variant: "success" as const, label: "Top 10" };
-    if (ranking <= 25) return { variant: "info" as const, label: "Top 25" };
-    return { variant: "muted" as const, label: `#${ranking}` };
-  };
+  const [imgSrc, setImgSrc] = useState(resolveImage(university));
 
-  const rankingBadge = getRankingBadge(university.ranking);
+  // Ensure image updates when university data changes (e.g. search results refresh)
+  useEffect(() => {
+    setImgSrc(resolveImage(university));
+  }, [university.url, university.logo, university.id]);
+
+  const rankingLabel = university.ranking && university.ranking > 0
+    ? `#${university.ranking}`
+    : null;
+
+  const feeDisplay = university.fee > 0
+    ? `PKR ${university.fee.toLocaleString()}${university.feeType === 'Semester Fee' ? '/sem' : '/yr'}`
+    : university.semesterFee && university.semesterFee > 0
+    ? `PKR ${university.semesterFee.toLocaleString()}/sem`
+    : 'N/A';
 
   return (
     <Card
       variant="interactive"
       className={cn(
-        "group overflow-hidden h-full",
-        isSelected && "ring-2 ring-secondary"
+        "group flex flex-col overflow-hidden h-full transition-all duration-300",
+        "hover:shadow-xl hover:-translate-y-1",
+        isSelected && "ring-2 ring-secondary shadow-lg"
       )}
     >
-      {/* Image Section */}
-      <div className="relative h-48 overflow-hidden">
+      {/* ── Image Banner ── */}
+      <div className="relative h-44 overflow-hidden bg-muted flex-shrink-0">
         <img
-          src={university.url}
+          src={imgSrc}
           alt={university.title}
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-          onError={(e) => {
-            const target = e.target as HTMLImageElement;
-            target.src =
-              "https://images.unsplash.com/photo-1562774053-701939374585?w=800&auto=format&fit=crop";
-          }}
+          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+          onError={() =>
+            setImgSrc(
+              `https://images.unsplash.com/photo-1562774053-701939374585?w=800&auto=format&fit=crop&q=60`
+            )
+          }
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-foreground/80 via-foreground/20 to-transparent" />
+        {/* Gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
 
-        {/* Top Actions */}
+        {/* Top-left badge */}
         <div className="absolute top-3 left-3 flex items-center gap-2">
-          {/* <Badge variant={rankingBadge.variant}>
-            <Award className="h-3 w-3 mr-1" />
-            {rankingBadge.label}
-          </Badge> */}
-          {university.admission === "Open" && (
-            <Badge variant="secondary">Admissions Open</Badge>
+          {university.admission === 'Open' && (
+            <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-green-500 text-white shadow">
+              Admissions Open
+            </span>
+          )}
+          {rankingLabel && (
+            <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-secondary text-secondary-foreground shadow">
+              {rankingLabel}
+            </span>
           )}
         </div>
 
-        <div className="absolute top-3 right-3 flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn(
-              "h-8 w-8 bg-card/80 hover:bg-card",
-              isFavorite && "text-destructive"
-            )}
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleFavorite();
-            }}
-          >
-            <Heart
-              className={cn("h-4 w-4", isFavorite && "fill-current")}
-            />
-          </Button>
-        </div>
+        {/* Favourite button */}
+        <button
+          onClick={(e) => { e.stopPropagation(); onToggleFavorite(); }}
+          className={cn(
+            "absolute top-3 right-3 h-8 w-8 flex items-center justify-center rounded-full",
+            "bg-white/20 backdrop-blur-sm hover:bg-white/40 transition-colors",
+            isFavorite && "text-red-400"
+          )}
+        >
+          <Heart className={cn("h-4 w-4", isFavorite && "fill-current")} />
+        </button>
 
-        {/* Bottom Info Overlay */}
-        <div className="absolute bottom-3 left-3 right-3">
-          <div className="flex items-center gap-2 text-primary-foreground/90">
-            <MapPin className="h-4 w-4 flex-shrink-0" />
-            <span className="text-sm font-medium truncate">
-              {university.city}, {university.province}
-            </span>
-          </div>
+        {/* City / Province label at bottom of image */}
+        <div className="absolute bottom-3 left-3 right-3 flex items-center gap-1.5 text-white/90">
+          <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
+          <span className="text-xs font-medium truncate">
+            {university.city}{university.province ? `, ${university.province}` : ''}
+          </span>
         </div>
       </div>
 
-      {/* Content Section */}
-      <CardHeader className="pb-2">
-        <h3 className="font-bold text-lg text-foreground line-clamp-2 min-h-[3.5rem] group-hover:text-secondary transition-colors">
+      {/* ── Body ── */}
+      <div className="flex flex-col flex-1 p-4 gap-3">
+        {/* University name */}
+        <h3
+          className="font-bold text-base text-foreground line-clamp-2 leading-snug group-hover:text-secondary transition-colors cursor-pointer"
+          onClick={onViewDetails}
+        >
           {university.title}
         </h3>
-      </CardHeader>
 
-      <CardContent className="space-y-4">
-        {/* Degree & Discipline */}
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="secondary">
-            <GraduationCap className="h-3 w-3 mr-1" />
-            {university.degree}
-          </Badge>
-          <Badge variant="outline">{university.discipline}</Badge>
+        {/* Discipline + Degree chips */}
+        <div className="flex flex-wrap gap-1.5">
+          {university.discipline && (
+            <span className="px-2 py-0.5 rounded-full text-xs bg-secondary/10 text-secondary font-medium border border-secondary/20">
+              {university.discipline}
+            </span>
+          )}
+          {university.degree && (
+            <span className="px-2 py-0.5 rounded-full text-xs bg-muted text-muted-foreground border border-border">
+              {university.degree}
+            </span>
+          )}
         </div>
 
-        {/* Key Stats */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="p-3 rounded-lg bg-muted/50">
-            <div className="text-xs text-muted-foreground mb-1">Merit</div>
+        {/* Merit & Fee stats */}
+        <div className="grid grid-cols-2 gap-2 mt-auto">
+          <div className="rounded-lg bg-muted/60 p-2.5">
+            <div className="text-xs text-muted-foreground mb-0.5">Min. Merit</div>
             <div className="flex items-center gap-1">
-              <TrendingUp className="h-4 w-4 text-secondary" />
-              <span className="font-bold text-foreground">
-                {university.merit}%
+              <TrendingUp className="h-3.5 w-3.5 text-secondary" />
+              <span className="font-bold text-sm text-foreground">
+                {university.merit > 0 ? `${university.merit}%` : 'N/A'}
               </span>
             </div>
           </div>
-          <div className="p-3 rounded-lg bg-muted/50">
-            <div className="text-xs text-muted-foreground mb-1">Fee/Year</div>
-            <div className="font-bold text-foreground">
-              {university.fee.toLocaleString()}
-              <span className="text-xs font-normal text-muted-foreground ml-1">
-                PKR
-              </span>
+          <div className="rounded-lg bg-muted/60 p-2.5">
+            <div className="text-xs text-muted-foreground mb-0.5">Fee</div>
+            <div className="font-bold text-sm text-foreground leading-tight">
+              {feeDisplay}
             </div>
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="flex items-center gap-2 pt-2">
+        {/* Action buttons */}
+        <div className="flex items-center gap-2 pt-1">
           <Button
             variant="outline"
             size="sm"
-            className="flex-1"
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleCompare();
-            }}
+            className="flex-1 h-8 text-xs"
+            onClick={(e) => { e.stopPropagation(); onToggleCompare(); }}
           >
-            <Scale className="h-4 w-4" />
-            {isSelected ? "Remove" : "Compare"}
+            <Scale className="h-3.5 w-3.5 mr-1" />
+            {isSelected ? 'Remove' : 'Compare'}
           </Button>
           <Button
             variant="default"
             size="sm"
-            className="flex-1"
-            onClick={(e) => {
-              e.stopPropagation();
-              onViewDetails();
-            }}
+            className="flex-1 h-8 text-xs"
+            onClick={(e) => { e.stopPropagation(); onViewDetails(); }}
           >
             View Details
           </Button>
         </div>
-      </CardContent>
+      </div>
     </Card>
   );
 };
+
 
 // ==================== COMPARE PANEL COMPONENT ====================
 interface ComparePanelProps {
@@ -1247,7 +1177,7 @@ const UniversityDetailModal = ({
         {/* Hero Image */}
         <div className="relative h-64 w-full">
           <img
-            src={university.url}
+            src={resolveImage(university)}
             alt={university.title}
             className="w-full h-full object-cover"
             onError={(e) => {
@@ -1494,7 +1424,7 @@ const FavoritesPanel = ({
                   className="group flex gap-4 p-4 rounded-xl border border-border bg-card hover:shadow-card transition-all"
                 >
                   <img
-                    src={uni.url}
+                    src={resolveImage(uni)}
                     alt={uni.title}
                     className="w-20 h-20 rounded-lg object-cover flex-shrink-0"
                     onError={(e) => {
@@ -1550,140 +1480,14 @@ const FavoritesPanel = ({
   );
 };
 
-// ==================== FOOTER COMPONENT ====================
-const SocialLink = ({
-  icon: Icon,
-  href,
-}: {
-  icon: React.ElementType;
-  href: string;
-}) => (
-  <a
-    href={href}
-    className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary-foreground/10 hover:bg-primary-foreground/20 transition-colors"
-  >
-    <Icon className="h-4 w-4" />
-  </a>
-);
-
-const FooterLink = ({
-  href,
-  children,
-}: {
-  href: string;
-  children: React.ReactNode;
-}) => (
-  <li>
-    <a
-      href={href}
-      className="text-sm text-primary-foreground/70 hover:text-primary-foreground transition-colors"
-    >
-      {children}
-    </a>
-  </li>
-);
-
-const Footer = () => {
-  return (
-    <footer id="about" className="bg-primary text-primary-foreground">
-      <div className="container py-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
-          {/* Brand */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-foreground/20">
-                <GraduationCap className="h-5 w-5" />
-              </div>
-              <span className="text-xl font-bold">
-                Campus<span className="text-secondary">Finder</span>
-              </span>
-            </div>
-            <p className="text-primary-foreground/80 text-sm leading-relaxed">
-              Pakistan's leading platform to discover, compare, and shortlist
-              universities based on your academic profile and preferences.
-            </p>
-            <div className="flex items-center gap-3">
-              <SocialLink icon={Facebook} href="#" />
-              <SocialLink icon={Twitter} href="#" />
-              <SocialLink icon={Instagram} href="#" />
-              <SocialLink icon={Linkedin} href="#" />
-            </div>
-          </div>
-
-          {/* Quick Links */}
-          <div className="space-y-4">
-            <h4 className="font-semibold text-lg">Quick Links</h4>
-            <ul className="space-y-2">
-              <FooterLink href="#home">Home</FooterLink>
-              <FooterLink href="#universities">Universities</FooterLink>
-              <FooterLink href="#compare">Compare</FooterLink>
-              <FooterLink href="#">Programs</FooterLink>
-              <FooterLink href="#">Rankings</FooterLink>
-            </ul>
-          </div>
-
-          {/* Resources */}
-          <div className="space-y-4">
-            <h4 className="font-semibold text-lg">Resources</h4>
-            <ul className="space-y-2">
-              <FooterLink href="#">Admission Guide</FooterLink>
-              <FooterLink href="#">Scholarship Info</FooterLink>
-              <FooterLink href="#">Merit Calculator</FooterLink>
-              <FooterLink href="#">Blog</FooterLink>
-              <FooterLink href="#">FAQs</FooterLink>
-            </ul>
-          </div>
-
-          {/* Contact */}
-          <div className="space-y-4">
-            <h4 className="font-semibold text-lg">Contact Us</h4>
-            <ul className="space-y-3">
-              <li className="flex items-center gap-3 text-sm text-primary-foreground/80">
-                <Mail className="h-4 w-4" />
-                info@UniversityFinder.pk
-              </li>
-              <li className="flex items-center gap-3 text-sm text-primary-foreground/80">
-                <Phone className="h-4 w-4" />
-                +92 (51) 123-4567
-              </li>
-              <li className="flex items-start gap-3 text-sm text-primary-foreground/80">
-                <MapPin className="h-4 w-4 mt-0.5" />
-                <span>Blue Area, Islamabad, Pakistan</span>
-              </li>
-            </ul>
-          </div>
-        </div>
-
-        <div className="mt-12 pt-8 border-t border-primary-foreground/20">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-sm text-primary-foreground/60">
-              © 2024 UniversityFinder. All rights reserved.
-            </p>
-            <div className="flex items-center gap-6">
-              <a
-                href="#"
-                className="text-sm text-primary-foreground/60 hover:text-primary-foreground transition-colors"
-              >
-                Privacy Policy
-              </a>
-              <a
-                href="#"
-                className="text-sm text-primary-foreground/60 hover:text-primary-foreground transition-colors"
-              >
-                Terms of Service
-              </a>
-            </div>
-          </div>
-        </div>
-      </div>
-    </footer>
-  );
-};
-
 // ==================== MAIN INDEX COMPONENT ====================
 const Index = () => {
   const { toast } = useToast();
   const universitiesRef = useRef<HTMLDivElement>(null);
+
+  // Live Data Hooks
+  const { stats, filterOptions, statsLoading } = useLiveData();
+  const { universities: liveUniversities, loading, searched, fetchUniversities } = useUniversities();
 
   // Search & Filters
   const [searchQuery, setSearchQuery] = useState("");
@@ -1744,91 +1548,23 @@ const Index = () => {
     localStorage.setItem('campusfinder_compare', JSON.stringify(Array.from(compareIds)));
   }, [compareIds]);
 
-  // Check if all search fields are filled
-  const allFieldsFilled = useMemo(() => {
-    return searchFields.marks !== "" &&
-      searchFields.maxFee !== "" &&
-      searchFields.city !== "" &&
-      searchFields.discipline !== "";
-  }, [searchFields]);
+  // Fetch initial universities (optional - user can also trigger manually)
+  useEffect(() => {
+    fetchUniversities({ sortBy: filters.sortBy });
+  }, []);
 
-  // Filter universities
-  const filteredUniversities = useMemo(() => {
-    // Only show universities if all fields are filled
-    if (!allFieldsFilled) {
-      return [];
-    }
+  // Debounced real-time search — fires 400ms after user stops typing
+  useEffect(() => {
+    // We want this to run even if empty, so user gets all results back when clearing
+    const timer = setTimeout(() => {
+      fetchUniversities({
+        search: searchQuery,
+        sortBy: filters.sortBy
+      });
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
-    let result = [...universities];
-
-    // Apply filters based on search fields
-    if (searchFields.marks) {
-      const marks = parseFloat(searchFields.marks) || 0;
-      result = result.filter((u) => u.merit <= marks);
-    }
-    if (searchFields.maxFee) {
-      const maxFee = parseFloat(searchFields.maxFee) || Infinity;
-      result = result.filter((u) => u.fee <= maxFee);
-    }
-    if (searchFields.city && searchFields.city !== "all") {
-      result = result.filter((u) => u.city === searchFields.city);
-    }
-    if (searchFields.discipline && searchFields.discipline !== "all") {
-      result = result.filter((u) => u.discipline === searchFields.discipline);
-    }
-
-    // Also apply additional filters if they exist
-    if (filters.city && filters.city !== "all") {
-      result = result.filter((u) => u.city === filters.city);
-    }
-    if (filters.discipline && filters.discipline !== "all") {
-      result = result.filter((u) => u.discipline === filters.discipline);
-    }
-    if (filters.province && filters.province !== "all") {
-      result = result.filter((u) => u.province === filters.province);
-    }
-    result = result.filter(
-      (u) => u.merit >= filters.minMerit && u.merit <= filters.maxMerit
-    );
-    result = result.filter(
-      (u) => u.fee >= filters.minFee && u.fee <= filters.maxFee
-    );
-
-    // Sort
-    switch (filters.sortBy) {
-      case "ranking":
-        result.sort((a, b) => a.ranking - b.ranking);
-        break;
-      case "merit-low":
-        result.sort((a, b) => a.merit - b.merit);
-        break;
-      case "merit-high":
-        result.sort((a, b) => b.merit - a.merit);
-        break;
-      case "fee-low":
-        result.sort((a, b) => a.fee - b.fee);
-        break;
-      case "fee-high":
-        result.sort((a, b) => b.fee - a.fee);
-        break;
-      case "name":
-        result.sort((a, b) => a.title.localeCompare(b.title));
-        break;
-    }
-
-    return result;
-  }, [allFieldsFilled, searchFields, filters]);
-
-  // Get favorite and compare universities
-  const favoriteUniversities = useMemo(
-    () => universities.filter((u) => favoriteIds.has(u.id)),
-    [favoriteIds]
-  );
-
-  const compareUniversities = useMemo(
-    () => universities.filter((u) => compareIds.has(u.id)),
-    [compareIds]
-  );
 
   // Handlers
   const handleToggleFavorite = (id: string) => {
@@ -1871,29 +1607,48 @@ const Index = () => {
     });
   };
 
+  const handleSearchSubmit = () => {
+    fetchUniversities({
+      search: searchQuery,
+      sortBy: filters.sortBy
+    });
+    universitiesRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
   const handleEligibilityCheck = (eligibility: {
     marks: number;
     maxFee: number;
     city: string;
     discipline: string;
   }) => {
-    setFilters((prev) => ({
-      ...prev,
-      minMerit: 0,
-      maxMerit: eligibility.marks > 0 ? eligibility.marks : 100,
-      minFee: 0,
-      maxFee: eligibility.maxFee > 0 ? eligibility.maxFee : 1000000,
-      city: eligibility.city === "all" ? "" : eligibility.city,
-      discipline:
-        eligibility.discipline === "all" ? "" : eligibility.discipline,
-    }));
+    fetchUniversities({
+      marks: eligibility.marks > 0 ? eligibility.marks.toString() : undefined,
+      maxFee: eligibility.maxFee > 0 ? eligibility.maxFee.toString() : undefined,
+      city: eligibility.city === "all" ? undefined : eligibility.city,
+      discipline: eligibility.discipline === "all" ? undefined : eligibility.discipline,
+      sortBy: filters.sortBy
+    });
 
-    // Scroll to universities
     universitiesRef.current?.scrollIntoView({ behavior: "smooth" });
 
     toast({
-      title: "Filters applied",
-      description: "Showing universities matching your eligibility",
+      title: "Checking Eligibility",
+      description: "Fetching matching universities from database...",
+    });
+  };
+
+  const handleFiltersChange = (newFilters: typeof filters) => {
+    setFilters(newFilters);
+    // Trigger re-fetch on filter change
+    fetchUniversities({
+      search: searchQuery || undefined,
+      marks: searchFields.marks || undefined,
+      maxFee: newFilters.maxFee ? newFilters.maxFee.toString() : undefined,
+      minFee: newFilters.minFee ? newFilters.minFee.toString() : undefined,
+      city: newFilters.city === "all" ? undefined : newFilters.city,
+      discipline: newFilters.discipline === "all" ? undefined : newFilters.discipline,
+      province: newFilters.province === "all" ? undefined : newFilters.province,
+      sortBy: newFilters.sortBy
     });
   };
 
@@ -1906,94 +1661,124 @@ const Index = () => {
     setSearchFields(fields);
   };
 
-  const scrollToUniversities = () => {
-    universitiesRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  // Get favorite and compare universities from the live set
+  const favoriteUniversities = useMemo(
+    () => liveUniversities.filter((u) => favoriteIds.has(u.id)),
+    [liveUniversities, favoriteIds]
+  );
+
+  const compareUniversities = useMemo(
+    () => liveUniversities.filter((u) => compareIds.has(u.id)),
+    [liveUniversities, compareIds]
+  );
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header
-        favoritesCount={favoriteIds.size}
-        onShowFavorites={() => setShowFavorites(true)}
+    <div className="space-y-8 animate-fade-in">
+
+      {/* ── Hero Section ── */}
+      <HeroSection
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        onSearchSubmit={handleSearchSubmit}
+        stats={stats}
+        statsLoading={statsLoading}
+        loading={loading}
       />
 
-      <main>
-        {/* Hero Section */}
-        <HeroSection
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          onScrollToUniversities={scrollToUniversities}
+      {/* ── Eligibility Checker ── */}
+      <EligibilityChecker
+        onCheck={handleEligibilityCheck}
+        searchFields={searchFields}
+        onSearchFieldsChange={handleSearchFieldsChange}
+        filterOptions={filterOptions}
+        searching={loading}
+      />
+
+      {/* ── Universities Section ── */}
+      <div id="universities" ref={universitiesRef} className="space-y-5">
+        <UniversityFilters
+          filters={filters}
+          onFiltersChange={handleFiltersChange}
+          totalResults={liveUniversities.length}
+          filterOptions={filterOptions}
         />
 
-        {/* Eligibility Checker */}
-        <section className="container py-8">
-          <EligibilityChecker
-            onCheck={handleEligibilityCheck}
-            searchFields={searchFields}
-            onSearchFieldsChange={handleSearchFieldsChange}
-          />
-        </section>
-
-        {/* Universities Section */}
-        <section
-          id="universities"
-          ref={universitiesRef}
-          className="container py-12"
-        >
-          <UniversityFilters
-            filters={filters}
-            onFiltersChange={setFilters}
-            totalResults={filteredUniversities.length}
-          />
-
-          {/* University Grid */}
-          <div className="mt-8">
-            {!allFieldsFilled ? (
-              <div className="text-center py-16">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-secondary/10 mb-4">
-                  <Search className="h-8 w-8 text-secondary" />
+        {/* University Grid */}
+        <div>
+          {loading && liveUniversities.length === 0 ? (
+            /* Skeleton grid */
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="rounded-2xl border border-border/60 bg-card overflow-hidden"
+                  style={{ borderTop: '3px solid hsl(234 89% 54% / 0.25)', opacity: 1 - i * 0.08 }}
+                >
+                  <div className="h-44 skeleton" />
+                  <div className="p-5 space-y-3">
+                    <div className="flex gap-2">
+                      <div className="h-5 w-16 rounded-full skeleton" />
+                      <div className="h-5 w-12 rounded-full skeleton" />
+                    </div>
+                    <div className="h-5 w-full rounded-lg skeleton" />
+                    <div className="h-5 w-3/4 rounded-lg skeleton" />
+                    <div className="flex gap-2 mt-2">
+                      <div className="h-4 w-20 rounded skeleton" />
+                      <div className="h-4 w-16 rounded skeleton" />
+                    </div>
+                    <div className="pt-3 border-t border-border/40">
+                      <div className="h-9 w-full rounded-xl skeleton" />
+                    </div>
+                  </div>
                 </div>
-                <h2 className="text-2xl font-bold text-foreground mb-2">Search University</h2>
+              ))}
+            </div>
+          ) : liveUniversities.length === 0 && searched ? (
+            <div className="empty-state">
+              <div className="empty-state-icon" style={{ background: 'hsl(234 89% 54% / 0.08)' }}>
+                <Search className="h-8 w-8" style={{ color: 'hsl(234 89% 54%)' }} />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-foreground mb-2">No Results Found</h2>
                 <p className="text-muted-foreground max-w-md mx-auto">
-                  Enter your marks, fee budget, preferred city, and discipline to find matching universities
+                  We couldn't find any universities matching your criteria. Try broadening your search or adjusting filters.
                 </p>
               </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredUniversities.map((university, index) => (
-                  <div
-                    key={university.id}
-                    className="animate-fade-in"
-                    style={{ animationDelay: `${index * 0.05}s` }}
-                  >
-                    <UniversityCard
-                      university={university}
-                      isFavorite={favoriteIds.has(university.id)}
-                      isSelected={compareIds.has(university.id)}
-                      onToggleFavorite={() => handleToggleFavorite(university.id)}
-                      onToggleCompare={() => handleToggleCompare(university.id)}
-                      onViewDetails={() => setSelectedUniversity(university)}
-                    />
-                  </div>
-                ))}
+            </div>
+          ) : liveUniversities.length === 0 ? (
+            <div className="empty-state">
+              <div className="empty-state-icon" style={{ background: 'hsl(234 89% 54% / 0.08)' }}>
+                <GraduationCap className="h-8 w-8" style={{ color: 'hsl(234 89% 54%)' }} />
               </div>
-            )}
-          </div>
-
-          {allFieldsFilled && filteredUniversities.length === 0 && (
-            <div className="text-center py-16">
-              <p className="text-lg text-muted-foreground">
-                No universities found matching your criteria
-              </p>
-              <p className="text-sm text-muted-foreground mt-2">
-                Try adjusting your filters or search query
-              </p>
+              <div>
+                <h2 className="text-xl font-bold text-foreground mb-2">Start Your Search</h2>
+                <p className="text-muted-foreground max-w-md mx-auto">
+                  Use the search bar or eligibility checker above to find your perfect university.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {liveUniversities.map((university, index) => (
+                <div
+                  key={university.id}
+                  className="animate-fade-in-up"
+                  style={{ animationDelay: `${Math.min(index * 50, 400)}ms`, animationFillMode: 'both' }}
+                >
+                  <UniversityCard
+                    university={university}
+                    isFavorite={favoriteIds.has(university.id)}
+                    isSelected={compareIds.has(university.id)}
+                    onToggleFavorite={() => handleToggleFavorite(university.id)}
+                    onToggleCompare={() => handleToggleCompare(university.id)}
+                    onViewDetails={() => setSelectedUniversity(university)}
+                  />
+                </div>
+              ))}
             </div>
           )}
-        </section>
-      </main>
-
-      {/* <Footer /> */}
+        </div>
+      </div>
 
       {/* Compare Panel */}
       {showCompare && compareUniversities.length > 0 && (
@@ -2003,6 +1788,11 @@ const Index = () => {
           onClose={() => setShowCompare(false)}
         />
       )}
+
+      {/* Module Feedback Section */}
+      <div className="container max-w-4xl mx-auto px-4 pb-20">
+        <ModuleFeedback moduleName="education" />
+      </div>
 
       {/* University Detail Modal */}
       <UniversityDetailModal

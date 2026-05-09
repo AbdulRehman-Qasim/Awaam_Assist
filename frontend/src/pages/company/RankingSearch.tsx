@@ -279,7 +279,14 @@ const RankingSearch = () => {
                     {/* Image */}
                     <div className="hidden sm:block flex-shrink-0 w-20 h-14 rounded-lg overflow-hidden">
                       <img
-                        src={uni.url}
+                        src={(() => {
+                          const apiUrl = import.meta.env.VITE_API_URL || '';
+                          const s = uni.url || uni.logo;
+                          if (!s) return "https://images.unsplash.com/photo-1562774053-701939374585?w=200&auto=format&fit=crop";
+                          if (s.startsWith('data:') || s.startsWith('http')) return s;
+                          const path = s.startsWith('/') ? s : `/${s}`;
+                          return `${apiUrl}${path}`;
+                        })()}
                         alt={uni.title}
                         className="w-full h-full object-cover"
                         onError={(e) => {

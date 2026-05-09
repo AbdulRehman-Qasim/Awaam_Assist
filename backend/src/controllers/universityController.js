@@ -1,44 +1,64 @@
 const University = require('../models/UniversitySchema');
 const { buildPublicApprovalQuery } = require('../modules/superAdmin/services/superAdminService');
 
-// Get all universities
+// Get all universities with full backend-side filtering
 const getAllUniversities = async (req, res) => {
     try {
-        const { search, province, city, discipline, degree } = req.query;
+        const { search, province, city, discipline, degree, marks, maxFee, minFee, sortBy } = req.query;
+        console.log('[Backend] Fetching universities with search:', search);
 
-        // Build query with lean() for better performance
         let query = {};
 
+        // Full-text search across name, city, discipline, province
         if (search) {
-            // Search in university title and other relevant fields
             query.$or = [
-                { title: { $regex: search, $options: 'i' } },
-                { city: { $regex: search, $options: 'i' } },
-                { province: { $regex: search, $options: 'i' } },
+                { title:      { $regex: search, $options: 'i' } },
+                { city:       { $regex: search, $options: 'i' } },
+                { province:   { $regex: search, $options: 'i' } },
                 { discipline: { $regex: search, $options: 'i' } },
-                { degree: { $regex: search, $options: 'i' } }
+                { degree:     { $regex: search, $options: 'i' } }
             ];
         }
 
-        if (province) {
-            query.province = province;
+        // Exact / partial field filters
+        if (province && province !== 'all') query.province = { $regex: province, $options: 'i' };
+        if (city     && city     !== 'all') query.city     = { $regex: city,     $options: 'i' };
+        if (discipline && discipline !== 'all') query.discipline = { $regex: discipline, $options: 'i' };
+        if (degree   && degree   !== 'all') query.degree   = { $regex: degree,   $options: 'i' };
+
+        // Merit: only show universities user is eligible for (merit <= user marks)
+        if (marks) {
+            const m = parseFloat(marks);
+            if (!isNaN(m)) query.merit = { $lte: m };
         }
 
-        if (city) {
-            query.city = city;
+        // Fee range filter
+        const feeField = {}; // fee or semesterFee
+        if (minFee) feeField.$gte = parseFloat(minFee) || 0;
+        if (maxFee) feeField.$lte = parseFloat(maxFee) || 99999999;
+        if (Object.keys(feeField).length > 0) {
+            query.$and = query.$and || [];
+            query.$and.push({
+                $or: [
+                    { fee:         feeField },
+                    { semesterFee: feeField }
+                ]
+            });
         }
 
-        if (discipline) {
-            query.discipline = discipline;
-        }
+        // Sort mapping
+        const sortMap = {
+            'ranking':    { ranking:  1 },
+            'merit-low':  { merit:    1 },
+            'merit-high': { merit:   -1 },
+            'fee-low':    { fee:      1 },
+            'fee-high':   { fee:     -1 },
+            'name':       { title:    1 },
+        };
+        const sort = sortMap[sortBy] || { ranking: 1 };
 
-        if (degree) {
-            query.degree = degree;
-        }
-
-        // Use lean() for faster queries
         const universities = await University.find(buildPublicApprovalQuery('universities', query))
-            .sort({ ranking: 1 })
+            .sort(sort)
             .lean();
 
         res.status(200).json({
@@ -47,12 +67,10 @@ const getAllUniversities = async (req, res) => {
             data: universities
         });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
+        res.status(500).json({ success: false, error: error.message });
     }
 };
+
 
 // Get university by ID
 const getUniversityById = async (req, res) => {
@@ -213,11 +231,42 @@ const getUniversitiesByDiscipline = async (req, res) => {
     }
 };
 
+// Get live stats for hero section (no caching — always fresh from DB)
+const getLiveStats = async (req, res) => {
+    try {
+        const [total, programAgg, cityAgg, provinceAgg] = await Promise.all([
+            University.countDocuments(buildPublicApprovalQuery('universities')),
+            University.distinct('discipline'),
+            University.distinct('city'),
+            University.distinct('province'),
+        ]);
+
+        res.status(200).json({
+            success: true,
+            stats: {
+                totalUniversities: total,
+                totalPrograms: programAgg.length,
+                totalCities: cityAgg.length,
+                totalProvinces: provinceAgg.length,
+            },
+            filters: {
+                cities: cityAgg.filter(Boolean).sort(),
+                disciplines: programAgg.filter(Boolean).sort(),
+                provinces: provinceAgg.filter(Boolean).sort(),
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+};
+
+
 module.exports = {
     getAllUniversities,
     getUniversityById,
     getUniversityStats,
     getUniversitiesByCity,
     getUniversitiesByProvince,
-    getUniversitiesByDiscipline
+    getUniversitiesByDiscipline,
+    getLiveStats,
 };

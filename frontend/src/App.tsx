@@ -75,6 +75,7 @@ import SuperAdminDataOverview from "@/pages/superAdmin/DataOverview";
 import SuperAdminAnalytics from "@/pages/superAdmin/Analytics";
 import SuperAdminSettings from "@/pages/superAdmin/Settings";
 import SuperAdminLogin from "@/pages/superAdmin/SuperAdminLogin";
+import FeedbackDashboard from "@/pages/superAdmin/FeedbackDashboard";
 
 // Government Scheme Module
 import SchemeLayout from "@/layouts/SchemeLayout";
@@ -359,6 +360,7 @@ const App = () => (
             <Route path="approvals" element={<SuperAdminPendingApprovals />} />
             <Route path="data" element={<SuperAdminDataOverview />} />
             <Route path="analytics" element={<SuperAdminAnalytics />} />
+            <Route path="feedback" element={<FeedbackDashboard />} />
             <Route path="settings" element={<SuperAdminSettings />} />
           </Route>
 

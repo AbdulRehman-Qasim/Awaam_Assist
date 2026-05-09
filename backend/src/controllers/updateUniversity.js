@@ -15,6 +15,10 @@ const updateUniversity = async (req, res) => {
     delete updates.id;
     delete updates.key;
 
+    // Map feeType to schema enum if necessary
+    if (updates.feeType === "annual") updates.feeType = "Annual Fee";
+    if (updates.feeType === "semester") updates.feeType = "Semester Fee";
+
     const hasAnnualFee = typeof updates.fee === 'number' && updates.fee > 0;
     const hasSemesterFee = typeof updates.semesterFee === 'number' && updates.semesterFee > 0;
 
