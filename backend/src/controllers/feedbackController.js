@@ -3,19 +3,26 @@ const Feedback = require('../models/FeedbackSchema');
 
 /**
  * Submit Module Rating (Healthcare, Education, Schemes)
- * Unified submission handler
+ * Unified submission handler — upserts to prevent duplicates
  */
 exports.submitModuleRating = async (req, res) => {
   try {
     const { moduleName, rating, comment, itemId } = req.body;
-    const userId = req.user.id;
+    const userId = req.user._id;
 
-    // Use findOneAndUpdate to allow users to update their rating for a specific module/item
+    if (!moduleName || !rating) {
+      return res.status(400).json({ success: false, message: 'moduleName and rating are required' });
+    }
+
+    // Build filter — only include itemId if provided (module-level ratings have no itemId)
+    const filter = { userId, module: moduleName, type: 'rating' };
+    if (itemId) filter.itemId = itemId;
+
     const feedback = await Feedback.findOneAndUpdate(
-      { userId, module: moduleName, type: 'rating', itemId },
+      filter,
       { 
         rating, 
-        comment, 
+        comment: comment || '', 
         createdAt: Date.now() 
       },
       { upsert: true, new: true }
@@ -34,14 +41,14 @@ exports.submitModuleRating = async (req, res) => {
 exports.submitRecommendationFeedback = async (req, res) => {
   try {
     const { recommendationId, moduleType, reaction, itemId } = req.body;
-    const userId = req.user.id;
+    const userId = req.user._id;
 
     const feedback = await Feedback.findOneAndUpdate(
       { userId, recommendationId, type: 'recommendation_feedback' },
       { 
         module: moduleType, 
-        reaction: reaction === 'not_relevant' ? 'not_helpful' : reaction, // Map to normalized reaction
-        itemId,
+        reaction: reaction === 'not_relevant' ? 'not_helpful' : reaction,
+        itemId: itemId || null,
         createdAt: Date.now() 
       },
       { upsert: true, new: true }
@@ -59,8 +66,9 @@ exports.submitRecommendationFeedback = async (req, res) => {
 exports.submitPlatformFeedback = async (req, res) => {
   try {
     const { message } = req.body;
-    const userId = req.user.id;
+    const userId = req.user._id;
 
+    // Platform feedback: always create new (users can submit multiple messages)
     const feedback = new Feedback({ 
       userId, 
       module: 'platform', 
@@ -170,7 +178,7 @@ exports.getFeedbackAnalytics = async (req, res) => {
  */
 exports.getUserFeedbackHistory = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user._id;
     const feedback = await Feedback.find({ userId, type: 'recommendation_feedback' });
     // Map internal 'not_helpful' back to 'not_relevant' if needed by the engine
     const mapped = feedback.map(f => ({

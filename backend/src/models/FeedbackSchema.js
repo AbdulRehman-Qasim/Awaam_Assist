@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const feedbackSchema = new mongoose.Schema({
   userId: { 
     type: mongoose.Schema.Types.ObjectId, 
-    ref: 'User', 
+    ref: 'Student', 
     required: true 
   },
   module: { 
@@ -32,7 +32,7 @@ const feedbackSchema = new mongoose.Schema({
   },
   reaction: { 
     type: String, 
-    enum: ['helpful', 'not_relevant', null],
+    enum: ['helpful', 'not_helpful', 'not_relevant', null],
     default: null
   },
   createdAt: { 
@@ -43,6 +43,10 @@ const feedbackSchema = new mongoose.Schema({
 
 // Index for faster filtering in the dashboard
 feedbackSchema.index({ module: 1, type: 1, createdAt: -1 });
+// Index for upsert deduplication (module ratings)
+feedbackSchema.index({ userId: 1, module: 1, type: 1, itemId: 1 });
+// Index for recommendation feedback deduplication
+feedbackSchema.index({ userId: 1, recommendationId: 1, type: 1 });
 
 const Feedback = mongoose.model('Feedback', feedbackSchema);
 

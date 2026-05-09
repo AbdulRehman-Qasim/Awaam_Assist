@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,22 +37,43 @@ const FeedbackDashboard = () => {
     const [typeFilter, setTypeFilter] = useState("all");
     const [ratingFilter, setRatingFilter] = useState("all");
 
-    const loadData = async () => {
+    const loadData = useCallback(async () => {
         setLoading(true);
         try {
             const feedbackRes = await FeedbackService.getAllFeedback();
             if (feedbackRes.success) {
-                setFeedbacks(feedbackRes.data);
+                setFeedbacks(feedbackRes.data || []);
+            } else {
+                console.warn("Feedback fetch returned non-success:", feedbackRes);
+                setFeedbacks([]);
             }
         } catch (error) {
             console.error("Error loading feedback data:", error);
+            setFeedbacks([]);
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
     useEffect(() => {
         loadData();
+    }, [loadData]);
+
+    // Auto-refresh every 30 seconds for near-real-time feedback visibility
+    const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    useEffect(() => {
+        intervalRef.current = setInterval(() => {
+            FeedbackService.getAllFeedback()
+                .then(res => {
+                    if (res.success && res.data) {
+                        setFeedbacks(res.data);
+                    }
+                })
+                .catch(() => {});
+        }, 30000);
+        return () => {
+            if (intervalRef.current) clearInterval(intervalRef.current);
+        };
     }, []);
 
     const filteredFeedbacks = useMemo(() => {
@@ -108,6 +129,11 @@ const FeedbackDashboard = () => {
                     <h1 className="text-2xl font-bold tracking-tight text-slate-900">Feedback Intelligence</h1>
                     <p className="text-slate-500 text-sm font-medium mt-1">
                         Analyze user satisfaction and sentiment across all platform modules.
+                        {feedbacks.length > 0 && (
+                            <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold">
+                                {feedbacks.length} total
+                            </span>
+                        )}
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -215,10 +241,22 @@ const FeedbackDashboard = () => {
                                 ))
                             ) : filteredFeedbacks.length === 0 ? (
                                 <tr>
-                                    <td colSpan={6} className="px-6 py-12 text-center">
-                                        <div className="flex flex-col items-center">
-                                            <MessageSquare className="h-8 w-8 text-slate-200 mb-3" />
-                                            <p className="text-sm font-medium text-slate-500">No feedback entries found</p>
+                                    <td colSpan={6} className="px-6 py-16 text-center">
+                                        <div className="flex flex-col items-center gap-3">
+                                            <div className="w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center">
+                                                <MessageSquare className="h-7 w-7 text-slate-300" />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <p className="text-sm font-semibold text-slate-600">No feedback entries found</p>
+                                                <p className="text-xs text-slate-400 max-w-xs">
+                                                    {searchQuery || moduleFilter !== 'all' || typeFilter !== 'all' || ratingFilter !== 'all'
+                                                        ? 'Try adjusting your filters or search query.'
+                                                        : 'Feedback will appear here as users rate modules and interact with recommendations.'}
+                                                </p>
+                                            </div>
+                                            <Button variant="outline" size="sm" className="mt-2 rounded-lg" onClick={loadData}>
+                                                <RefreshCw className="h-3 w-3 mr-2" /> Refresh
+                                            </Button>
                                         </div>
                                     </td>
                                 </tr>
@@ -238,7 +276,7 @@ const FeedbackDashboard = () => {
                                                         <p className="text-sm font-semibold text-slate-900">
                                                             {fb.userId?.student_name || 'Anonymous User'}
                                                         </p>
-                                                        <p className="text-[10px] text-slate-400 font-medium">{fb.userId?.email || 'No email'}</p>
+                                                        <p className="text-[10px] text-slate-400 font-medium">{fb.userId?.student_email || 'No email'}</p>
                                                     </div>
                                                 </div>
                                             </td>
@@ -296,5 +334,4 @@ const FeedbackDashboard = () => {
     );
 };
 
-import React from "react";
 export default FeedbackDashboard;
