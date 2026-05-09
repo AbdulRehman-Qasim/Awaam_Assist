@@ -15,9 +15,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, Controller } from "react-hook-form";
-import * as z from "zod";
 import { PAKISTAN_PROVINCES, PAKISTAN_CITIES, ALL_CITIES } from "@/data/pakistan-data";
 import {
   Command,
@@ -35,61 +33,33 @@ import {
 import { cn } from "@/lib/utils";
 import { ChevronsUpDown, Search, MapPin, Loader2 } from "lucide-react";
 
-// ─── VALIDATION SCHEMAS ───
+// ─── REQUIRED FIELD DEFINITIONS (source of truth for completion checks) ───
 
-const educationSchema = z.object({
-  degree: z.string().min(1, "Degree level is required"),
-  preferredProgram: z.string().min(1, "Preferred program is required"),
-  preferredSpecialization: z.string().optional(),
-  city: z.string().min(1, "Preferred city is required"),
-  province: z.string().min(1, "Preferred province is required"),
-  marks: z.string().optional().refine((val) => !val || (!isNaN(Number(val)) && Number(val) >= 0 && Number(val) <= 100), "Marks must be 0-100"),
-  expectedMerit: z.string().optional().refine((val) => !val || (!isNaN(Number(val)) && Number(val) >= 0 && Number(val) <= 100), "Merit expectation must be 0-100"),
-  feeRange: z.string().min(1, "Budget range is required"),
-  feePreference: z.string().default("Annual"),
-  previousQualification: z.string().optional(),
-  universityType: z.string().default("Both"),
-  hostelRequired: z.string().default("No"),
-  scholarshipRequired: z.string().default("No"),
-  relocation: z.string().default("No"),
-  distanceTolerance: z.string().default("Same City"),
-  studyMode: z.string().default("Regular"),
-  entranceTestStatus: z.string().default("Not Taken"),
-  careerGoal: z.string().optional(),
-  technicalBackground: z.string().default("None"),
-});
+const EDUCATION_REQUIRED_FIELDS = [
+  "education.degree",
+  "education.preferredProgram",
+  "education.city",
+  "education.province",
+  "education.universityType",
+  "education.feeRange",
+] as const;
 
-const schemesSchema = z.object({
-  income: z.string().refine((val) => !isNaN(Number(val)) && Number(val) >= 0, "Income must be positive"),
-  age: z.string().refine((val) => !isNaN(Number(val)) && Number(val) >= 5 && Number(val) <= 100, "Age must be 5-100"),
-  employmentStatus: z.string().min(1, "Employment status is required"),
-  province: z.string().min(1, "Province is required"),
-  city: z.string().min(1, "City is required"),
-  educationLevel: z.string().min(1, "Education level is required"),
-  studentStatus: z.string().default("Yes"),
-  familySize: z.string().optional(),
-  houseOwnership: z.string().default("Owned"),
-  existingSupport: z.string().default("None"),
-  disabilityStatus: z.string().default("No"),
-  internetAccess: z.string().default("Yes"),
-  deviceAccess: z.string().default("Yes"),
-  financialNeedType: z.array(z.string()).min(1, "At least one need type is required"),
-});
+const SCHEMES_REQUIRED_FIELDS = [
+  "schemes.income",
+  "schemes.age",
+  "schemes.employmentStatus",
+  "schemes.province",
+  "schemes.city",
+  "schemes.educationLevel",
+] as const;
+// schemes.financialNeedType is checked separately (array must have length > 0)
 
-const healthcareSchema = z.object({
-  city: z.string().min(1, "City is required"),
-  tehsil: z.string().min(1, "Tehsil is required"),
-  travelPreference: z.string().min(1, "Travel preference is required"),
-  hospitalCategory: z.string().min(1, "Hospital category is required"),
-  urgencyLevel: z.string().min(1, "Urgency level is required"),
-  budgetRange: z.string().refine((val) => !isNaN(Number(val)) && Number(val) >= 0, "Budget must be positive"),
-  treatmentType: z.string().min(1, "Treatment type is required"),
-  medicalSupport: z.array(z.string()).default([]),
-  transportAvailability: z.string().min(1, "Transport type is required"),
-  distanceTolerance: z.string().min(1, "Distance tolerance is required"),
-  medicalInsurance: z.string().default("No"),
-  financialAssistance: z.string().default("No"),
-});
+const HEALTHCARE_REQUIRED_FIELDS = [
+  "healthcare.city",
+  "healthcare.tehsil",
+  "healthcare.treatmentType",
+  "healthcare.budgetRange",
+] as const;
 
 const SearchableSelect = ({
   options,
@@ -156,19 +126,12 @@ const OnboardingPage = () => {
 
   const {
     control,
-    handleSubmit: handleFormSubmit,
     watch,
     setValue,
-    trigger,
+    getValues,
     formState: { errors },
   } = useForm({
     mode: "onChange",
-    reValidateMode: "onChange",
-    resolver: zodResolver(z.object({
-      education: educationSchema.optional(),
-      schemes: schemesSchema.optional(),
-      healthcare: healthcareSchema.optional(),
-    })),
     defaultValues: {
       education: {
         degree: "",
@@ -205,7 +168,7 @@ const OnboardingPage = () => {
         disabilityStatus: "No",
         internetAccess: "Yes",
         deviceAccess: "Yes",
-        financialNeedType: [],
+        financialNeedType: [] as string[],
       },
       healthcare: {
         city: "",
@@ -215,7 +178,7 @@ const OnboardingPage = () => {
         urgencyLevel: "Normal",
         budgetRange: "",
         treatmentType: "",
-        medicalSupport: [],
+        medicalSupport: [] as string[],
         transportAvailability: "Personal Transport",
         distanceTolerance: "Under 20 KM",
         medicalInsurance: "No",
@@ -266,66 +229,81 @@ const OnboardingPage = () => {
     }
   }, [token, navigate, user]);
 
-  const educationValues = watch("education");
-  const schemesValues = watch("schemes");
-  const healthcareValues = watch("healthcare");
+  // ─── WATCH INDIVIDUAL REQUIRED FIELDS for true reactivity ───
+  // Watching the entire sub-object can cause stale references with useMemo.
+  // By watching each required field individually, React re-renders whenever any changes.
+  const watchedEducation = {
+    degree: watch("education.degree"),
+    preferredProgram: watch("education.preferredProgram"),
+    city: watch("education.city"),
+    province: watch("education.province"),
+    universityType: watch("education.universityType"),
+    feeRange: watch("education.feeRange"),
+  };
 
-  const isEducationDone = useMemo(() => {
-    if (!educationValues) return false;
-    return !!(
-      educationValues.degree && 
-      educationValues.preferredProgram && 
-      educationValues.city && 
-      educationValues.province && 
-      educationValues.universityType && 
-      educationValues.feeRange
-    );
-  }, [educationValues]);
+  const watchedSchemes = {
+    income: watch("schemes.income"),
+    age: watch("schemes.age"),
+    province: watch("schemes.province"),
+    city: watch("schemes.city"),
+    employmentStatus: watch("schemes.employmentStatus"),
+    educationLevel: watch("schemes.educationLevel"),
+    financialNeedType: watch("schemes.financialNeedType"),
+  };
 
-  const isSchemesDone = useMemo(() => {
-    if (!schemesValues) return false;
-    return !!(
-      schemesValues.income && 
-      schemesValues.age && 
-      schemesValues.province && 
-      schemesValues.city && 
-      schemesValues.employmentStatus && 
-      schemesValues.educationLevel && 
-      schemesValues.financialNeedType && 
-      schemesValues.financialNeedType.length > 0
-    );
-  }, [schemesValues]);
+  const watchedHealthcare = {
+    city: watch("healthcare.city"),
+    tehsil: watch("healthcare.tehsil"),
+    treatmentType: watch("healthcare.treatmentType"),
+    budgetRange: watch("healthcare.budgetRange"),
+  };
 
-  const isHealthcareDone = useMemo(() => {
-    if (!healthcareValues) return false;
-    return !!(
-      healthcareValues.city && 
-      healthcareValues.tehsil && 
-      healthcareValues.treatmentType && 
-      healthcareValues.budgetRange
-    );
-  }, [healthcareValues]);
+  // ─── MODULE COMPLETION CHECKS (direct, no stale refs) ───
+  const isEducationDone = !!(
+    watchedEducation.degree &&
+    watchedEducation.preferredProgram &&
+    watchedEducation.city &&
+    watchedEducation.province &&
+    watchedEducation.universityType &&
+    watchedEducation.feeRange
+  );
 
+  const isSchemesDone = !!(
+    watchedSchemes.income &&
+    watchedSchemes.age &&
+    watchedSchemes.province &&
+    watchedSchemes.city &&
+    watchedSchemes.employmentStatus &&
+    watchedSchemes.educationLevel &&
+    watchedSchemes.financialNeedType &&
+    (watchedSchemes.financialNeedType as string[]).length > 0
+  );
+
+  const isHealthcareDone = !!(
+    watchedHealthcare.city &&
+    watchedHealthcare.tehsil &&
+    watchedHealthcare.treatmentType &&
+    watchedHealthcare.budgetRange
+  );
+
+  // ─── OVERALL COMPLETION (only checks selected modules) ───
   const isOnboardingComplete = useMemo(() => {
     if (selectedModules.length === 0) return false;
-    
-    const educationRequired = selectedModules.includes("education");
-    const schemesRequired = selectedModules.includes("schemes");
-    const healthcareRequired = selectedModules.includes("healthcare");
-
     return (
-      (!educationRequired || isEducationDone) &&
-      (!schemesRequired || isSchemesDone) &&
-      (!healthcareRequired || isHealthcareDone)
+      (!selectedModules.includes("education") || isEducationDone) &&
+      (!selectedModules.includes("schemes") || isSchemesDone) &&
+      (!selectedModules.includes("healthcare") || isHealthcareDone)
     );
   }, [selectedModules, isEducationDone, isSchemesDone, isHealthcareDone]);
 
-  const isStepValid = async () => {
+  // ─── STEP VALIDATION (uses direct checks, no Zod trigger) ───
+  const isStepValid = () => {
     if (step === 1) return selectedModules.length > 0;
-
-    const activeModule = selectedModules[step - 2];
-    const isValid = await trigger(activeModule as any);
-    return isValid;
+    const mod = selectedModules[step - 2];
+    if (mod === "education") return isEducationDone;
+    if (mod === "schemes") return isSchemesDone;
+    if (mod === "healthcare") return isHealthcareDone;
+    return false;
   };
 
   const toggleModule = (module: string) => {
@@ -334,14 +312,13 @@ const OnboardingPage = () => {
     );
   };
 
-  const handleNextStep = async () => {
+  const handleNextStep = () => {
     if (step === 1 && selectedModules.length === 0) {
       toast({ title: "Selection Required", description: "Please select at least one module to continue.", variant: "destructive" });
       return;
     }
-    const valid = await isStepValid();
-    if (!valid) {
-      toast({ title: "Incomplete Details", description: "Please fix the errors before continuing.", variant: "destructive" });
+    if (!isStepValid()) {
+      toast({ title: "Incomplete Details", description: "Please fill all required fields before continuing.", variant: "destructive" });
       return;
     }
     setStep(step + 1);
@@ -351,11 +328,14 @@ const OnboardingPage = () => {
     setStep(step - 1);
   };
 
-  const onFinalSubmit = async (formData: any) => {
-    const valid = await isStepValid();
-    if (!valid) return;
+  const onFinalSubmit = async () => {
+    if (!isOnboardingComplete) {
+      toast({ title: "Incomplete", description: "Please complete all required fields.", variant: "destructive" });
+      return;
+    }
     setLoading(true);
     try {
+      const formData = getValues();
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/user/complete-profile`, {
         method: "POST",
         headers: {
@@ -367,8 +347,8 @@ const OnboardingPage = () => {
           profile: {
             education: selectedModules.includes("education") ? {
               ...formData.education,
-              marks: Number(formData.education.marks),
-              expectedMerit: Number(formData.education.expectedMerit)
+              marks: formData.education.marks ? Number(formData.education.marks) : 0,
+              expectedMerit: formData.education.expectedMerit ? Number(formData.education.expectedMerit) : 0
             } : null,
             schemes: selectedModules.includes("schemes") ? {
               ...formData.schemes,
@@ -564,19 +544,33 @@ const OnboardingPage = () => {
               exit={{ opacity: 0, x: -20 }}
               className="bg-white p-8 rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100"
             >
-              <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
-                    <BookOpen className="w-6 h-6" />
+                  <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center transition-colors duration-300", isEducationDone ? "bg-emerald-100 text-emerald-600" : "bg-primary/10 text-primary")}>
+                    {isEducationDone ? <Check className="w-6 h-6" /> : <BookOpen className="w-6 h-6" />}
                   </div>
                   <div>
                     <h2 className="text-2xl font-bold text-slate-900">Academic Intelligence</h2>
+                    <p className="text-xs text-slate-400 mt-0.5">{isEducationDone ? "All required fields completed" : "Fill in the required fields below"}</p>
                   </div>
                 </div>
-                <Button variant="outline" size="sm" onClick={handleLocationClick} disabled={isLocating} className="rounded-xl">
-                  {isLocating ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
-                  Use My Location
-                </Button>
+                <div className="flex items-center gap-3">
+                  {isEducationDone && (
+                    <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-200">
+                      <Check className="w-3 h-3" /> Complete
+                    </span>
+                  )}
+                  <Button variant="outline" size="sm" onClick={handleLocationClick} disabled={isLocating} className="rounded-xl">
+                    {isLocating ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
+                    Use My Location
+                  </Button>
+                </div>
+              </div>
+              {/* Module completion progress bar */}
+              <div className="mb-8">
+                <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                  <div className={cn("h-full rounded-full transition-all duration-700 ease-out", isEducationDone ? "w-full bg-emerald-500" : "w-1/3 bg-primary/40")} />
+                </div>
               </div>
 
               <Accordion type="single" collapsible defaultValue="basic" className="w-full space-y-4">
@@ -811,26 +805,39 @@ const OnboardingPage = () => {
               exit={{ opacity: 0, x: -20 }}
               className="bg-white p-8 rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100"
             >
-              <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
-                    <ShieldCheck className="w-6 h-6" />
+                  <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center transition-colors duration-300", isSchemesDone ? "bg-emerald-100 text-emerald-600" : "bg-primary/10 text-primary")}>
+                    {isSchemesDone ? <Check className="w-6 h-6" /> : <ShieldCheck className="w-6 h-6" />}
                   </div>
                   <div>
                     <h2 className="text-2xl font-bold text-slate-900">Scheme Eligibility Intelligence</h2>
-                    <p className="text-slate-500 text-sm">Deep demographic profiling for accurate scheme matching.</p>
+                    <p className="text-sm text-slate-500">{isSchemesDone ? "All required fields completed" : "Deep demographic profiling for accurate scheme matching."}</p>
                   </div>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleLocationClick}
-                  disabled={isLocating}
-                  className="rounded-xl border-primary/20 text-primary hover:bg-primary/5 gap-2"
-                >
-                  {isLocating ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
-                  <span className="hidden sm:inline">Use My Location</span>
-                </Button>
+                <div className="flex items-center gap-3">
+                  {isSchemesDone && (
+                    <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-200">
+                      <Check className="w-3 h-3" /> Complete
+                    </span>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleLocationClick}
+                    disabled={isLocating}
+                    className="rounded-xl border-primary/20 text-primary hover:bg-primary/5 gap-2"
+                  >
+                    {isLocating ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
+                    <span className="hidden sm:inline">Use My Location</span>
+                  </Button>
+                </div>
+              </div>
+              {/* Module completion progress bar */}
+              <div className="mb-8">
+                <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                  <div className={cn("h-full rounded-full transition-all duration-700 ease-out", isSchemesDone ? "w-full bg-emerald-500" : "w-1/3 bg-primary/40")} />
+                </div>
               </div>
 
               <Accordion type="single" collapsible defaultValue="eligibility" className="w-full space-y-4">
@@ -1141,26 +1148,39 @@ const OnboardingPage = () => {
               exit={{ opacity: 0, x: -20 }}
               className="bg-white p-8 rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100"
             >
-              <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
-                    <HeartPulse className="w-6 h-6" />
+                  <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center transition-colors duration-300", isHealthcareDone ? "bg-emerald-100 text-emerald-600" : "bg-primary/10 text-primary")}>
+                    {isHealthcareDone ? <Check className="w-6 h-6" /> : <HeartPulse className="w-6 h-6" />}
                   </div>
                   <div>
                     <h2 className="text-2xl font-bold text-slate-900">Healthcare Accessibility Intelligence</h2>
-                    <p className="text-slate-500 text-sm">Medical preference mapping for hospital matching.</p>
+                    <p className="text-sm text-slate-500">{isHealthcareDone ? "All required fields completed" : "Medical preference mapping for hospital matching."}</p>
                   </div>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleLocationClick}
-                  disabled={isLocating}
-                  className="rounded-xl border-primary/20 text-primary hover:bg-primary/5 gap-2"
-                >
-                  {isLocating ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
-                  <span className="hidden sm:inline">Use My Location</span>
-                </Button>
+                <div className="flex items-center gap-3">
+                  {isHealthcareDone && (
+                    <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-200">
+                      <Check className="w-3 h-3" /> Complete
+                    </span>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleLocationClick}
+                    disabled={isLocating}
+                    className="rounded-xl border-primary/20 text-primary hover:bg-primary/5 gap-2"
+                  >
+                    {isLocating ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
+                    <span className="hidden sm:inline">Use My Location</span>
+                  </Button>
+                </div>
+              </div>
+              {/* Module completion progress bar */}
+              <div className="mb-8">
+                <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                  <div className={cn("h-full rounded-full transition-all duration-700 ease-out", isHealthcareDone ? "w-full bg-emerald-500" : "w-1/3 bg-primary/40")} />
+                </div>
               </div>
 
               <Accordion type="single" collapsible defaultValue="location" className="w-full space-y-4">
@@ -1432,15 +1452,17 @@ const OnboardingPage = () => {
               </Button>
             ) : (
               <Button
-                onClick={handleFormSubmit(onFinalSubmit)}
+                onClick={onFinalSubmit}
                 disabled={loading || !isOnboardingComplete}
                 className={cn(
-                  "px-10 h-12 rounded-2xl shadow-lg transition-all gap-2",
-                  isOnboardingComplete ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200" : "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none"
+                  "px-10 h-12 rounded-2xl shadow-lg transition-all duration-300 gap-2",
+                  isOnboardingComplete
+                    ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200 hover:shadow-emerald-300 hover:scale-[1.02]"
+                    : "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none"
                 )}
               >
                 {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Check className="w-5 h-5" />}
-                {isOnboardingComplete ? "Complete Setup" : "Complete All Steps"}
+                {loading ? "Saving..." : isOnboardingComplete ? "Complete Setup" : "Complete All Steps"}
               </Button>
             )}
           </div>

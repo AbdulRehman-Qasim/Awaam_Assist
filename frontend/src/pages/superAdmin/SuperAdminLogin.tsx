@@ -2,9 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { ShieldCheck, Mail, Lock, ArrowRight, Loader2, Globe, AlertCircle } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { ShieldCheck, Mail, Lock, ArrowRight, Loader2, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import api from "@/services/schemeAPI";
 
@@ -22,7 +21,6 @@ const SuperAdminLogin = () => {
         setIsLoading(true);
 
         try {
-            // Note: Super admin login uses the same admin login endpoint but checks for super_admin role
             const response = await api.post("/admin/login", formData);
             
             if (response.data.success) {
@@ -38,13 +36,12 @@ const SuperAdminLogin = () => {
                     return;
                 }
 
-                // Store auth data
                 localStorage.setItem("adminToken", token);
                 localStorage.setItem("admin", JSON.stringify(admin));
                 
                 toast({
-                    title: "Authentication Successful",
-                    description: "Welcome back to the Command Center, Chief Administrator.",
+                    title: "Success",
+                    description: "Authenticated successfully.",
                 });
 
                 navigate("/super-admin/dashboard");
@@ -62,61 +59,53 @@ const SuperAdminLogin = () => {
 
     return (
         <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 relative overflow-hidden">
-            {/* Ambient Background Elements */}
-            <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary-500/5 rounded-full blur-[120px] pointer-events-none" />
-            <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-500/5 rounded-full blur-[120px] pointer-events-none" />
+            {/* Soft decorative gradients */}
+            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-slate-200/50 rounded-full blur-[100px] translate-x-1/2 -translate-y-1/2 pointer-events-none" />
+            <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-slate-200/50 rounded-full blur-[100px] -translate-x-1/2 translate-y-1/2 pointer-events-none" />
             
-            <div className="w-full max-w-md space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-1000">
-                <div className="text-center space-y-4">
-                    <div className="flex justify-center">
-                        <div className="h-20 w-20 rounded-[2rem] bg-slate-900 flex items-center justify-center shadow-2xl shadow-slate-200 ring-8 ring-white">
-                            <ShieldCheck className="h-10 w-10 text-primary-400" />
+            <div className="w-full max-w-md space-y-8 relative z-10 animate-in fade-in duration-700">
+                <div className="text-center space-y-2">
+                    <div className="flex justify-center mb-6">
+                        <div className="h-16 w-16 rounded-2xl bg-slate-900 flex items-center justify-center shadow-xl shadow-slate-200">
+                            <ShieldCheck className="h-8 w-8 text-white" />
                         </div>
                     </div>
-                    <div className="space-y-1">
-                        <div className="flex items-center justify-center gap-2">
-                            <Badge className="bg-slate-900 text-white border-none px-3 py-0.5 text-[10px] font-black uppercase tracking-widest">Root Access</Badge>
-                            <span className="text-slate-300 font-bold">|</span>
-                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Awam Assist</span>
-                        </div>
-                        <h1 className="text-4xl font-black tracking-tighter text-slate-900 uppercase">
-                            Command <span className="text-primary-600 italic">Auth</span>
-                        </h1>
-                        <p className="text-slate-500 font-medium text-sm">Authorized personnel only. Enterprise governance portal.</p>
-                    </div>
+                    <h1 className="text-3xl font-bold tracking-tight text-slate-900">Admin Control Panel</h1>
+                    <p className="text-slate-500 text-sm font-medium">Please sign in with your super-admin credentials.</p>
                 </div>
 
-                <Card className="border-none shadow-2xl rounded-[2.5rem] bg-white overflow-hidden relative">
-                    <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-primary-500 via-indigo-500 to-primary-500" />
-                    <CardHeader className="pt-10 px-10 pb-2">
-                        <CardTitle className="text-xl font-black text-slate-900 uppercase tracking-tight">Security Credentials</CardTitle>
-                        <CardDescription className="text-slate-400 font-bold text-[10px] uppercase tracking-widest">Enter root-level parameters</CardDescription>
+                <Card className="border-slate-200 shadow-2xl rounded-2xl bg-white overflow-hidden">
+                    <CardHeader className="pt-8 px-8 pb-0">
+                        <CardTitle className="text-lg font-bold text-slate-900">Sign In</CardTitle>
+                        <CardDescription className="text-xs font-medium text-slate-400">Enter your official identification</CardDescription>
                     </CardHeader>
-                    <CardContent className="p-10 pt-6">
-                        <form onSubmit={handleLogin} className="space-y-6">
+                    <CardContent className="p-8 pt-6">
+                        <form onSubmit={handleLogin} className="space-y-5">
                             <div className="space-y-4">
-                                <div className="space-y-2 group">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 group-focus-within:text-primary-600 transition-colors">Admin Identifier</label>
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="email" className="text-xs font-semibold text-slate-700">Email Address</Label>
                                     <div className="relative">
-                                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300 group-focus-within:text-primary-500 transition-colors" />
+                                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                                         <Input 
+                                            id="email"
                                             type="email" 
-                                            placeholder="superadmin@awamassist.com" 
-                                            className="h-14 pl-12 rounded-2xl border-slate-100 bg-slate-50 focus-visible:ring-primary-500 font-bold text-slate-900 placeholder:text-slate-300 transition-all shadow-inner"
+                                            placeholder="admin@awamassist.pk" 
+                                            className="h-10 pl-10 rounded-lg border-slate-200 text-sm font-medium focus-visible:ring-slate-900"
                                             required
                                             value={formData.admin_email}
                                             onChange={(e) => setFormData({...formData, admin_email: e.target.value})}
                                         />
                                     </div>
                                 </div>
-                                <div className="space-y-2 group">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 group-focus-within:text-primary-600 transition-colors">Access Token</label>
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="password" className="text-xs font-semibold text-slate-700">Password</Label>
                                     <div className="relative">
-                                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300 group-focus-within:text-primary-500 transition-colors" />
+                                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                                         <Input 
+                                            id="password"
                                             type="password" 
-                                            placeholder="••••••••••••" 
-                                            className="h-14 pl-12 rounded-2xl border-slate-100 bg-slate-50 focus-visible:ring-primary-500 font-bold text-slate-900 placeholder:text-slate-300 transition-all shadow-inner"
+                                            placeholder="••••••••" 
+                                            className="h-10 pl-10 rounded-lg border-slate-200 text-sm font-medium focus-visible:ring-slate-900"
                                             required
                                             value={formData.password}
                                             onChange={(e) => setFormData({...formData, password: e.target.value})}
@@ -127,39 +116,42 @@ const SuperAdminLogin = () => {
 
                             <Button 
                                 type="submit" 
-                                className="w-full h-16 rounded-[1.5rem] bg-slate-900 hover:bg-primary-600 text-white font-black uppercase tracking-[0.2em] text-xs transition-all shadow-2xl shadow-slate-200 gap-3 group"
+                                className="w-full h-11 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm transition-all shadow-lg gap-2"
                                 disabled={isLoading}
                             >
                                 {isLoading ? (
-                                    <Loader2 className="h-5 w-5 animate-spin" />
+                                    <Loader2 className="h-4 w-4 animate-spin" />
                                 ) : (
                                     <>
-                                        Initiate Governance Session
-                                        <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                                        Access Dashboard
+                                        <ArrowRight className="h-4 w-4" />
                                     </>
                                 )}
                             </Button>
                         </form>
-
-                        <div className="mt-10 pt-8 border-t border-slate-50 flex items-center justify-between gap-4">
-                            <div className="flex items-center gap-2">
-                                <Globe className="h-3 w-3 text-emerald-500" />
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Region: Global Cluster</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                                <AlertCircle className="h-3 w-3 text-amber-500" />
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Audit Active</span>
-                            </div>
-                        </div>
                     </CardContent>
                 </Card>
 
-                <p className="text-center text-[10px] font-black text-slate-300 uppercase tracking-[0.3em] italic">
-                    Secure Administrative Interface • 2025 Awam Assist
+                <div className="flex items-center justify-center gap-2 p-3 rounded-lg bg-slate-100 border border-slate-200">
+                    <Info className="h-3.5 w-3.5 text-slate-400" />
+                    <p className="text-[11px] font-medium text-slate-500">
+                        This session is encrypted and subject to administrative auditing.
+                    </p>
+                </div>
+
+                <p className="text-center text-[11px] font-semibold text-slate-300 uppercase tracking-widest">
+                    Awam Assist Platform Control • 2025
                 </p>
             </div>
         </div>
     );
 };
+
+// Internal Label helper to avoid import error if it's missing in some contexts
+const Label = ({ children, className, ...props }: any) => (
+    <label className={`text-xs font-semibold text-slate-700 ${className}`} {...props}>
+        {children}
+    </label>
+);
 
 export default SuperAdminLogin;

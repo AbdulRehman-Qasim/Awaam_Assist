@@ -72,7 +72,6 @@ import SuperAdminDashboard from "@/pages/superAdmin/Dashboard";
 import SuperAdminManageAdmins from "@/pages/superAdmin/ManageAdmins";
 import SuperAdminPendingApprovals from "@/pages/superAdmin/PendingApprovals";
 import SuperAdminDataOverview from "@/pages/superAdmin/DataOverview";
-import SuperAdminAnalytics from "@/pages/superAdmin/Analytics";
 import SuperAdminSettings from "@/pages/superAdmin/Settings";
 import SuperAdminLogin from "@/pages/superAdmin/SuperAdminLogin";
 import FeedbackDashboard from "@/pages/superAdmin/FeedbackDashboard";
@@ -359,7 +358,6 @@ const App = () => (
             <Route path="admins" element={<SuperAdminManageAdmins />} />
             <Route path="approvals" element={<SuperAdminPendingApprovals />} />
             <Route path="data" element={<SuperAdminDataOverview />} />
-            <Route path="analytics" element={<SuperAdminAnalytics />} />
             <Route path="feedback" element={<FeedbackDashboard />} />
             <Route path="settings" element={<SuperAdminSettings />} />
           </Route>

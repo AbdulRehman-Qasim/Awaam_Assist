@@ -21,8 +21,11 @@ const profileSchema = new mongoose.Schema(
         preferredSpecialization: String,
         careerGoal: String,
         city: String,
+        province: String,
         marks: Number,
+        expectedMerit: Number,
         feeRange: String,
+        feePreference: String,
         // Expanded & Legacy fields
         previousQualification: String,
         programInterest: String,
@@ -32,6 +35,8 @@ const profileSchema = new mongoose.Schema(
         universityType: String,
         hostelRequired: String,
         scholarshipRequired: String,
+        relocation: String,
+        distanceTolerance: String,
         studyMode: String,
         skills: String,
         technicalBackground: String,
@@ -42,6 +47,7 @@ const profileSchema = new mongoose.Schema(
         age: Number,
         employmentStatus: String,
         province: String,
+        city: String,
         educationLevel: String,
         // Expanded fields
         familySize: Number,
@@ -56,12 +62,20 @@ const profileSchema = new mongoose.Schema(
         deviceAccess: String,
         cnicAvailable: String,
         transportDifficulties: String,
-        existingSupport: String
+        existingSupport: String,
+        financialNeedType: [String]
       },
       healthcare: {
         city: String,
         tehsil: String,
         hospitalCategory: String,
+        urgencyLevel: String,
+        budgetRange: Number,
+        treatmentType: String,
+        travelPreference: String,
+        distanceTolerance: String,
+        medicalSupport: [String],
+        financialAssistance: String,
         // Expanded fields
         nearbyPreference: String,
         emergencyRequirement: String,

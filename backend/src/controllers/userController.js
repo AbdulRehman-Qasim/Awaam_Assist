@@ -14,24 +14,24 @@ exports.completeProfile = async (req, res) => {
       return res.status(400).json({ success: false, message: "selectedModules is required" });
     }
 
-    // Validation Logic - Only strictly require core fields to maintain backward compatibility
+    // Validation Logic - Only strictly require core fields that the frontend marks as required
     if (selectedModules.includes("education")) {
-      const { degree, preferredProgram, city, marks, feeRange } = profileData.education || {};
-      if (!degree || !preferredProgram || !city || marks === undefined || !feeRange) {
-        return res.status(400).json({ success: false, message: "Missing required core fields for Education module (Preferred Program is required)" });
+      const { degree, preferredProgram, city, feeRange } = profileData.education || {};
+      if (!degree || !preferredProgram || !city || !feeRange) {
+        return res.status(400).json({ success: false, message: "Missing required core fields for Education module" });
       }
     }
 
     if (selectedModules.includes("schemes")) {
-      const { income, age, employmentStatus, province } = profileData.schemes || {};
-      if (income === undefined || age === undefined || !employmentStatus || !province) {
+      const { income, age, employmentStatus, province, city, educationLevel } = profileData.schemes || {};
+      if (income === undefined || age === undefined || !employmentStatus || !province || !city || !educationLevel) {
         return res.status(400).json({ success: false, message: "Missing required core fields for Schemes module" });
       }
     }
 
     if (selectedModules.includes("healthcare")) {
-      const { city, tehsil, hospitalCategory } = profileData.healthcare || {};
-      if (!city || !tehsil || !hospitalCategory) {
+      const { city, tehsil } = profileData.healthcare || {};
+      if (!city || !tehsil) {
         return res.status(400).json({ success: false, message: "Missing required core fields for Healthcare module" });
       }
     }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { 
@@ -13,11 +13,11 @@ import {
     XCircle, 
     MapPin, 
     Calendar,
-    ChevronRight,
-    ArrowRight,
-    UserPlus,
     Eye,
-    FileText
+    FileText,
+    UserPlus,
+    RefreshCw,
+    Info
 } from "lucide-react";
 import superAdminAPI, { type SuperAdminManagedType, type SuperAdminPendingRecord, type SuperAdminAdminRecord } from "@/services/superAdminAPI";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -27,42 +27,19 @@ const types: SuperAdminManagedType[] = ['admins', 'universities', 'schemes', 'ho
 
 const getModuleIcon = (type: SuperAdminManagedType) => {
     switch (type) {
-        case 'admins': return <UserPlus className="h-5 w-5" />;
-        case 'universities': return <GraduationCap className="h-5 w-5" />;
-        case 'schemes': return <ShieldCheck className="h-5 w-5" />;
-        case 'hospitals': return <Building2 className="h-5 w-5" />;
+        case 'admins': return <UserPlus className="h-4 w-4" />;
+        case 'universities': return <GraduationCap className="h-4 w-4" />;
+        case 'schemes': return <ShieldCheck className="h-4 w-4" />;
+        case 'hospitals': return <Building2 className="h-4 w-4" />;
     }
 };
 
-const getModuleColor = (type: SuperAdminManagedType) => {
-    switch (type) {
-        case 'admins': return "text-primary-600 bg-primary-50";
-        case 'universities': return "text-blue-600 bg-blue-50";
-        case 'schemes': return "text-violet-600 bg-violet-50";
-        case 'hospitals': return "text-emerald-600 bg-emerald-50";
-    }
-};
-
-const friendlyName = (type: SuperAdminManagedType) => {
-    if (type === 'admins') return 'Admin Onboarding';
-    if (type === 'universities') return 'Universities';
-    if (type === 'schemes') return 'Schemes';
-    return 'Hospitals';
-};
-
-type ApprovalListProps = {
-    type: SuperAdminManagedType;
-    items: SuperAdminPendingRecord[];
-    loading: boolean;
-    onAction: (type: SuperAdminManagedType, id: string, action: 'approve' | 'reject') => Promise<void>;
-};
-
-const ApprovalList = ({ type, items, loading, onAction }: ApprovalListProps) => {
+const ApprovalList = ({ type, items, loading, onAction }: { type: SuperAdminManagedType, items: SuperAdminPendingRecord[], loading: boolean, onAction: (type: SuperAdminManagedType, id: string, action: 'approve' | 'reject') => Promise<void> }) => {
     if (loading) {
         return (
-            <div className="space-y-4">
+            <div className="space-y-3">
                 {[1, 2, 3].map((i) => (
-                    <div key={i} className="h-24 w-full animate-pulse bg-slate-100 rounded-xl border border-slate-200" />
+                    <div key={i} className="h-20 w-full animate-pulse bg-slate-50 rounded-lg border border-slate-100" />
                 ))}
             </div>
         );
@@ -70,61 +47,60 @@ const ApprovalList = ({ type, items, loading, onAction }: ApprovalListProps) => 
 
     if (items.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-center py-12 bg-slate-50/50 rounded-xl border-2 border-dashed border-slate-200">
-                <div className="h-12 w-12 bg-white rounded-lg shadow-sm flex items-center justify-center mb-3">
-                    <CheckCircle2 className="h-6 w-6 text-emerald-500" />
-                </div>
-                <h3 className="text-lg font-bold text-slate-900">Queue Cleared</h3>
-                <p className="text-sm text-slate-500 font-medium">No pending {friendlyName(type).toLowerCase()} require review.</p>
+            <div className="flex flex-col items-center justify-center py-12 bg-slate-50/50 rounded-xl border border-slate-200">
+                <CheckCircle2 className="h-8 w-8 text-slate-200 mb-2" />
+                <p className="text-sm font-medium text-slate-500">No pending requests in this category</p>
             </div>
         );
     }
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-3">
             {items.map((item) => (
-                <div key={item.id} className="group relative bg-white rounded-xl border border-slate-200 p-4 md:p-5 hover:shadow-lg hover:shadow-slate-200/50 transition-all duration-300">
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <Card key={item.id} className="border-slate-200 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
+                    <CardContent className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div className="flex items-center gap-4">
-                            <div className={`h-11 w-11 rounded-xl flex items-center justify-center shrink-0 ${getModuleColor(type)} shadow-inner`}>
+                            <div className="h-10 w-10 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400">
                                 {getModuleIcon(type)}
                             </div>
-                            <div className="space-y-0.5">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                    <h3 className="text-base font-black tracking-tight text-slate-900 group-hover:text-primary-600 transition-colors">{item.name}</h3>
-                                    <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 font-bold px-2 py-0.5 rounded-full text-[9px] uppercase tracking-wider">Awaiting Audit</Badge>
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <h3 className="text-sm font-semibold text-slate-900">{item.name}</h3>
+                                    <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-100 font-medium text-[9px] px-2 py-0">Pending</Badge>
                                 </div>
-                                <div className="flex items-center gap-3 text-xs font-medium text-slate-400">
-                                    <span className="flex items-center gap-1.5">
+                                <div className="flex items-center gap-3 mt-0.5 text-[11px] text-slate-500">
+                                    <span className="flex items-center gap-1">
                                         <MapPin className="h-3 w-3" />
                                         {item.location}
                                     </span>
-                                    <span className="flex items-center gap-1.5">
+                                    <span className="flex items-center gap-1">
                                         <Calendar className="h-3 w-3" />
-                                        {item.submittedAt ? new Date(item.submittedAt).toLocaleDateString() : 'Priority Submission'}
+                                        {item.submittedAt ? new Date(item.submittedAt).toLocaleDateString() : 'N/A'}
                                     </span>
                                 </div>
                             </div>
                         </div>
-                        <div className="flex items-center gap-2.5">
+                        <div className="flex items-center gap-2">
                             <Button 
-                                variant="outline" 
-                                className="h-10 px-4 rounded-lg border-slate-200 text-slate-600 font-bold text-xs hover:bg-rose-50 hover:text-rose-600 hover:border-rose-100 transition-all gap-1.5"
+                                variant="ghost" 
+                                size="sm"
+                                className="h-8 text-rose-600 hover:text-rose-700 hover:bg-rose-50 text-xs font-semibold"
                                 onClick={() => void onAction(type, item.id, 'reject')}
                             >
-                                <XCircle className="h-3.5 w-3.5" />
+                                <XCircle className="h-3.5 w-3.5 mr-1.5" />
                                 Reject
                             </Button>
                             <Button 
-                                className="h-10 px-6 rounded-lg bg-slate-900 text-white font-bold text-xs hover:bg-emerald-600 transition-all gap-1.5 shadow-lg shadow-slate-100"
+                                size="sm"
+                                className="h-8 bg-slate-900 text-white hover:bg-slate-800 text-xs font-semibold"
                                 onClick={() => void onAction(type, item.id, 'approve')}
                             >
-                                <CheckCircle2 className="h-3.5 w-3.5" />
-                                Approve Entity
+                                <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
+                                Approve
                             </Button>
                         </div>
-                    </div>
-                </div>
+                    </CardContent>
+                </Card>
             ))}
         </div>
     );
@@ -133,9 +109,9 @@ const ApprovalList = ({ type, items, loading, onAction }: ApprovalListProps) => 
 const AdminApprovalList = ({ items, loading, onAction }: { items: SuperAdminAdminRecord[], loading: boolean, onAction: (id: string, action: 'approve' | 'reject') => Promise<void> }) => {
     if (loading) {
         return (
-            <div className="space-y-4">
+            <div className="space-y-3">
                 {[1, 2].map((i) => (
-                    <div key={i} className="h-32 w-full animate-pulse bg-slate-100 rounded-xl border border-slate-200" />
+                    <div key={i} className="h-24 w-full animate-pulse bg-slate-50 rounded-lg border border-slate-100" />
                 ))}
             </div>
         );
@@ -143,108 +119,97 @@ const AdminApprovalList = ({ items, loading, onAction }: { items: SuperAdminAdmi
 
     if (items.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-center py-12 bg-slate-50/50 rounded-xl border-2 border-dashed border-slate-200">
-                <div className="h-12 w-12 bg-white rounded-lg shadow-sm flex items-center justify-center mb-3">
-                    <UserPlus className="h-6 w-6 text-emerald-500" />
-                </div>
-                <h3 className="text-lg font-bold text-slate-900">No Pending Admins</h3>
-                <p className="text-sm text-slate-500 font-medium">All partner onboarding requests have been processed.</p>
+            <div className="flex flex-col items-center justify-center py-12 bg-slate-50/50 rounded-xl border border-slate-200">
+                <UserPlus className="h-8 w-8 text-slate-200 mb-2" />
+                <p className="text-sm font-medium text-slate-500">No pending admin onboarding requests</p>
             </div>
         );
     }
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-3">
             {items.map((admin: any) => (
-                <div key={admin._id} className="group relative bg-white rounded-xl border border-slate-200 p-4 md:p-5 hover:shadow-lg hover:shadow-slate-200/50 transition-all duration-300">
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <Card key={admin._id} className="border-slate-200 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
+                    <CardContent className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div className="flex items-center gap-4">
-                            <div className="h-11 w-11 rounded-xl flex items-center justify-center shrink-0 bg-primary-50 text-primary-600 shadow-inner">
+                            <div className="h-10 w-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
                                 <UserPlus className="h-5 w-5" />
                             </div>
-                            <div className="space-y-0.5">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                    <h3 className="text-base font-black tracking-tight text-slate-900">{admin.entity_name || 'Incomplete Profile'}</h3>
-                                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 font-bold px-2 py-0.5 rounded-full text-[9px] uppercase tracking-wider">{admin.role?.replace('_admin', '')}</Badge>
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <h3 className="text-sm font-semibold text-slate-900">{admin.entity_name || 'Pending Onboarding'}</h3>
+                                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-100 font-medium text-[9px] px-2 py-0 uppercase">
+                                        {admin.role?.replace('_admin', '')}
+                                    </Badge>
                                 </div>
-                                <div className="flex flex-col text-xs font-medium text-slate-500">
-                                    <span>Representative: {admin.admin_name} ({admin.admin_email})</span>
-                                    <span className="text-slate-400 mt-1 flex items-center gap-1">
-                                        <MapPin className="h-3 w-3" /> {admin.entity_address || 'No Address Provided'}
-                                    </span>
+                                <div className="mt-0.5 text-[11px] text-slate-500 font-medium">
+                                    {admin.admin_name} • {admin.admin_email}
+                                </div>
+                                <div className="flex items-center gap-1 text-[10px] text-slate-400 mt-0.5 font-medium">
+                                    <MapPin className="h-2.5 w-2.5" /> {admin.entity_address || 'No location provided'}
                                 </div>
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-2.5">
+                        <div className="flex items-center gap-2">
                             <Dialog>
                                 <DialogTrigger asChild>
-                                    <Button variant="outline" className="h-10 px-4 rounded-lg border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 transition-all gap-1.5">
-                                        <Eye className="h-3.5 w-3.5" />
-                                        Review Proof
+                                    <Button variant="outline" size="sm" className="h-8 text-xs font-semibold border-slate-200 text-slate-600">
+                                        <Eye className="h-3.5 w-3.5 mr-1.5" />
+                                        Review
                                     </Button>
                                 </DialogTrigger>
-                                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-                                    <DialogHeader>
-                                        <DialogTitle>Onboarding Details: {admin.entity_name}</DialogTitle>
-                                        <DialogDescription>
-                                            Verification documents and entity information for {admin.admin_name}.
-                                        </DialogDescription>
-                                    </DialogHeader>
-                                    <div className="space-y-6 py-4">
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="space-y-1">
-                                                <Label className="text-xs text-slate-500 uppercase tracking-wider">Contact</Label>
-                                                <p className="font-semibold">{admin.entity_contact || 'N/A'}</p>
+                                <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto p-0 border-slate-200 shadow-2xl bg-white rounded-xl">
+                                    <div className="bg-slate-900 p-6 text-white">
+                                        <DialogTitle className="text-lg font-bold">Onboarding Review</DialogTitle>
+                                        <DialogDescription className="text-slate-400 text-xs">Review details for {admin.entity_name}.</DialogDescription>
+                                    </div>
+                                    <div className="p-6 space-y-6">
+                                        <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                                            <div>
+                                                <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Representative</Label>
+                                                <p className="text-sm font-semibold text-slate-700">{admin.admin_name}</p>
                                             </div>
-                                            <div className="space-y-1">
-                                                <Label className="text-xs text-slate-500 uppercase tracking-wider">Type</Label>
-                                                <p className="font-semibold uppercase">{admin.entity_type || admin.role?.replace('_admin', '')}</p>
+                                            <div>
+                                                <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Email</Label>
+                                                <p className="text-sm font-semibold text-slate-700">{admin.admin_email}</p>
                                             </div>
-                                            <div className="space-y-1">
-                                                <Label className="text-xs text-slate-500 uppercase tracking-wider">Scale</Label>
-                                                <p className="font-semibold">{admin.scale || 'N/A'}</p>
+                                            <div>
+                                                <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Contact</Label>
+                                                <p className="text-sm font-semibold text-slate-700">{admin.entity_contact || 'N/A'}</p>
                                             </div>
-                                            <div className="space-y-1">
-                                                <Label className="text-xs text-slate-500 uppercase tracking-wider">Established</Label>
-                                                <p className="font-semibold">{admin.established_year || 'N/A'}</p>
+                                            <div>
+                                                <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Type</Label>
+                                                <p className="text-sm font-semibold text-slate-700 uppercase">{admin.entity_type || admin.role?.replace('_admin', '')}</p>
                                             </div>
-                                            <div className="col-span-2 space-y-1">
-                                                <Label className="text-xs text-slate-500 uppercase tracking-wider">Official Website</Label>
-                                                <p className="text-sm font-semibold text-primary-600 truncate">{admin.official_website || 'N/A'}</p>
-                                            </div>
-                                            <div className="col-span-2 space-y-1">
-                                                <Label className="text-xs text-slate-500 uppercase tracking-wider">About / Description</Label>
-                                                <p className="text-sm bg-slate-50 p-3 rounded-lg border border-slate-100">{admin.entity_description || 'No description provided.'}</p>
+                                            <div className="col-span-2">
+                                                <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">About</Label>
+                                                <p className="text-sm text-slate-600 leading-relaxed bg-slate-50 p-3 rounded-lg border border-slate-100">{admin.entity_description || 'No description provided.'}</p>
                                             </div>
                                         </div>
 
-                                        <div className="space-y-3">
-                                            <Label className="text-xs text-slate-500 uppercase tracking-wider">Verification Documents ({admin.verification_docs?.length || 0})</Label>
+                                        <div>
+                                            <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 block">Verification Documents</Label>
                                             {admin.verification_docs && admin.verification_docs.length > 0 ? (
-                                                <div className="grid grid-cols-2 gap-3">
+                                                <div className="grid grid-cols-1 gap-2">
                                                     {admin.verification_docs.map((doc: string, idx: number) => (
                                                         <a 
                                                             key={idx} 
                                                             href={`${import.meta.env.VITE_API_URL}${doc}`} 
                                                             target="_blank" 
                                                             rel="noopener noreferrer"
-                                                            className="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-xl hover:border-primary-400 hover:bg-primary-50 transition-all group"
+                                                            className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-lg hover:border-blue-400 transition-colors group"
                                                         >
-                                                            <div className="h-10 w-10 rounded-lg bg-slate-100 flex items-center justify-center shrink-0 group-hover:bg-white">
-                                                                <FileText className="h-5 w-5 text-slate-400 group-hover:text-primary-600" />
+                                                            <div className="flex items-center gap-3">
+                                                                <FileText className="h-4 w-4 text-slate-400" />
+                                                                <span className="text-xs font-semibold text-slate-700">Document {idx + 1}</span>
                                                             </div>
-                                                            <div className="overflow-hidden">
-                                                                <p className="text-xs font-bold text-slate-700 truncate">Document {idx + 1}</p>
-                                                                <p className="text-[10px] text-slate-400">Click to view original</p>
-                                                            </div>
+                                                            <span className="text-[10px] font-bold text-blue-600 uppercase">View</span>
                                                         </a>
                                                     ))}
                                                 </div>
                                             ) : (
-                                                <div className="p-8 text-center bg-slate-50 rounded-xl border-2 border-dashed border-slate-200">
-                                                    <p className="text-sm text-slate-400 font-medium">No documents uploaded for verification.</p>
-                                                </div>
+                                                <p className="text-xs text-slate-400 italic">No documents provided.</p>
                                             )}
                                         </div>
                                     </div>
@@ -252,23 +217,25 @@ const AdminApprovalList = ({ items, loading, onAction }: { items: SuperAdminAdmi
                             </Dialog>
 
                             <Button 
-                                variant="outline" 
-                                className="h-10 px-4 rounded-lg border-slate-200 text-slate-600 font-bold text-xs hover:bg-rose-50 hover:text-rose-600 hover:border-rose-100 transition-all gap-1.5"
+                                variant="ghost" 
+                                size="sm"
+                                className="h-8 text-rose-600 hover:text-rose-700 hover:bg-rose-50 text-xs font-semibold"
                                 onClick={() => void onAction(admin._id, 'reject')}
                             >
-                                <XCircle className="h-3.5 w-3.5" />
+                                <XCircle className="h-3.5 w-3.5 mr-1.5" />
                                 Reject
                             </Button>
                             <Button 
-                                className="h-10 px-6 rounded-lg bg-slate-900 text-white font-bold text-xs hover:bg-emerald-600 transition-all gap-1.5 shadow-lg shadow-slate-100"
+                                size="sm"
+                                className="h-8 bg-slate-900 text-white hover:bg-slate-800 text-xs font-semibold"
                                 onClick={() => void onAction(admin._id, 'approve')}
                             >
-                                <CheckCircle2 className="h-3.5 w-3.5" />
-                                Authorize Admin
+                                <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
+                                Approve
                             </Button>
                         </div>
-                    </div>
-                </div>
+                    </CardContent>
+                </Card>
             ))}
         </div>
     );
@@ -298,8 +265,8 @@ const PendingApprovals = () => {
         } catch (error) {
             toast({
                 variant: "destructive",
-                title: "Data Retrieval Failure",
-                description: "System was unable to fetch pending admin requests.",
+                title: "Fetch Error",
+                description: "Unable to retrieve pending admin requests.",
             });
         } finally {
             setLoading((prev) => ({ ...prev, admins: false }));
@@ -307,7 +274,7 @@ const PendingApprovals = () => {
     };
 
     const loadType = async (type: SuperAdminManagedType) => {
-        if (type === 'admins') return; // Handled by loadAdmins
+        if (type === 'admins') return;
         setLoading((prev) => ({ ...prev, [type]: true }));
         try {
             const response = await superAdminAPI.getPendingData(type);
@@ -315,8 +282,8 @@ const PendingApprovals = () => {
         } catch (error) {
             toast({
                 variant: "destructive",
-                title: "Data Retrieval Failure",
-                description: `System was unable to fetch pending ${friendlyName(type).toLowerCase()}.`,
+                title: "Fetch Error",
+                description: `Unable to retrieve pending ${type}.`,
             });
         } finally {
             setLoading((prev) => ({ ...prev, [type]: false }));
@@ -346,8 +313,8 @@ const PendingApprovals = () => {
         } catch (error) {
             toast({
                 variant: "destructive",
-                title: "Authorization Error",
-                description: (error as any).response?.data?.message || "System failed to process the admin action.",
+                title: "Error",
+                description: "System failed to process the admin request.",
             });
         }
     };
@@ -362,99 +329,91 @@ const PendingApprovals = () => {
 
             toast({
                 title: "Action Processed",
-                description: `The ${friendlyName(type).slice(0, -1)} has been successfully ${action}d.`,
+                description: `Request has been ${action}d.`,
             });
             await loadType(type);
         } catch (error) {
             toast({
                 variant: "destructive",
-                title: "Authorization Error",
-                description: "System failed to process the lifecycle action.",
+                title: "Error",
+                description: "System failed to process the approval action.",
             });
         }
     };
 
+    const totalPending = records.universities.length + records.schemes.length + records.hospitals.length + records.admins.length;
+
     return (
-        <div className="space-y-6 md:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">
-            <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between border-b border-slate-100 pb-6">
-                <div className="space-y-1.5">
-                    <div className="flex items-center gap-2">
-                        <Badge className="bg-amber-50 text-amber-700 border-amber-100 px-3 py-0.5 text-[9px] font-black uppercase tracking-widest">Action Required</Badge>
-                        <span className="text-slate-300 font-bold">/</span>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Lifecycle Management</span>
-                    </div>
-                    <h1 className="text-2xl md:text-3xl font-black tracking-tighter text-slate-900 uppercase">
-                        Audit <span className="text-primary-600 italic">Queue</span>
-                    </h1>
-                    <p className="text-slate-500 text-base font-medium max-w-2xl leading-snug">
-                        Review and authorize infrastructure submissions before they are published to the public registry.
+        <div className="space-y-6 animate-in fade-in duration-500">
+            {/* Header */}
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                    <h1 className="text-2xl font-bold tracking-tight text-slate-900">Pending Approvals</h1>
+                    <p className="text-slate-500 text-sm font-medium mt-1">
+                        Review and authorize infrastructure submissions before publication.
                     </p>
                 </div>
-                <div className="flex items-center gap-3 bg-white p-1.5 rounded-xl border border-slate-100 shadow-sm">
-                    <div className="h-8 w-8 bg-slate-50 rounded-lg flex items-center justify-center">
-                        <Clock3 className="h-4 w-4 text-slate-400" />
-                    </div>
-                    <div className="pr-3">
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Active Queue</p>
-                        <p className="text-xs font-bold text-slate-900">
-                            {records.universities.length + records.schemes.length + records.hospitals.length + records.admins.length} Pending
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-
-            <Tabs defaultValue="admins" className="w-full" onValueChange={(value) => setActiveTab(value as any)}>
-                <TabsList className="w-full justify-start gap-1 bg-slate-100/50 p-1.5 rounded-xl border border-slate-200 overflow-x-auto h-12 mb-6 md:mb-8">
-                    <TabsTrigger value="admins" className="rounded-lg px-6 h-full data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-primary-600 font-black tracking-tight uppercase text-[10px]">
-                        <UserPlus className="mr-2 h-3.5 w-3.5" /> Admin Onboarding
-                    </TabsTrigger>
-                    <TabsTrigger value="universities" className="rounded-lg px-6 h-full data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-blue-600 font-black tracking-tight uppercase text-[10px]">
-                        <GraduationCap className="mr-2 h-3.5 w-3.5" /> Academic Records
-                    </TabsTrigger>
-                    <TabsTrigger value="schemes" className="rounded-lg px-6 h-full data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-violet-600 font-black tracking-tight uppercase text-[10px]">
-                        <ShieldCheck className="mr-2 h-3.5 w-3.5" /> Welfare Programs
-                    </TabsTrigger>
-                    <TabsTrigger value="hospitals" className="rounded-lg px-6 h-full data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-emerald-600 font-black tracking-tight uppercase text-[10px]">
-                        <Building2 className="mr-2 h-3.5 w-3.5" /> Medical Centers
-                    </TabsTrigger>
-                </TabsList>
-
-
-                <div className="relative">
-                    <TabsContent value="admins">
-                        <AdminApprovalList items={records.admins} loading={loading.admins} onAction={handleAdminAction} />
-                    </TabsContent>
-                    <TabsContent value="universities">
-                        <ApprovalList type="universities" items={records.universities} loading={loading.universities} onAction={handleAction} />
-                    </TabsContent>
-                    <TabsContent value="schemes">
-                        <ApprovalList type="schemes" items={records.schemes} loading={loading.schemes} onAction={handleAction} />
-                    </TabsContent>
-                    <TabsContent value="hospitals">
-                        <ApprovalList type="hospitals" items={records.hospitals} loading={loading.hospitals} onAction={handleAction} />
-                    </TabsContent>
-                </div>
-            </Tabs>
-            
-            <div className="p-6 rounded-xl bg-slate-900 text-white overflow-hidden relative group">
-                <div className="absolute right-0 top-0 h-full w-1/3 bg-gradient-to-l from-primary-600/20 to-transparent pointer-events-none" />
-                <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                    <div className="space-y-1.5">
-                        <h3 className="text-xl font-black tracking-tight uppercase">Governance Note</h3>
-                        <p className="text-slate-400 text-sm font-medium max-w-xl">
-                            All approvals are logged with a cryptographic timestamp. Authorized records will be instantly visible across all platform search indices.
-                        </p>
-                    </div>
-                    <Button variant="outline" className="h-11 px-6 rounded-lg border-white/20 text-white hover:bg-white hover:text-slate-900 font-bold text-xs transition-all gap-2 group-hover:gap-3">
-                        Policy Documentation
-                        <ArrowRight className="h-4 w-4" />
+                <div className="flex items-center gap-3">
+                    {totalPending > 0 && (
+                        <Badge className="bg-amber-100 text-amber-700 border-amber-200 font-bold px-3 h-7">
+                            {totalPending} Action{totalPending > 1 ? 's' : ''} Needed
+                        </Badge>
+                    )}
+                    <Button 
+                        onClick={() => {
+                            types.forEach(t => loadType(t));
+                            loadAdmins();
+                        }} 
+                        variant="outline" 
+                        size="sm" 
+                        className="rounded-lg h-9 text-xs gap-2"
+                    >
+                        <RefreshCw className="h-3.5 w-3.5" />
+                        Refresh
                     </Button>
                 </div>
             </div>
 
+            {/* Tabs */}
+            <Tabs defaultValue="admins" className="w-full" onValueChange={(value) => setActiveTab(value as any)}>
+                <TabsList className="bg-slate-100/50 p-1 rounded-lg border border-slate-200 h-10 mb-6">
+                    <TabsTrigger value="admins" className="rounded-md px-4 text-xs font-semibold data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                        Admins
+                    </TabsTrigger>
+                    <TabsTrigger value="universities" className="rounded-md px-4 text-xs font-semibold data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                        Education
+                    </TabsTrigger>
+                    <TabsTrigger value="schemes" className="rounded-md px-4 text-xs font-semibold data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                        Schemes
+                    </TabsTrigger>
+                    <TabsTrigger value="hospitals" className="rounded-md px-4 text-xs font-semibold data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                        Healthcare
+                    </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="admins" className="space-y-4">
+                    <AdminApprovalList items={records.admins} loading={loading.admins} onAction={handleAdminAction} />
+                </TabsContent>
+                <TabsContent value="universities" className="space-y-4">
+                    <ApprovalList type="universities" items={records.universities} loading={loading.universities} onAction={handleAction} />
+                </TabsContent>
+                <TabsContent value="schemes" className="space-y-4">
+                    <ApprovalList type="schemes" items={records.schemes} loading={loading.schemes} onAction={handleAction} />
+                </TabsContent>
+                <TabsContent value="hospitals" className="space-y-4">
+                    <ApprovalList type="hospitals" items={records.hospitals} loading={loading.hospitals} onAction={handleAction} />
+                </TabsContent>
+            </Tabs>
+            
+            {/* Note */}
+            <div className="p-4 rounded-lg bg-slate-50 border border-slate-200 flex items-start gap-4">
+                <Info className="h-5 w-5 text-slate-400 shrink-0 mt-0.5" />
+                <p className="text-xs text-slate-500 leading-relaxed font-medium">
+                    All approvals are logged with a cryptographic timestamp. Authorized records will be instantly visible across all platform search indices and user dashboards.
+                </p>
+            </div>
         </div>
     );
 };
 
-export default PendingApprovals;
+export default PendingApprovals;
