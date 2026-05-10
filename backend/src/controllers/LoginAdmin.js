@@ -13,7 +13,7 @@ exports.loginAdmin = async (req, res) => {
       });
     }
 
-    const admin = await Admin.findOne({ admin_email });
+    const admin = await Admin.findOne({ admin_email: admin_email.toLowerCase() });
     if (!admin) {
       return res.status(400).json({
         success: false,
@@ -37,10 +37,18 @@ exports.loginAdmin = async (req, res) => {
       });
     }
 
-    if (adminRole === 'super_admin' && requiredRole) {
+    // Portal Isolation Enforcement
+    if (adminRole === 'super_admin' && (!requiredRole || requiredRole !== 'super_admin')) {
       return res.status(403).json({
         success: false,
-        message: 'Super Admins are restricted from this portal. Please use the dedicated Super Admin login.'
+        message: 'Super Admins are restricted from this portal. Please use the dedicated Super Admin login at /super-admin/login.'
+      });
+    }
+
+    if (adminRole !== 'super_admin' && requiredRole === 'super_admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. This portal is restricted to Super Administrators only.'
       });
     }
 

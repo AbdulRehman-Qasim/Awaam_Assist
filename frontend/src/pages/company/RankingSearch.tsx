@@ -15,6 +15,7 @@ import {
   Medal,
 } from "lucide-react";
 import { University } from "@/types/university";
+import { GenerateReportButton } from "@/components/shared/GenerateReportButton";
 
 const RankingSearch = () => {
   const [universities, setUniversities] = useState<University[]>([]);
@@ -147,9 +148,17 @@ const RankingSearch = () => {
           <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
             Search University <span className="text-gradient">Ranking</span>
           </h1>
-          <p className="text-muted-foreground max-w-xl mx-auto">
+          <p className="text-muted-foreground max-w-xl mx-auto mb-6">
             Enter a university name to find its ranking in Pakistan
           </p>
+          <div className="flex justify-center">
+            <GenerateReportButton 
+              module="education" 
+              recommendations={searchResults.length > 0 ? searchResults : topRankUniversities}
+              insights={searchResults.length > 0 ? `Showing ${searchResults.length} search results for "${searchQuery}".` : "Showing top 5 high-ranking universities in Pakistan based on academic performance and merit."}
+              className="rounded-2xl font-black h-11" 
+            />
+          </div>
         </div>
 
         {/* Search Box */}

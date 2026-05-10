@@ -112,12 +112,16 @@ const loginHospitalAdmin = async (req, res) => {
 
     await linkLegacyHospitalsToAdmin(admin);
 
+    // Find the hospital linked to this admin for the dashboard
+    const linkedHospital = await Hospital.findOne({ createdByHospitalAdmin: admin._id });
+
     const token = jwt.sign(
       {
         id: admin._id,
         email: admin.admin_email,
         role: 'hospital_admin',
         type: 'hospital_admin',
+        managed_entity_id: linkedHospital ? linkedHospital._id : null,
       },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
@@ -133,6 +137,8 @@ const loginHospitalAdmin = async (req, res) => {
         email: admin.admin_email,
         role: 'hospital_admin',
         hospital_name: admin.hospital_name,
+        managed_entity_id: linkedHospital ? linkedHospital._id : null,
+        entity_name: admin.hospital_name, // for compatibility with unified dashboard
       },
     });
   } catch (error) {

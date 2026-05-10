@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/accordion";
 import { useForm, Controller } from "react-hook-form";
 import { PAKISTAN_PROVINCES, PAKISTAN_CITIES, ALL_CITIES } from "@/data/pakistan-data";
+import { CITY_TEHSILS } from "@/data/healthcare-data";
 import {
   Command,
   CommandEmpty,
@@ -133,7 +134,7 @@ const OnboardingPage = () => {
   } = useForm({
     mode: "onChange",
     defaultValues: {
-      education: {
+    education: {
         degree: "",
         preferredProgram: "",
         preferredSpecialization: "",
@@ -143,7 +144,6 @@ const OnboardingPage = () => {
         expectedMerit: "",
         feeRange: "",
         feePreference: "Annual",
-        previousQualification: "",
         universityType: "Both",
         hostelRequired: "No",
         scholarshipRequired: "No",
@@ -188,6 +188,50 @@ const OnboardingPage = () => {
   });
 
   const [isLocating, setIsLocating] = useState(false);
+  const [eduOptions, setEduOptions] = useState<{
+    programs: string[];
+    specializations: string[];
+    careerGoals: string[];
+  }>({
+    programs: [],
+    specializations: [],
+    careerGoals: []
+  });
+
+  const fetchEduOptions = async () => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/education/options`);
+      const data = await res.json();
+      if (data.success) {
+        setEduOptions(data.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch education options", err);
+    }
+  };
+
+  const [healthcareOptions, setHealthcareOptions] = useState<{
+    treatments: string[];
+  }>({
+    treatments: []
+  });
+
+  const fetchHealthcareOptions = async () => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/healthcare/options`);
+      const data = await res.json();
+      if (data.success) {
+        setHealthcareOptions(data.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch healthcare options", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchEduOptions();
+    fetchHealthcareOptions();
+  }, []);
 
   const handleLocationClick = () => {
     if (!navigator.geolocation) {
@@ -240,6 +284,57 @@ const OnboardingPage = () => {
     universityType: watch("education.universityType"),
     feeRange: watch("education.feeRange"),
   };
+
+  // Province-City dependency for Education
+  const selectedProvince = watch("education.province");
+  const filteredCities = useMemo(() => {
+    if (!selectedProvince) return [];
+    return PAKISTAN_CITIES[selectedProvince] || [];
+  }, [selectedProvince]);
+
+  // Reset city when province changes for Education
+  useEffect(() => {
+    if (selectedProvince) {
+      const currentCity = getValues("education.city");
+      if (currentCity && !PAKISTAN_CITIES[selectedProvince]?.includes(currentCity)) {
+        setValue("education.city", "");
+      }
+    }
+  }, [selectedProvince, setValue, getValues]);
+
+  // Province-City dependency for Schemes
+  const selectedProvinceSchemes = watch("schemes.province");
+  const filteredCitiesSchemes = useMemo(() => {
+    if (!selectedProvinceSchemes) return [];
+    return PAKISTAN_CITIES[selectedProvinceSchemes] || [];
+  }, [selectedProvinceSchemes]);
+
+  // Reset city when province changes for Schemes
+  useEffect(() => {
+    if (selectedProvinceSchemes) {
+      const currentCity = getValues("schemes.city");
+      if (currentCity && !PAKISTAN_CITIES[selectedProvinceSchemes]?.includes(currentCity)) {
+        setValue("schemes.city", "");
+      }
+    }
+  }, [selectedProvinceSchemes, setValue, getValues]);
+
+  // City-Tehsil dependency for Healthcare
+  const selectedCityHealthcare = watch("healthcare.city");
+  const filteredTehsils = useMemo(() => {
+    if (!selectedCityHealthcare) return [];
+    return CITY_TEHSILS[selectedCityHealthcare] || ["Central", "Cantt", "City Center"];
+  }, [selectedCityHealthcare]);
+
+  // Reset tehsil when city changes for Healthcare
+  useEffect(() => {
+    if (selectedCityHealthcare) {
+      const currentTehsil = getValues("healthcare.tehsil");
+      if (currentTehsil && !CITY_TEHSILS[selectedCityHealthcare]?.includes(currentTehsil)) {
+        setValue("healthcare.tehsil", "");
+      }
+    }
+  }, [selectedCityHealthcare, setValue, getValues]);
 
   const watchedSchemes = {
     income: watch("schemes.income"),
@@ -601,22 +696,28 @@ const OnboardingPage = () => {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label className="text-slate-600 text-xs font-bold uppercase">Previous Qualification</Label>
-                        <Controller
-                          name="education.previousQualification"
-                          control={control}
-                          render={({ field }) => (
-                            <Input {...field} className="h-11 bg-white" placeholder="e.g. FSc Pre-Engineering" />
-                          )}
-                        />
-                      </div>
-                      <div className="space-y-2">
                         <Label className="text-slate-600 text-xs font-bold uppercase">Recent Marks (%)</Label>
                         <Controller
                           name="education.marks"
                           control={control}
+                          rules={{ required: true, min: 0, max: 100 }}
                           render={({ field }) => (
-                            <Input {...field} type="number" className={cn("h-11 bg-white", errors.education?.marks && "border-red-500")} placeholder="e.g. 85" />
+                            <div className="space-y-1">
+                              <Input 
+                                {...field} 
+                                type="number" 
+                                className={cn("h-11 bg-white", (errors.education as any)?.marks && "border-red-500")} 
+                                placeholder="e.g. 85" 
+                                min="0"
+                                max="100"
+                                onChange={(e) => {
+                                  const val = parseFloat(e.target.value);
+                                  if (isNaN(val)) field.onChange("");
+                                  else if (val >= 0 && val <= 100) field.onChange(val);
+                                }}
+                              />
+                              {(errors.education as any)?.marks && <p className="text-[10px] text-red-500 font-bold uppercase tracking-tight">Please enter a valid percentage (0-100)</p>}
+                            </div>
                           )}
                         />
                       </div>
@@ -625,8 +726,24 @@ const OnboardingPage = () => {
                         <Controller
                           name="education.expectedMerit"
                           control={control}
+                          rules={{ required: true, min: 0, max: 100 }}
                           render={({ field }) => (
-                            <Input {...field} type="number" className={cn("h-11 bg-white", errors.education?.expectedMerit && "border-red-500")} placeholder="e.g. 80" />
+                            <div className="space-y-1">
+                              <Input 
+                                {...field} 
+                                type="number" 
+                                className={cn("h-11 bg-white", (errors.education as any)?.expectedMerit && "border-red-500")} 
+                                placeholder="e.g. 80"
+                                min="0"
+                                max="100"
+                                onChange={(e) => {
+                                  const val = parseFloat(e.target.value);
+                                  if (isNaN(val)) field.onChange("");
+                                  else if (val >= 0 && val <= 100) field.onChange(val);
+                                }}
+                              />
+                              {(errors.education as any)?.expectedMerit && <p className="text-[10px] text-red-500 font-bold uppercase tracking-tight">Please enter a valid percentage (0-100)</p>}
+                            </div>
                           )}
                         />
                       </div>
@@ -662,12 +779,18 @@ const OnboardingPage = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
                       <div className="space-y-2">
                         <Label className="text-slate-600 text-xs font-bold uppercase">Preferred Program</Label>
-                        <p className="text-[10px] text-slate-400 -mt-1">e.g. Software Engineering, MBBS, BBA</p>
+                        <p className="text-[10px] text-slate-400 -mt-1">Select your desired degree program</p>
                         <Controller
                           name="education.preferredProgram"
                           control={control}
                           render={({ field }) => (
-                            <Input {...field} className={cn("h-11 bg-white", errors.education?.preferredProgram && "border-red-500")} placeholder="Enter program name" />
+                            <SearchableSelect 
+                              options={eduOptions.programs} 
+                              value={field.value} 
+                              onChange={field.onChange} 
+                              placeholder="Search Program (e.g. Software Engineering)" 
+                              emptyMessage="No matching programs found."
+                            />
                           )}
                         />
                       </div>
@@ -681,7 +804,13 @@ const OnboardingPage = () => {
                           name="education.preferredSpecialization"
                           control={control}
                           render={({ field }) => (
-                            <Input {...field} className="h-11 bg-white" placeholder="Enter specialization (if any)" />
+                            <SearchableSelect 
+                              options={eduOptions.specializations} 
+                              value={field.value} 
+                              onChange={field.onChange} 
+                              placeholder="Search Specialization" 
+                              emptyMessage="No matching specializations found."
+                            />
                           )}
                         />
                       </div>
@@ -695,7 +824,13 @@ const OnboardingPage = () => {
                           name="education.careerGoal"
                           control={control}
                           render={({ field }) => (
-                            <Input {...field} className="h-11 bg-white" placeholder="Enter your future profession" />
+                            <SearchableSelect 
+                              options={eduOptions.careerGoals} 
+                              value={field.value} 
+                              onChange={field.onChange} 
+                              placeholder="Search Career Goal" 
+                              emptyMessage="No matching career goals found."
+                            />
                           )}
                         />
                       </div>
@@ -710,22 +845,28 @@ const OnboardingPage = () => {
                   <AccordionContent className="pb-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
                       <div className="space-y-2">
-                        <Label className="text-slate-600 text-xs font-bold uppercase">Preferred Study City</Label>
-                        <Controller
-                          name="education.city"
-                          control={control}
-                          render={({ field }) => (
-                            <SearchableSelect options={ALL_CITIES} value={field.value} onChange={field.onChange} placeholder="Search City" />
-                          )}
-                        />
-                      </div>
-                      <div className="space-y-2">
                         <Label className="text-slate-600 text-xs font-bold uppercase">Preferred Province</Label>
                         <Controller
                           name="education.province"
                           control={control}
                           render={({ field }) => (
                             <SearchableSelect options={PAKISTAN_PROVINCES} value={field.value} onChange={field.onChange} placeholder="Select Province" />
+                          )}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-slate-600 text-xs font-bold uppercase">Preferred Study City</Label>
+                        <Controller
+                          name="education.city"
+                          control={control}
+                          render={({ field }) => (
+                            <SearchableSelect 
+                              options={filteredCities} 
+                              value={field.value} 
+                              onChange={field.onChange} 
+                              placeholder={selectedProvince ? "Search City" : "Select Province First"} 
+                              emptyMessage={selectedProvince ? "No cities found in this province." : "Please select a province first."}
+                            />
                           )}
                         />
                       </div>
@@ -856,8 +997,24 @@ const OnboardingPage = () => {
                         <Controller
                           name="schemes.age"
                           control={control}
+                          rules={{ required: true, min: 1, max: 120 }}
                           render={({ field }) => (
-                            <Input {...field} type="number" className={cn("h-11 bg-white", errors.schemes?.age && "border-red-500")} placeholder="e.g. 25" />
+                            <div className="space-y-1">
+                              <Input 
+                                {...field} 
+                                type="number" 
+                                className={cn("h-11 bg-white", (errors.schemes as any)?.age && "border-red-500")} 
+                                placeholder="e.g. 25"
+                                min="1"
+                                max="120"
+                                onChange={(e) => {
+                                  const val = parseInt(e.target.value);
+                                  if (isNaN(val)) field.onChange("");
+                                  else if (val >= 0) field.onChange(val);
+                                }}
+                              />
+                              {(errors.schemes as any)?.age && <p className="text-[10px] text-red-500 font-bold uppercase tracking-tight">Please enter a valid age (1-120)</p>}
+                            </div>
                           )}
                         />
                       </div>
@@ -866,8 +1023,23 @@ const OnboardingPage = () => {
                         <Controller
                           name="schemes.income"
                           control={control}
+                          rules={{ required: true, min: 0 }}
                           render={({ field }) => (
-                            <Input {...field} type="number" className={cn("h-11 bg-white", errors.schemes?.income && "border-red-500")} placeholder="e.g. 45000" />
+                            <div className="space-y-1">
+                              <Input 
+                                {...field} 
+                                type="number" 
+                                className={cn("h-11 bg-white", (errors.schemes as any)?.income && "border-red-500")} 
+                                placeholder="e.g. 45000"
+                                min="0"
+                                onChange={(e) => {
+                                  const val = parseInt(e.target.value);
+                                  if (isNaN(val)) field.onChange("");
+                                  else if (val >= 0) field.onChange(val);
+                                }}
+                              />
+                              {(errors.schemes as any)?.income && <p className="text-[10px] text-red-500 font-bold uppercase tracking-tight">Income cannot be negative</p>}
+                            </div>
                           )}
                         />
                       </div>
@@ -902,12 +1074,18 @@ const OnboardingPage = () => {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label className="text-slate-600 text-xs font-bold uppercase">City</Label>
+                        <Label className="text-slate-600 text-xs font-bold uppercase">City (Domicile)</Label>
                         <Controller
                           name="schemes.city"
                           control={control}
                           render={({ field }) => (
-                            <SearchableSelect options={ALL_CITIES} value={field.value} onChange={field.onChange} placeholder="Search City" />
+                            <SearchableSelect 
+                              options={filteredCitiesSchemes} 
+                              value={field.value} 
+                              onChange={field.onChange} 
+                              placeholder={selectedProvinceSchemes ? "Search City" : "Select Province First"} 
+                              emptyMessage={selectedProvinceSchemes ? "No cities found in this province." : "Please select a province first."}
+                            />
                           )}
                         />
                       </div>
@@ -983,8 +1161,23 @@ const OnboardingPage = () => {
                         <Controller
                           name="schemes.familySize"
                           control={control}
+                          rules={{ required: true, min: 1 }}
                           render={({ field }) => (
-                            <Input {...field} type="number" className="h-11 bg-white" placeholder="Total members" />
+                            <div className="space-y-1">
+                              <Input 
+                                {...field} 
+                                type="number" 
+                                className={cn("h-11 bg-white", (errors.schemes as any)?.familySize && "border-red-500")} 
+                                placeholder="Total members" 
+                                min="1"
+                                onChange={(e) => {
+                                  const val = parseInt(e.target.value);
+                                  if (isNaN(val)) field.onChange("");
+                                  else if (val >= 0) field.onChange(val);
+                                }}
+                              />
+                              {(errors.schemes as any)?.familySize && <p className="text-[10px] text-red-500 font-bold uppercase tracking-tight">Family size must be at least 1</p>}
+                            </div>
                           )}
                         />
                       </div>
@@ -1210,7 +1403,13 @@ const OnboardingPage = () => {
                           name="healthcare.tehsil"
                           control={control}
                           render={({ field }) => (
-                            <Input {...field} className={cn("h-11 bg-white", errors.healthcare?.tehsil && "border-red-500")} placeholder="e.g. Gulberg" />
+                            <SearchableSelect 
+                              options={filteredTehsils} 
+                              value={field.value} 
+                              onChange={field.onChange} 
+                              placeholder={selectedCityHealthcare ? "Select Tehsil" : "Select City First"} 
+                              emptyMessage={selectedCityHealthcare ? "No tehsils found for this city." : "Please select a city first."}
+                            />
                           )}
                         />
                       </div>
@@ -1285,8 +1484,23 @@ const OnboardingPage = () => {
                         <Controller
                           name="healthcare.budgetRange"
                           control={control}
+                          rules={{ required: true, min: 0 }}
                           render={({ field }) => (
-                            <Input {...field} type="number" className={cn("h-11 bg-white", errors.healthcare?.budgetRange && "border-red-500")} placeholder="e.g. 50000" />
+                            <div className="space-y-1">
+                              <Input 
+                                {...field} 
+                                type="number" 
+                                className={cn("h-11 bg-white", (errors.healthcare as any)?.budgetRange && "border-red-500")} 
+                                placeholder="e.g. 50000"
+                                min="0"
+                                onChange={(e) => {
+                                  const val = parseInt(e.target.value);
+                                  if (isNaN(val)) field.onChange("");
+                                  else if (val >= 0) field.onChange(val);
+                                }}
+                              />
+                              {(errors.healthcare as any)?.budgetRange && <p className="text-[10px] text-red-500 font-bold uppercase tracking-tight">Budget cannot be negative</p>}
+                            </div>
                           )}
                         />
                       </div>
@@ -1310,7 +1524,13 @@ const OnboardingPage = () => {
                           name="healthcare.treatmentType"
                           control={control}
                           render={({ field }) => (
-                            <Input {...field} className={cn("h-11 bg-white", errors.healthcare?.treatmentType && "border-red-500")} placeholder="e.g. Cardiology, Maternity, Surgery" />
+                            <SearchableSelect 
+                              options={healthcareOptions.treatments} 
+                              value={field.value} 
+                              onChange={field.onChange} 
+                              placeholder="Search Treatment (e.g. Cardiology, Surgery)" 
+                              emptyMessage="No matching treatments found."
+                            />
                           )}
                         />
                       </div>

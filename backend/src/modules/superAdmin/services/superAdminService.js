@@ -62,24 +62,31 @@ const buildPublicApprovalQuery = (type, baseQuery = {}) => {
 
 const getAdminSummary = async () => {
     const [
-        totalStandard, pendingStandard, suspendedStandard,
-        totalHospital, pendingHospital, suspendedHospital,
-        universities, schemes, hospitals
+        totalStandard, suspendedStandard,
+        totalHospital, suspendedHospital,
+        universities, schemes, hospitals,
+        pendingStandard, pendingHospitalAdminDocs
     ] = await Promise.all([
         Admin.countDocuments(),
-        Admin.countDocuments({ isApproved: false, is_onboarded: true }),
         Admin.countDocuments({ status: 'suspended' }),
         HospitalAdmin.countDocuments(),
-        HospitalAdmin.countDocuments({ isApproved: false }),
         HospitalAdmin.countDocuments({ status: 'suspended' }),
         University.countDocuments(buildPublicApprovalQuery('universities')),
         Scheme.countDocuments(buildPublicApprovalQuery('schemes')),
         Hospital.countDocuments(buildPublicApprovalQuery('hospitals')),
+        Admin.find({ isApproved: false, is_onboarded: true }).lean(),
+        HospitalAdmin.countDocuments({ isApproved: false }),
     ]);
 
-    const pendingUniversities = await University.countDocuments({ status: 'pending' });
-    const pendingSchemes = await Scheme.countDocuments({ approvalStatus: 'pending' });
-    const pendingHospitals = await Hospital.countDocuments({ status: 'pending' });
+    const pendingEducationAdmins = pendingStandard.filter(a => a.role === 'education_admin' || a.entity_type === 'university').length;
+    const pendingSchemeAdmins = pendingStandard.filter(a => a.role === 'scheme_admin' || a.entity_type === 'scheme').length;
+    const pendingHospitalAdmins = pendingStandard.filter(a => a.role === 'hospital_admin' || a.entity_type === 'hospital').length;
+
+    const [pendingUniversities, pendingSchemes, pendingHospitals] = await Promise.all([
+        University.countDocuments({ status: 'pending' }),
+        Scheme.countDocuments({ approvalStatus: 'pending' }),
+        Hospital.countDocuments({ status: 'pending' }),
+    ]);
 
     return {
         totals: {
@@ -89,10 +96,10 @@ const getAdminSummary = async () => {
             hospitals,
         },
         pending: {
-            admins: pendingStandard + pendingHospital,
-            universities: pendingUniversities,
-            schemes: pendingSchemes,
-            hospitals: pendingHospitals,
+            admins: pendingStandard.length + pendingHospitalAdminDocs,
+            universities: pendingUniversities + pendingEducationAdmins,
+            schemes: pendingSchemes + pendingSchemeAdmins,
+            hospitals: pendingHospitals + pendingHospitalAdmins + pendingHospitalAdminDocs,
         },
         suspendedAdmins: suspendedStandard + suspendedHospital,
     };

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
@@ -8,14 +8,22 @@ import {
   Menu,
   X,
   Shield,
+  Calendar,
 } from 'lucide-react';
 
 const HospitalAdminLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [admin, setAdmin] = useState(() => JSON.parse(localStorage.getItem('admin') || '{}'));
 
-  const admin = JSON.parse(localStorage.getItem('admin') || '{}');
+  useEffect(() => {
+    const handleUpdate = () => {
+      setAdmin(JSON.parse(localStorage.getItem('admin') || '{}'));
+    };
+    window.addEventListener('admin-update', handleUpdate);
+    return () => window.removeEventListener('admin-update', handleUpdate);
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('admin');
@@ -27,6 +35,8 @@ const HospitalAdminLayout = () => {
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/admin/hospital/dashboard' },
     { icon: Building2, label: 'Hospital Management', path: '/admin/hospital/hospitals' },
+    { icon: Calendar, label: 'Appointments', path: '/admin/hospital/appointments' },
+    { icon: Shield, label: 'Settings', path: '/admin/hospital/settings' },
   ];
 
   return (

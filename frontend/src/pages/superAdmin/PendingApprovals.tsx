@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -341,6 +341,19 @@ const PendingApprovals = () => {
         }
     };
 
+    // Filter admins by role for module-specific views
+    const educationAdmins = useMemo(() => 
+        records.admins.filter(a => a.role === 'education_admin' || a.entity_type === 'university'), 
+    [records.admins]);
+    
+    const schemeAdmins = useMemo(() => 
+        records.admins.filter(a => a.role === 'scheme_admin' || a.entity_type === 'scheme'), 
+    [records.admins]);
+    
+    const healthcareAdmins = useMemo(() => 
+        records.admins.filter(a => a.role === 'hospital_admin' || a.entity_type === 'hospital'), 
+    [records.admins]);
+
     const totalPending = records.universities.length + records.schemes.length + records.hospitals.length + records.admins.length;
 
     return (
@@ -377,17 +390,21 @@ const PendingApprovals = () => {
             {/* Tabs */}
             <Tabs defaultValue="admins" className="w-full" onValueChange={(value) => setActiveTab(value as any)}>
                 <TabsList className="bg-slate-100/50 p-1 rounded-lg border border-slate-200 h-10 mb-6">
-                    <TabsTrigger value="admins" className="rounded-md px-4 text-xs font-semibold data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                    <TabsTrigger value="admins" className="rounded-md px-4 text-xs font-semibold data-[state=active]:bg-white data-[state=active]:shadow-sm gap-2">
                         Admins
+                        {records.admins.length > 0 && <span className="flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-slate-900 text-[9px] text-white font-bold">{records.admins.length}</span>}
                     </TabsTrigger>
-                    <TabsTrigger value="universities" className="rounded-md px-4 text-xs font-semibold data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                    <TabsTrigger value="universities" className="rounded-md px-4 text-xs font-semibold data-[state=active]:bg-white data-[state=active]:shadow-sm gap-2">
                         Education
+                        {(records.universities.length + educationAdmins.length) > 0 && <span className="flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-slate-900 text-[9px] text-white font-bold">{records.universities.length + educationAdmins.length}</span>}
                     </TabsTrigger>
-                    <TabsTrigger value="schemes" className="rounded-md px-4 text-xs font-semibold data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                    <TabsTrigger value="schemes" className="rounded-md px-4 text-xs font-semibold data-[state=active]:bg-white data-[state=active]:shadow-sm gap-2">
                         Schemes
+                        {(records.schemes.length + schemeAdmins.length) > 0 && <span className="flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-slate-900 text-[9px] text-white font-bold">{records.schemes.length + schemeAdmins.length}</span>}
                     </TabsTrigger>
-                    <TabsTrigger value="hospitals" className="rounded-md px-4 text-xs font-semibold data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                    <TabsTrigger value="hospitals" className="rounded-md px-4 text-xs font-semibold data-[state=active]:bg-white data-[state=active]:shadow-sm gap-2">
                         Healthcare
+                        {(records.hospitals.length + healthcareAdmins.length) > 0 && <span className="flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-slate-900 text-[9px] text-white font-bold">{records.hospitals.length + healthcareAdmins.length}</span>}
                     </TabsTrigger>
                 </TabsList>
 
@@ -395,13 +412,64 @@ const PendingApprovals = () => {
                     <AdminApprovalList items={records.admins} loading={loading.admins} onAction={handleAdminAction} />
                 </TabsContent>
                 <TabsContent value="universities" className="space-y-4">
-                    <ApprovalList type="universities" items={records.universities} loading={loading.universities} onAction={handleAction} />
+                    <div className="space-y-6">
+                        {educationAdmins.length > 0 && (
+                            <div className="space-y-3">
+                                <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                                    <UserPlus className="h-3 w-3" /> Partner Onboarding Requests
+                                </h3>
+                                <AdminApprovalList items={educationAdmins} loading={loading.admins} onAction={handleAdminAction} />
+                            </div>
+                        )}
+                        <div className="space-y-3">
+                            {educationAdmins.length > 0 && (
+                                <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                                    <GraduationCap className="h-3 w-3" /> Institutional Data Submissions
+                                </h3>
+                            )}
+                            <ApprovalList type="universities" items={records.universities} loading={loading.universities} onAction={handleAction} />
+                        </div>
+                    </div>
                 </TabsContent>
                 <TabsContent value="schemes" className="space-y-4">
-                    <ApprovalList type="schemes" items={records.schemes} loading={loading.schemes} onAction={handleAction} />
+                    <div className="space-y-6">
+                        {schemeAdmins.length > 0 && (
+                            <div className="space-y-3">
+                                <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                                    <UserPlus className="h-3 w-3" /> Program Admin Requests
+                                </h3>
+                                <AdminApprovalList items={schemeAdmins} loading={loading.admins} onAction={handleAdminAction} />
+                            </div>
+                        )}
+                        <div className="space-y-3">
+                            {schemeAdmins.length > 0 && (
+                                <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                                    <ShieldCheck className="h-3 w-3" /> Welfare Program Submissions
+                                </h3>
+                            )}
+                            <ApprovalList type="schemes" items={records.schemes} loading={loading.schemes} onAction={handleAction} />
+                        </div>
+                    </div>
                 </TabsContent>
                 <TabsContent value="hospitals" className="space-y-4">
-                    <ApprovalList type="hospitals" items={records.hospitals} loading={loading.hospitals} onAction={handleAction} />
+                    <div className="space-y-6">
+                        {healthcareAdmins.length > 0 && (
+                            <div className="space-y-3">
+                                <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                                    <UserPlus className="h-3 w-3" /> Healthcare Provider Onboarding
+                                </h3>
+                                <AdminApprovalList items={healthcareAdmins} loading={loading.admins} onAction={handleAdminAction} />
+                            </div>
+                        )}
+                        <div className="space-y-3">
+                            {healthcareAdmins.length > 0 && (
+                                <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                                    <Building2 className="h-3 w-3" /> Facility Data Submissions
+                                </h3>
+                            )}
+                            <ApprovalList type="hospitals" items={records.hospitals} loading={loading.hospitals} onAction={handleAction} />
+                        </div>
+                    </div>
                 </TabsContent>
             </Tabs>
             

@@ -66,6 +66,8 @@ import HospitalAdminRegister from "@/pages/admin/HospitalAdminRegister";
 import HospitalAdminLayout from "@/layouts/HospitalAdminLayout";
 import HospitalAdminDashboard from "@/pages/admin/HospitalAdminDashboard";
 import HospitalManagementPage from "@/pages/admin/HospitalManagementPage";
+import HospitalAppointmentsPage from "@/pages/admin/HospitalAppointmentsPage";
+import HospitalSettingsPage from "@/pages/admin/HospitalSettingsPage";
 
 import SuperAdminLayout from "@/layouts/SuperAdminLayout";
 import SuperAdminDashboard from "@/pages/superAdmin/Dashboard";
@@ -342,6 +344,8 @@ const App = () => (
             <Route index element={<HospitalAdminDashboard />} />
             <Route path="dashboard" element={<HospitalAdminDashboard />} />
             <Route path="hospitals" element={<HospitalManagementPage />} />
+            <Route path="appointments" element={<HospitalAppointmentsPage />} />
+            <Route path="settings" element={<HospitalSettingsPage />} />
           </Route>
 
           {/* Super Admin Routes */}

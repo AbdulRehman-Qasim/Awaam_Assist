@@ -15,6 +15,13 @@ const TreatmentSchema = new mongoose.Schema(
     estimatedWaitTime: { type: String, trim: true, default: '' },
     doctorCount:       { type: Number, default: 0 },
     isEmergency:       { type: Boolean, default: false },
+    
+    // New fields for enhanced intelligence
+    description:       { type: String, trim: true, default: '' },
+    supportFeatures:   [{ type: String, trim: true }], // ['Wheelchair Support', 'Emergency Ward', etc.]
+    waitingTime:       { type: String, trim: true, default: 'Immediate' },
+    severitySupport:   { type: String, enum: ['Basic', 'Moderate', 'Critical', 'Emergency'], default: 'Basic' },
+    appointmentRequired: { type: Boolean, default: true },
   },
   { _id: true, timestamps: true }
 );
@@ -33,6 +40,15 @@ const HospitalSchema = new mongoose.Schema(
     treatmentCost: { type: Number, default: 0 },
     availability:  { type: String, default: 'Available' },
     info:          { type: String, default: '' },
+    
+    // New fields at root for enhanced intelligence in flat records
+    description:       { type: String, trim: true, default: '' },
+    supportFeatures:   [{ type: String, trim: true }], // ['Wheelchair Support', 'Emergency Ward', etc.]
+    waitingTime:       { type: String, trim: true, default: 'Immediate' },
+    severitySupport:   { type: String, enum: ['Basic', 'Moderate', 'Critical', 'Emergency'], default: 'Basic' },
+    appointmentRequired: { type: Boolean, default: true },
+    treatmentName:     { type: String, trim: true, default: '' },
+    treatmentSpecialty: { type: String, trim: true, default: '' },
 
     // ── Status & visibility ──────────────────────────────────────────────────
     status: {

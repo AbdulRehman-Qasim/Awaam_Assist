@@ -43,6 +43,7 @@ import { ModuleFeedback } from "@/components/shared/ModuleFeedback";
 import { checkSchemeEligibility, getSchemeCategories, getSchemeProvinces, type Scheme } from "@/data/schemes";
 import { schemeAPI } from "@/services/schemeAPI";
 import { useEffect } from "react";
+import { GenerateReportButton } from "@/components/shared/GenerateReportButton";
 
 const SchemeDashboard = () => {
     const { toast } = useToast();
@@ -558,6 +559,15 @@ const SchemeDashboard = () => {
                             </div>
 
                             <div className="flex items-center gap-3 flex-wrap">
+                                {showEligibilityResults && (
+                                  <GenerateReportButton 
+                                    module="schemes" 
+                                    recommendations={filteredSchemes}
+                                    insights={`Based on your eligibility profile (Income: PKR ${eligibilityFilters.income}, Age: ${eligibilityFilters.age}, Province: ${eligibilityFilters.province}), we've identified ${filteredSchemes.length} matching government programs.`}
+                                    variant="secondary" 
+                                    className="h-9 rounded-xl font-bold text-xs" 
+                                  />
+                                )}
                                 <Select value={selectedCategory} onValueChange={setSelectedCategory}>
                                     <SelectTrigger className="w-[180px] h-9">
                                         <SelectValue placeholder="Category" />

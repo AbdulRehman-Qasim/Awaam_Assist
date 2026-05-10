@@ -14,6 +14,7 @@ import { Slider } from "@/components/ui/slider";
 import HospitalCard from "./HospitalCard";
 import { hospitalPublicAPI, HospitalRecord, HospitalFilters, HospitalQueryParams } from "@/services/hospitalAPI";
 import { ModuleFeedback } from "@/components/shared/ModuleFeedback";
+import { GenerateReportButton } from "@/components/shared/GenerateReportButton";
 
 // ── Filter state shape ────────────────────────────────────────────────────────
 

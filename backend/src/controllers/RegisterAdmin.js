@@ -22,7 +22,8 @@ exports.registerAdmin = async (req, res) => {
       return res.status(400).json({ message: "Invalid admin role" });
     }
 
-    const existingEmail = await Admin.findOne({ admin_email });
+    const email = admin_email.toLowerCase();
+    const existingEmail = await Admin.findOne({ admin_email: email });
     if (existingEmail) {
       return res.status(400).json({ message: "Email already taken" });
     }
@@ -32,7 +33,7 @@ exports.registerAdmin = async (req, res) => {
 
     const admin = await Admin.create({
       admin_name,
-      admin_email,
+      admin_email: email,
       password: hashedPassword,
       role: role || 'education_admin',
       isApproved: role === 'super_admin',

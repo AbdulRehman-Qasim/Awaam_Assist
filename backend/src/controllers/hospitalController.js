@@ -95,6 +95,13 @@ const toPublicHospital = (doc) => ({
   availability:  doc.availability || 'Available',
   info:          doc.info || '',
   // Enriched data
+  treatmentSpecialty: doc.treatmentSpecialty || doc.treatmentName || doc.specialization || doc.info || '',
+  treatmentName: doc.treatmentName || '',
+  description:   doc.description   || '',
+  supportFeatures: doc.supportFeatures || [],
+  waitingTime:   doc.waitingTime   || 'Immediate',
+  severitySupport: doc.severitySupport || 'Basic',
+  appointmentRequired: doc.appointmentRequired !== undefined ? doc.appointmentRequired : true,
   treatments:    doc.treatments || [],
   tags:          doc.tags || [],
   status:        doc.status || 'approved',
@@ -137,6 +144,13 @@ const parseHospitalPayload = (body) => ({
   treatments:    Array.isArray(body.treatments) ? body.treatments : undefined,
   tags:          Array.isArray(body.tags) ? body.tags : undefined,
   status:        body.status,
+  // Enriched intelligence metadata
+  treatmentSpecialty: body.treatmentSpecialty || body.treatmentName,
+  treatmentName:      body.treatmentName,
+  supportFeatures:    body.supportFeatures,
+  waitingTime:        body.waitingTime,
+  severitySupport:    body.severitySupport,
+  appointmentRequired: body.appointmentRequired,
 });
 
 // ── Public routes ─────────────────────────────────────────────────────────────
@@ -183,10 +197,14 @@ const getAllHospitals = async (req, res) => {
       const regex = new RegExp(q, 'i');
       query.$or = [
         { 'Hospital Name': regex },
+        { hospitalName: regex },
         { City: regex },
         { Tehsil: regex },
         { Cateogry: regex },
+        { category: regex },
         { description: regex },
+        { treatmentSpecialty: regex },
+        { treatmentName: regex },
         { tags: regex },
         { 'treatments.treatmentName': regex },
         { 'treatments.specialization': regex },
@@ -298,7 +316,9 @@ const getAllHospitalsAdmin = async (req, res) => {
 /** POST /admin/hospitals */
 const createHospital = async (req, res) => {
   try {
+    console.log("DEBUG [createHospital] Payload received:", req.body);
     const payload = parseHospitalPayload(req.body);
+    console.log("DEBUG [createHospital] Parsed payload:", payload);
 
     if (!payload.City || !payload.Tehsil || !payload.hospitalName || !payload.category) {
       return res.status(400).json({
@@ -330,6 +350,14 @@ const createHospital = async (req, res) => {
       info:             payload.info || '',
       status:           payload.status || 'approved',
       createdByHospitalAdmin: req.admin?.id || null,
+      // Direct assignment for intelligence fields
+      treatmentSpecialty: payload.treatmentSpecialty || '',
+      treatmentName:      payload.treatmentName || '',
+      supportFeatures:    payload.supportFeatures || [],
+      waitingTime:        payload.waitingTime || 'Immediate',
+      severitySupport:    payload.severitySupport || 'Basic',
+      appointmentRequired: payload.appointmentRequired !== undefined ? payload.appointmentRequired : true,
+      description:        payload.description || '',
     };
 
     if (payload.emergencyServices !== undefined) doc.emergencyServices = payload.emergencyServices;
@@ -338,6 +366,14 @@ const createHospital = async (req, res) => {
     if (payload.isVerified !== undefined) doc.isVerified = payload.isVerified;
     if (payload.treatments) doc.treatments = payload.treatments;
     if (payload.tags) doc.tags = payload.tags;
+
+    // Add intelligence metadata
+    if (payload.treatmentSpecialty) doc.treatmentSpecialty = payload.treatmentSpecialty;
+    if (payload.treatmentName)      doc.treatmentName      = payload.treatmentName;
+    if (payload.supportFeatures)    doc.supportFeatures    = payload.supportFeatures;
+    if (payload.waitingTime)        doc.waitingTime        = payload.waitingTime;
+    if (payload.severitySupport)    doc.severitySupport    = payload.severitySupport;
+    if (payload.appointmentRequired !== undefined) doc.appointmentRequired = payload.appointmentRequired;
 
     const created = await Hospital.create(doc);
     return res.status(201).json({
@@ -355,6 +391,7 @@ const createHospital = async (req, res) => {
 const updateHospital = async (req, res) => {
   try {
     const { id } = req.params;
+    console.log(`DEBUG [updateHospital] ID: ${id}, Payload:`, req.body);
     const payload = parseHospitalPayload(req.body);
 
     const hospitalToUpdate = await Hospital.findById(id);
@@ -394,6 +431,14 @@ const updateHospital = async (req, res) => {
     if (payload.isVerified     !== undefined) updates.isVerified      = payload.isVerified;
     if (payload.treatments     !== undefined) updates.treatments      = payload.treatments;
     if (payload.tags           !== undefined) updates.tags            = payload.tags;
+
+    // Intelligence metadata updates
+    if (payload.treatmentSpecialty !== undefined) updates.treatmentSpecialty = payload.treatmentSpecialty;
+    if (payload.treatmentName      !== undefined) updates.treatmentName      = payload.treatmentName;
+    if (payload.supportFeatures    !== undefined) updates.supportFeatures    = payload.supportFeatures;
+    if (payload.waitingTime        !== undefined) updates.waitingTime        = payload.waitingTime;
+    if (payload.severitySupport    !== undefined) updates.severitySupport    = payload.severitySupport;
+    if (payload.appointmentRequired !== undefined) updates.appointmentRequired = payload.appointmentRequired;
 
     const updated = await Hospital.findByIdAndUpdate(id, updates, { new: true, runValidators: true });
     if (!updated) {

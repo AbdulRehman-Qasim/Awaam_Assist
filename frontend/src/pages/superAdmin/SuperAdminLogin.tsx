@@ -21,7 +21,10 @@ const SuperAdminLogin = () => {
         setIsLoading(true);
 
         try {
-            const response = await api.post("/admin/login", formData);
+            const response = await api.post("/admin/login", {
+                ...formData,
+                requiredRole: 'super_admin'
+            });
             
             if (response.data.success) {
                 const { token, admin } = response.data;

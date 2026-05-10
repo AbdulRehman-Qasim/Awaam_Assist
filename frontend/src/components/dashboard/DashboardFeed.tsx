@@ -46,8 +46,16 @@ const SECTION_CONFIG = {
   },
 };
 
+import { GenerateReportButton } from '../shared/GenerateReportButton';
+
 /* ─── Section Header ─── */
-const SectionHeader = ({ cfg, count }: { cfg: typeof SECTION_CONFIG[keyof typeof SECTION_CONFIG]; count: number }) => {
+const SectionHeader = ({ cfg, count, moduleKey, items, insights }: { 
+  cfg: typeof SECTION_CONFIG[keyof typeof SECTION_CONFIG]; 
+  count: number; 
+  moduleKey: string;
+  items: any[];
+  insights?: string;
+}) => {
   const Icon = cfg.icon;
   return (
     <div className="flex items-center justify-between">
@@ -64,14 +72,26 @@ const SectionHeader = ({ cfg, count }: { cfg: typeof SECTION_CONFIG[keyof typeof
         </div>
       </div>
 
-      {/* See All link */}
-      <Link
-        to={cfg.seeAllHref}
-        className={`inline-flex items-center gap-1.5 px-3 h-8 rounded-xl text-[10px] font-black uppercase tracking-widest ${cfg.accentBg} ${cfg.accentText} border border-current/10 hover:brightness-95 transition-all`}
-      >
-        See All
-        <ArrowRight className="w-3 h-3" />
-      </Link>
+      <div className="flex items-center gap-2">
+        {/* Generate Report Button */}
+        <GenerateReportButton 
+          module={moduleKey as any} 
+          recommendations={items}
+          insights={insights}
+          variant="outline" 
+          size="sm" 
+          className="h-8 rounded-xl text-[10px] font-black uppercase tracking-widest"
+        />
+
+        {/* See All link */}
+        <Link
+          to={cfg.seeAllHref}
+          className={`inline-flex items-center gap-1.5 px-3 h-8 rounded-xl text-[10px] font-black uppercase tracking-widest ${cfg.accentBg} ${cfg.accentText} border border-current/10 hover:brightness-95 transition-all`}
+        >
+          See All
+          <ArrowRight className="w-3 h-3" />
+        </Link>
+      </div>
     </div>
   );
 };
@@ -111,7 +131,13 @@ export const DashboardFeed: React.FC<DashboardFeedProps> = ({
 
     return (
       <section className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-700">
-        <SectionHeader cfg={cfg} count={items.length} />
+        <SectionHeader 
+          cfg={cfg} 
+          count={items.length} 
+          moduleKey={moduleKey} 
+          items={items}
+          insights={recommendations?.insights?.map(i => i.message).join(' • ')} 
+        />
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 items-start">
           {items.map((rec, index) => (

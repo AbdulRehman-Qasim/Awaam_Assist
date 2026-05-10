@@ -1,4 +1,5 @@
 import api from './schemeAPI';
+import userApi from './userAPI';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -13,6 +14,11 @@ export interface HospitalTreatment {
   estimatedWaitTime: string;
   doctorCount: number;
   isEmergency: boolean;
+  description: string;
+  supportFeatures: string[];
+  waitingTime: string;
+  severitySupport: 'Basic' | 'Moderate' | 'Critical' | 'Emergency';
+  appointmentRequired: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -47,6 +53,14 @@ export interface HospitalRecord {
   treatmentCost: number;
   availability: string;
   info: string;
+  
+  description: string;
+  supportFeatures: string[];
+  waitingTime: string;
+  severitySupport: 'Basic' | 'Moderate' | 'Critical' | 'Emergency';
+  appointmentRequired: boolean;
+  treatmentName: string;
+  treatmentSpecialty: string;
   // Enriched
   treatments: HospitalTreatment[];
   tags: string[];
@@ -112,11 +126,46 @@ export const hospitalPublicAPI = {
     const json = await res.json();
     return json.data ?? { cities: [], categories: [], specializations: [] };
   },
+
+  /** Book a new hospital appointment */
+  bookAppointment: async (appointmentData: any) => {
+    const response = await userApi.post('/api/healthcare/appointments', appointmentData);
+    return response.data;
+  },
+
+  /** Get current user's appointments */
+  getMyAppointments: async () => {
+    const response = await userApi.get('/api/healthcare/appointments/my');
+    return response.data;
+  },
 };
 
 // ── Admin API (authenticated, uses axios instance) ────────────────────────────
 
+export interface Appointment {
+  _id: string;
+  userId: string;
+  hospitalId: string;
+  hospitalName: string;
+  treatmentSpecialty: string;
+  fullName: string;
+  cnic: string;
+  email: string;
+  phone: string;
+  city: string;
+  appointmentDate: string;
+  appointmentTime: string;
+  appointmentType: string;
+  symptoms: string;
+  notes?: string;
+  estimatedCost: number;
+  status: 'pending' | 'accepted' | 'waiting' | 'rejected' | 'completed' | 'cancelled';
+  adminReason?: string;
+  createdAt: string;
+}
+
 export const hospitalAdminAPI = {
+  // ... (existing methods)
   getAllHospitals: async (params: Record<string, string> = {}) => {
     const response = await api.get('/hospital-admin/hospitals', { params });
     return response.data;
@@ -156,6 +205,29 @@ export const hospitalAdminAPI = {
 
   deleteTreatment: async (hospitalId: string, treatmentId: string) => {
     const response = await api.delete(`/hospital-admin/hospitals/${hospitalId}/treatments/${treatmentId}`);
+    return response.data;
+  },
+
+  // ── Appointment Management ──────────────────────────────────────────────────
+
+  getHospitalAppointments: async (hospitalId: string) => {
+    const response = await api.get(`/hospital-admin/appointments/${hospitalId}`);
+    return response.data;
+  },
+
+  updateAppointmentStatus: async (appointmentId: string, data: { status: string; adminReason?: string }) => {
+    // Both original and new production-grade endpoint supported
+    const response = await api.patch(`/hospital-admin/appointments/${appointmentId}/status`, data);
+    return response.data;
+  },
+
+  rejectAppointment: async (appointmentId: string, reason: string) => {
+    const response = await api.post('/appointment/reject', { appointmentId, reason });
+    return response.data;
+  },
+
+  getAppointmentDetails: async (appointmentId: string) => {
+    const response = await api.get(`/appointment/${appointmentId}`);
     return response.data;
   },
 };

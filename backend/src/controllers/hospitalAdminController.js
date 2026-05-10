@@ -29,7 +29,15 @@ const mapHospital = (doc) => ({
   treatmentCost: doc.treatmentCost || 0,
   availability:  doc.availability  || 'Available',
   info:          doc.info          || '',
-  // Enriched
+  // Enriched intelligence fields (root)
+  treatmentSpecialty: doc.treatmentSpecialty || doc.treatmentName || doc.specialization || doc.info || '',
+  treatmentName: doc.treatmentName || '',
+  description:   doc.description   || '',
+  supportFeatures: doc.supportFeatures || [],
+  waitingTime:   doc.waitingTime   || 'Immediate',
+  severitySupport: doc.severitySupport || 'Basic',
+  appointmentRequired: doc.appointmentRequired !== undefined ? doc.appointmentRequired : true,
+  // Meta
   treatments:   doc.treatments    || [],
   tags:         doc.tags          || [],
   rating:       doc.rating        || 0,
@@ -96,6 +104,7 @@ const createOwnHospital = async (req, res) => {
       website, contactNumber, email, address, description,
       hospitalImage, emergencyServices, bedCapacity,
       treatmentCost, availability, info,
+      supportFeatures, waitingTime, severitySupport, appointmentRequired, treatmentName, treatmentSpecialty
     } = req.body;
 
     const existingHospitals = await Hospital.countDocuments(
@@ -138,6 +147,13 @@ const createOwnHospital = async (req, res) => {
       treatmentCost:         Number(treatmentCost) || 0,
       availability:          availability          || 'Available',
       info:                  info                  || '',
+      description:           description           || '',
+      supportFeatures:       supportFeatures       || [],
+      waitingTime:           waitingTime           || 'Immediate',
+      severitySupport:       severitySupport       || 'Basic',
+      appointmentRequired:   appointmentRequired !== undefined ? Boolean(appointmentRequired) : true,
+      treatmentName:         treatmentName         || '',
+      treatmentSpecialty:    treatmentSpecialty    || treatmentName || '',
       createdByHospitalAdmin: req.hospitalAdmin._id,
     });
 
@@ -185,6 +201,13 @@ const updateOwnHospital = async (req, res) => {
       treatmentCost:     'treatmentCost',
       availability:      'availability',
       info:              'info',
+      description:       'description',
+      supportFeatures:   'supportFeatures',
+      waitingTime:       'waitingTime',
+      severitySupport:   'severitySupport',
+      appointmentRequired: 'appointmentRequired',
+      treatmentName:     'treatmentName',
+      treatmentSpecialty: 'treatmentSpecialty',
     };
 
     Object.entries(fields).forEach(([bodyKey, schemaKey]) => {
@@ -276,6 +299,12 @@ const addOwnTreatment = async (req, res) => {
       estimatedWaitTime: req.body.estimatedWaitTime || '',
       doctorCount:      Number(req.body.doctorCount) || 0,
       isEmergency:      Boolean(req.body.isEmergency),
+      // New fields
+      description:      req.body.description       || '',
+      supportFeatures:  req.body.supportFeatures    || [],
+      waitingTime:      req.body.waitingTime       || 'Immediate',
+      severitySupport:  req.body.severitySupport   || 'Basic',
+      appointmentRequired: req.body.appointmentRequired !== undefined ? Boolean(req.body.appointmentRequired) : true,
     };
 
     hospital.treatments.push(treatment);
@@ -318,7 +347,8 @@ const updateOwnTreatment = async (req, res) => {
     }
 
     ['treatmentName', 'specialization', 'treatmentCost', 'costRange',
-     'availability', 'requirements', 'estimatedWaitTime', 'doctorCount', 'isEmergency']
+     'availability', 'requirements', 'estimatedWaitTime', 'doctorCount', 'isEmergency',
+     'description', 'supportFeatures', 'waitingTime', 'severitySupport', 'appointmentRequired']
       .forEach((f) => { if (req.body[f] !== undefined) treatment[f] = req.body[f]; });
 
     const cheapest = hospital.getCheapestTreatment();

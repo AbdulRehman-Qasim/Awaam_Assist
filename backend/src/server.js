@@ -126,6 +126,15 @@ const {
   getAllFeedback
 } = require("./controllers/feedbackController");
 
+const {
+  bookAppointment,
+  getMyAppointments,
+  getHospitalAppointments,
+  getAppointmentById,
+  updateAppointmentStatus,
+  rejectAppointment
+} = require("./controllers/appointmentController");
+
 const superAdminRoutes = require('./modules/superAdmin/routes/superAdminRoutes');
 
 // Import scheme controllers
@@ -285,6 +294,11 @@ app.get("/api/feedback/user-history", userAuth, getUserFeedbackHistory);
 app.get("/api/feedback/analytics", adminAuthMiddleware, getFeedbackAnalytics);
 app.get("/api/feedback/all", adminAuthMiddleware, getAllFeedback);
 
+// Report routes
+const { generateReport, getReportHistory } = require("./controllers/reportController");
+app.post("/api/reports/generate", userAuth, generateReport);
+app.get("/api/reports/history", userAuth, getReportHistory);
+
 // Hospital admin authentication routes
 app.post("/hospital-admin/register", registerHospitalAdmin);
 app.post("/hospital-admin/login", loginHospitalAdmin);
@@ -302,13 +316,21 @@ app.get("/api/universities/discipline/:discipline", getUniversitiesByDiscipline)
 app.get("/api/universities", getAllUniversities);
 app.get("/api/universities/:id", getUniversityById);
 
-// Disciplines endpoint
+// Disciplines & Education Data
+const { getEducationOptions } = require("./controllers/educationDataController");
 app.get("/api/disciplines", getDisciplines);
+app.get("/api/education/options", getEducationOptions);
 
 // Hospital routes
+const { getHealthcareOptions } = require("./controllers/healthcareDataController");
 app.get("/api/hospitals", getAllHospitals);
 app.get("/api/hospitals/filters", getHospitalFilters);
 app.get("/api/hospitals/:id/website", getHospitalWebsite);
+app.get("/api/healthcare/options", getHealthcareOptions);
+
+// Hospital Appointment Routes
+app.post("/api/healthcare/appointments", userAuth, bookAppointment);
+app.get("/api/healthcare/appointments/my", userAuth, getMyAppointments);
 
 // AI Chatbot route
 app.post("/api/chat", async (req, res) => {
@@ -390,6 +412,17 @@ app.delete("/hospital-admin/hospitals/:id", adminAuthMiddleware, deleteHospital)
 app.post("/hospital-admin/hospitals/:id/treatments", adminAuthMiddleware, addTreatment);
 app.put("/hospital-admin/hospitals/:id/treatments/:treatmentId", adminAuthMiddleware, updateTreatment);
 app.delete("/hospital-admin/hospitals/:id/treatments/:treatmentId", adminAuthMiddleware, deleteTreatment);
+
+// Appointment Management for Hospital Admins
+app.get("/hospital-admin/appointments/:hospitalId", adminAuthMiddleware, getHospitalAppointments);
+app.get("/hospital-admin/appointments/details/:id", adminAuthMiddleware, getAppointmentById);
+app.patch("/hospital-admin/appointments/:id/status", adminAuthMiddleware, updateAppointmentStatus);
+
+// Production-grade Route Aliases (Requested by USER)
+app.get("/appointments/hospital/:hospitalId", adminAuthMiddleware, getHospitalAppointments);
+app.get("/appointment/:id", adminAuthMiddleware, getAppointmentById);
+app.post("/appointment/update-status", adminAuthMiddleware, updateAppointmentStatus);
+app.post("/appointment/reject", adminAuthMiddleware, rejectAppointment);
 
 // Company profile management routes
 app.get("/company/profile", getCompanyProfile);

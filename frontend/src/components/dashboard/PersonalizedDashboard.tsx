@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Sparkles, AlertCircle, MapPin, GraduationCap, ShieldCheck,
   HeartPulse, CheckCircle2, ChevronRight, BrainCircuit,
-  LayoutDashboard, Settings, Zap, Plus,
+  LayoutDashboard, Settings, Zap, Plus, History
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
@@ -21,6 +21,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { CORE_MODULES, CORE_MODULE_IDS, type CoreModuleId, type ProfileFieldDef } from "@/config/profileModules";
+import { ReportHistory } from "../shared/ReportHistory";
+import MyAppointments from "./MyAppointments";
+import { Calendar as CalendarIcon } from "lucide-react";
 
 const PersonalizedDashboard = () => {
   const [loadingProfile, setLoadingProfile] = useState(true);
@@ -361,38 +364,53 @@ const PersonalizedDashboard = () => {
               </div>
             </div>
 
-            {/* Profile details grid */}
-            <div className="p-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Profile details grid - Vertical & Premium */}
+            <div className="p-6 grid grid-cols-1 sm:grid-cols-3 gap-6 h-full min-h-[220px]">
               {[
                 {
                   label: "Education Level",
                   value: details?.education?.degree || "Not Set",
                   icon: GraduationCap,
+                  gradient: "from-blue-500/10 to-indigo-500/10",
                   iconColor: "text-blue-600",
-                  iconBg: "bg-blue-50",
+                  iconBg: "bg-blue-100",
                 },
                 {
                   label: "Your City",
                   value: details?.education?.city || "Not Set",
                   icon: MapPin,
+                  gradient: "from-emerald-500/10 to-teal-500/10",
                   iconColor: "text-emerald-600",
-                  iconBg: "bg-emerald-50",
+                  iconBg: "bg-emerald-100",
                 },
                 {
                   label: "Discipline",
-                  value: details?.education?.discipline || "Not Set",
+                  value: details?.education?.discipline || (details?.education?.preferredProgram ? `Interested in ${details.education.preferredProgram}` : "Not Set"),
                   icon: Zap,
+                  gradient: "from-violet-500/10 to-purple-500/10",
                   iconColor: "text-violet-600",
-                  iconBg: "bg-violet-50",
+                  iconBg: "bg-violet-100",
                 },
-              ].map(({ label, value, icon: Icon, iconColor, iconBg }) => (
-                <div key={label} className="flex items-center gap-3 p-4 rounded-xl bg-slate-50 border border-slate-100 group hover:border-slate-200 transition-all">
-                  <div className={`w-9 h-9 rounded-xl ${iconBg} flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform`}>
-                    <Icon className={`w-4 h-4 ${iconColor}`} />
+              ].map(({ label, value, icon: Icon, iconColor, iconBg, gradient }) => (
+                <div 
+                  key={label} 
+                  className={`relative flex flex-col items-center justify-center text-center p-6 rounded-[2rem] bg-gradient-to-br ${gradient} border border-white shadow-sm group hover:shadow-xl hover:-translate-y-1 transition-all duration-500`}
+                >
+                  {/* Decorative background circle */}
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-white/20 rounded-full -mr-8 -mt-8 blur-2xl group-hover:bg-white/40 transition-colors" />
+                  
+                  <div className={`w-16 h-16 rounded-2xl ${iconBg} flex items-center justify-center mb-4 shadow-inner group-hover:scale-110 transition-transform duration-500`}>
+                    <Icon className={`w-8 h-8 ${iconColor}`} />
                   </div>
+                  
                   <div>
-                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">{label}</div>
-                    <div className="text-sm font-black text-slate-900 mt-0.5">{value}</div>
+                    <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">{label}</div>
+                    <div className="text-lg font-black text-slate-900 leading-tight">{value}</div>
+                  </div>
+
+                  {/* Bottom indicator */}
+                  <div className="mt-4 w-12 h-1 rounded-full bg-white/50 overflow-hidden">
+                    <div className={`h-full w-2/3 ${iconBg.replace('bg-', 'bg-').replace('100', '500')} rounded-full`} />
                   </div>
                 </div>
               ))}
@@ -400,7 +418,36 @@ const PersonalizedDashboard = () => {
           </div>
         </div>
 
-        {/* Removed: Profile Ready / Context Needed card (deprecated) */}
+        {/* Report History Card */}
+        <div className="lg:col-span-4">
+          <div className="bg-white rounded-3xl border border-slate-100 shadow-sm h-full flex flex-col overflow-hidden">
+            <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/40 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <History className="w-4 h-4 text-primary" />
+                </div>
+                <h3 className="text-sm font-black text-slate-900 tracking-tight">Report History</h3>
+              </div>
+            </div>
+            
+            <div className="p-6 flex-1 overflow-y-auto max-h-[320px] scrollbar-hide">
+              <ReportHistory />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ═══════════════════════════════════
+           4. MY APPOINTMENTS
+      ═══════════════════════════════════ */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <CalendarIcon className="w-4 h-4 text-primary" />
+          <h2 className="text-xs font-black uppercase tracking-widest text-slate-500">My Appointments</h2>
+        </div>
+        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 sm:p-8">
+            <MyAppointments />
+        </div>
       </div>
 
       {/* ═══════════════════════════════════

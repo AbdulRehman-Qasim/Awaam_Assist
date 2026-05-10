@@ -1,6 +1,7 @@
 const bcrypt = require("bcryptjs");
 const Admin = require("../models/AdminSchema");
 const University = require("../models/UniversitySchema");
+const Hospital = require("../models/HospitalSchema");
 
 const parseCityProvinceFromAddress = (address = "") => {
   const [cityRaw, provinceRaw] = String(address).split(",");
@@ -91,6 +92,30 @@ const updateAdminSettingsProfile = async (req, res) => {
         },
         { new: true }
       );
+    }
+
+    // Keep hospital profile in sync for healthcare admins
+    if (admin.role === "hospital_admin") {
+      const parsed = parseCityProvinceFromAddress(admin.entity_address);
+      const hospitalUpdate = {
+        ...(admin.entity_name ? { 
+            hospitalName: admin.entity_name, 
+            'Hospital Name': admin.entity_name 
+        } : {}),
+        ...(admin.entity_contact ? { contactNumber: admin.entity_contact } : {}),
+        ...(admin.official_website ? { website: admin.official_website } : {}),
+        ...(parsed.city ? { City: parsed.city } : {}),
+        ...(parsed.province ? { Tehsil: parsed.province } : {}),
+        ...(admin.entity_address ? { address: admin.entity_address } : {}),
+      };
+
+      console.log(`Syncing hospital records for admin ${admin._id}:`, hospitalUpdate);
+      
+      const syncResult = await Hospital.updateMany(
+        { createdByHospitalAdmin: admin._id },
+        hospitalUpdate
+      );
+      console.log(`Sync result: ${syncResult.modifiedCount} records updated`);
     }
 
     return res.status(200).json({
