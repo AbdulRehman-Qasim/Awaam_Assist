@@ -43,7 +43,7 @@ import { ModuleFeedback } from "@/components/shared/ModuleFeedback";
 import { checkSchemeEligibility, getSchemeCategories, getSchemeProvinces, type Scheme } from "@/data/schemes";
 import { schemeAPI } from "@/services/schemeAPI";
 import { useEffect } from "react";
-import { GenerateReportButton } from "@/components/shared/GenerateReportButton";
+
 
 const SchemeDashboard = () => {
     const { toast } = useToast();
@@ -117,69 +117,127 @@ const SchemeDashboard = () => {
     const categories = getSchemeCategories();
     const provinces = getSchemeProvinces();
 
-    // Filter and sort schemes
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ELIGIBILITY FILTER PIPELINE  (order matters — applied sequentially)
+    // ═══════════════════════════════════════════════════════════════════════════
     const filteredSchemes = useMemo(() => {
-        let filtered = schemes;
+        let result = [...schemes];
 
-        // Search filter
-        if (searchQuery) {
-            filtered = filtered.filter(
-                (scheme) =>
-                    scheme.schemeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    scheme.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    scheme.department.toLowerCase().includes(searchQuery.toLowerCase())
+        // ── 0. Full-text search ────────────────────────────────────────────────
+        if (searchQuery.trim()) {
+            const q = searchQuery.toLowerCase();
+            result = result.filter(s =>
+                s.schemeName.toLowerCase().includes(q) ||
+                s.description.toLowerCase().includes(q) ||
+                s.department.toLowerCase().includes(q) ||
+                s.category.toLowerCase().includes(q)
             );
         }
 
-        // Category filter
-        if (selectedCategory !== "all") {
-            filtered = filtered.filter((scheme) => scheme.category === selectedCategory);
+        // ── RESOLVE ACTIVE FILTERS ─────────────────────────────────────────────
+        // Eligibility checker values take priority over filter bar values
+        const activeProvince =
+            eligibilityFilters.province !== "all" ? eligibilityFilters.province :
+            selectedProvince    !== "all"          ? selectedProvince            : null;
+
+        const activeCategory =
+            eligibilityFilters.category !== "all" ? eligibilityFilters.category :
+            selectedCategory    !== "all"          ? selectedCategory            : null;
+
+        const userIncome      = showEligibilityResults ? (parseFloat(eligibilityFilters.income) || 0) : null;
+        const userAge         = showEligibilityResults ? (parseInt(eligibilityFilters.age)       || 0) : null;
+        const userEmployment  = showEligibilityResults && eligibilityFilters.employmentStatus !== "all"
+                                ? eligibilityFilters.employmentStatus : null;
+        // 'gender' field now used as Target Beneficiary Category
+        const userBeneficiary = showEligibilityResults && eligibilityFilters.gender !== "all"
+                                ? eligibilityFilters.gender : null;
+
+        // ── STEP 1: PROVINCE ───────────────────────────────────────────────────
+        // STRICT equality — Federal NOT included unless explicitly selected
+        if (activeProvince) {
+            result = result.filter(s => s.province === activeProvince);
+            console.log(`[Pipeline:Province] "${activeProvince}" → ${result.length} schemes`);
         }
 
-        // Province filter - Show only schemes from selected province OR Federal schemes
-        if (selectedProvince !== "all") {
-            filtered = filtered.filter((scheme) => {
-                // Always include Federal schemes (available to all provinces)
-                if (scheme.province === "Federal") return true;
-                // Include schemes that exactly match the selected province
-                return scheme.province === selectedProvince;
+        // ── STEP 2: SCHEME CATEGORY ────────────────────────────────────────────
+        if (activeCategory) {
+            const needle = activeCategory.toLowerCase().trim();
+            result = result.filter(s => s.category.toLowerCase().trim() === needle);
+            console.log(`[Pipeline:Category] "${activeCategory}" → ${result.length} schemes`);
+        }
+
+        // ── STEP 3: INCOME ─────────────────────────────────────────────────────
+        if (userIncome !== null) {
+            result = result.filter(s => {
+                const min = s.eligibility?.income?.min ?? 0;
+                const max = s.eligibility?.income?.max ?? Infinity;
+                return userIncome >= min && userIncome <= max;
             });
+            console.log(`[Pipeline:Income] PKR ${userIncome} → ${result.length} schemes`);
         }
 
-        // Eligibility filter (if eligibility check was performed)
-        if (showEligibilityResults && eligibilityFilters.income && eligibilityFilters.age) {
-            const userProfile = {
-                income: parseFloat(eligibilityFilters.income) || 0,
-                age: parseInt(eligibilityFilters.age) || 0,
-                province: eligibilityFilters.province === "all" ? "Punjab" : eligibilityFilters.province,
-                city: eligibilityFilters.city || "Lahore",
-                category: eligibilityFilters.category === "all" ? "Student" : eligibilityFilters.category,
-                employmentStatus: eligibilityFilters.employmentStatus === "all" ? "Student" : eligibilityFilters.employmentStatus,
-                familySize: parseInt(eligibilityFilters.familySize) || 4,
-                gender: eligibilityFilters.gender === "all" ? undefined : eligibilityFilters.gender,
-                educationLevel: eligibilityFilters.educationLevel === "all" ? undefined : eligibilityFilters.educationLevel,
-            };
-
-            filtered = filtered
-                .map((scheme) => ({
-                    scheme,
-                    eligibility: checkSchemeEligibility(scheme, userProfile),
-                }))
-                .filter((item) => item.eligibility.isEligible)
-                .map((item) => item.scheme);
+        // ── STEP 4: AGE ────────────────────────────────────────────────────────
+        if (userAge !== null) {
+            result = result.filter(s => {
+                const min = s.eligibility?.age?.min ?? 0;
+                const max = s.eligibility?.age?.max ?? 150;
+                return userAge >= min && userAge <= max;
+            });
+            console.log(`[Pipeline:Age] Age ${userAge} → ${result.length} schemes`);
         }
 
-        // Sort
-        if (sortBy === "name") {
-            filtered.sort((a, b) => a.schemeName.localeCompare(b.schemeName));
+        // ── STEP 5: EMPLOYMENT STATUS (STRICT) ────────────────────────────────
+        // RULES:
+        //   • empty array  → scheme NOT eligible (scheme has restrictions, user must match)
+        //   • includes "Any" → pass all
+        //   • else          → EXACT match required (no fuzzy, no includes())
+        if (userEmployment) {
+            result = result.filter(s => {
+                const empList: string[] = s.eligibility?.employmentStatus || [];
+                if (empList.length === 0) return false;         // STRICT: empty = has restriction, no match
+                if (empList.includes("Any")) return true;       // scheme accepts any employment status
+                return empList.includes(userEmployment);        // EXACT match required
+            });
+            console.log(`[Pipeline:Employment] "${userEmployment}" → ${result.length} schemes`);
+        }
+
+        // ── STEP 6: TARGET BENEFICIARY CATEGORY ────────────────────────────────
+        // Uses scheme.eligibility.categories[] (e.g. ["Youth", "Low Income Family"])
+        // RULES:
+        //   • empty array  → scheme has no restriction, pass all
+        //   • else          → EXACT match: userBeneficiary MUST be in the array
+        if (userBeneficiary) {
+            result = result.filter(s => {
+                const cats: string[] = s.eligibility?.categories || [];
+                if (cats.length === 0) return true;             // no beneficiary restriction
+                return cats.includes(userBeneficiary);          // EXACT match required
+            });
+            console.log(`[Pipeline:Beneficiary] "${userBeneficiary}" → ${result.length} schemes`);
+        }
+
+        // ── STEP 7: SORT ───────────────────────────────────────────────────────
+        if (showEligibilityResults) {
+            // When eligibility check is active: sort by benefit amount desc (most valuable first)
+            result.sort((a, b) => (b.benefits?.financial?.amount || 0) - (a.benefits?.financial?.amount || 0));
+        } else if (sortBy === "name") {
+            result.sort((a, b) => a.schemeName.localeCompare(b.schemeName));
         } else if (sortBy === "benefit-high") {
-            filtered.sort((a, b) => b.benefits.financial.amount - a.benefits.financial.amount);
+            result.sort((a, b) => (b.benefits?.financial?.amount || 0) - (a.benefits?.financial?.amount || 0));
         } else if (sortBy === "benefit-low") {
-            filtered.sort((a, b) => a.benefits.financial.amount - b.benefits.financial.amount);
+            result.sort((a, b) => (a.benefits?.financial?.amount || 0) - (b.benefits?.financial?.amount || 0));
         }
 
-        return filtered;
+        console.log(`[Pipeline:Final] ${result.length} schemes | province:${activeProvince||"all"} category:${activeCategory||"all"} income:${userIncome??"–"} age:${userAge??"–"} employment:${userEmployment||"–"} beneficiary:${userBeneficiary||"–"}`);
+        return result;
+
     }, [schemes, searchQuery, selectedCategory, selectedProvince, sortBy, showEligibilityResults, eligibilityFilters]);
+
+
+
+
+
+
+
 
     // Handle eligibility check
     const handleEligibilityCheck = () => {
@@ -290,10 +348,8 @@ const SchemeDashboard = () => {
                                 {/* Stats */}
                                 <div className="flex flex-wrap items-center justify-center gap-8 mt-10">
                                     {[
-                                        { icon: Building2, value: `${schemes.length}+`, label: 'Active Schemes' },
-                                        { icon: Users,     value: '30M+',             label: 'Beneficiaries' },
-                                        { icon: DollarSign, value: '1T+ PKR',         label: 'Allocated' },
-                                        { icon: TrendingUp, value: `${categories.length}`,  label: 'Categories' },
+                                        { icon: Building2,  value: `${schemes.length}+`,      label: 'Active Schemes' },
+                                        { icon: TrendingUp, value: `20`,    label: 'Categories' },
                                     ].map(({ icon: Icon, value, label }) => (
                                         <div key={label} className="text-center">
                                             <div className="text-2xl font-black text-white">{value}</div>
@@ -392,11 +448,11 @@ const SchemeDashboard = () => {
                                                 <SelectItem value="all">All Provinces</SelectItem>
                                                 <SelectItem value="Punjab">Punjab</SelectItem>
                                                 <SelectItem value="Sindh">Sindh</SelectItem>
-                                                <SelectItem value="KPK">Khyber Pakhtunkhwa</SelectItem>
+                                                <SelectItem value="Khyber Pakhtunkhwa">Khyber Pakhtunkhwa</SelectItem>
                                                 <SelectItem value="Balochistan">Balochistan</SelectItem>
-                                                <SelectItem value="GB">Gilgit-Baltistan</SelectItem>
-                                                <SelectItem value="AJK">Azad Jammu & Kashmir</SelectItem>
-                                                <SelectItem value="ICT">Islamabad Capital Territory</SelectItem>
+                                                <SelectItem value="Gilgit-Baltistan">Gilgit-Baltistan</SelectItem>
+                                                <SelectItem value="Azad Jammu & Kashmir">Azad Jammu & Kashmir</SelectItem>
+                                                <SelectItem value="Islamabad Capital Territory">Islamabad Capital Territory</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
@@ -415,16 +471,26 @@ const SchemeDashboard = () => {
                                                 <SelectValue placeholder="Select Category" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="all">All Categories</SelectItem>
-                                                <SelectItem value="Student">Student</SelectItem>
-                                                <SelectItem value="Youth">Youth</SelectItem>
-                                                <SelectItem value="Farmer">Farmer</SelectItem>
-                                                <SelectItem value="Business Owner">Business Owner</SelectItem>
-                                                <SelectItem value="Entrepreneur">Entrepreneur</SelectItem>
-                                                <SelectItem value="Low Income Family">Low Income Family</SelectItem>
-                                                <SelectItem value="Daily Wage Worker">Daily Wage Worker</SelectItem>
-                                                <SelectItem value="Unemployed">Unemployed</SelectItem>
-                                                <SelectItem value="Woman">Woman</SelectItem>
+                                                <SelectItem value="Financial Assistance">Financial Assistance</SelectItem>
+                                                <SelectItem value="Healthcare">Healthcare</SelectItem>
+                                                <SelectItem value="Education">Education</SelectItem>
+                                                <SelectItem value="Housing">Housing</SelectItem>
+                                                <SelectItem value="Agriculture">Agriculture</SelectItem>
+                                                <SelectItem value="Employment">Employment</SelectItem>
+                                                <SelectItem value="Technology & Innovation">Technology &amp; Innovation</SelectItem>
+                                                <SelectItem value="Fisheries">Fisheries</SelectItem>
+                                                <SelectItem value="Livestock">Livestock</SelectItem>
+                                                <SelectItem value="Tourism">Tourism</SelectItem>
+                                                <SelectItem value="Women Empowerment">Women Empowerment</SelectItem>
+                                                <SelectItem value="Water & Sanitation">Water &amp; Sanitation</SelectItem>
+                                                <SelectItem value="Orphan Support">Orphan Support</SelectItem>
+                                                <SelectItem value="Disabled Persons">Disabled Persons</SelectItem>
+                                                <SelectItem value="Transportation">Transportation</SelectItem>
+                                                <SelectItem value="Industrial Development">Industrial Development</SelectItem>
+                                                <SelectItem value="Environment">Environment</SelectItem>
+                                                <SelectItem value="Elderly Care">Elderly Care</SelectItem>
+                                                <SelectItem value="Energy">Energy</SelectItem>
+                                                <SelectItem value="Sports">Sports</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
@@ -448,8 +514,11 @@ const SchemeDashboard = () => {
                                                 <SelectItem value="Unemployed">Unemployed</SelectItem>
                                                 <SelectItem value="Self-Employed">Self-Employed</SelectItem>
                                                 <SelectItem value="Student">Student</SelectItem>
-                                                <SelectItem value="Daily Wage Worker">Daily Wage Worker</SelectItem>
+                                                <SelectItem value="Freelancer">Freelancer</SelectItem>
                                                 <SelectItem value="Business Owner">Business Owner</SelectItem>
+                                                <SelectItem value="Farmer">Farmer</SelectItem>
+                                                <SelectItem value="Daily Wage Worker">Daily Wage Worker</SelectItem>
+                                                <SelectItem value="Retired">Retired</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
@@ -473,8 +542,8 @@ const SchemeDashboard = () => {
                                     </div>
 
                                     <div className="space-y-2">
-                                        <Label htmlFor="gender" className="text-sm font-medium">
-                                            Gender
+                                        <Label htmlFor="beneficiary" className="text-sm font-medium">
+                                            Target Beneficiary
                                         </Label>
                                         <Select
                                             value={eligibilityFilters.gender}
@@ -483,12 +552,28 @@ const SchemeDashboard = () => {
                                             }
                                         >
                                             <SelectTrigger className="h-11">
-                                                <SelectValue placeholder="Select Gender" />
+                                                <SelectValue placeholder="Select beneficiary type" />
                                             </SelectTrigger>
                                             <SelectContent>
                                                 <SelectItem value="all">Any</SelectItem>
+                                                <SelectItem value="Below Poverty Line">Below Poverty Line</SelectItem>
                                                 <SelectItem value="Male">Male</SelectItem>
                                                 <SelectItem value="Female">Female</SelectItem>
+                                                <SelectItem value="Youth">Youth</SelectItem>
+                                                <SelectItem value="Entrepreneur">Entrepreneur</SelectItem>
+                                                <SelectItem value="Student">Student</SelectItem>
+                                                <SelectItem value="Farmer">Farmer</SelectItem>
+                                                <SelectItem value="Disabled Persons">Disabled Persons</SelectItem>
+                                                <SelectItem value="Widow">Widow</SelectItem>
+                                                <SelectItem value="Senior Citizen">Senior Citizen</SelectItem>
+                                                <SelectItem value="Low Income Family">Low Income Family</SelectItem>
+                                                <SelectItem value="Business Owner">Business Owner</SelectItem>
+                                                <SelectItem value="Freelancer">Freelancer</SelectItem>
+                                                <SelectItem value="Skilled Worker">Skilled Worker</SelectItem>
+                                                <SelectItem value="Laborer">Laborer</SelectItem>
+                                                <SelectItem value="Daily Wage Worker">Daily Wage Worker</SelectItem>
+                                                <SelectItem value="Unemployed">Unemployed</SelectItem>
+                                                <SelectItem value="Woman">Woman</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
@@ -531,13 +616,23 @@ const SchemeDashboard = () => {
                                 </Button>
 
                                 {showEligibilityResults && (
-                                    <div className="mt-4 p-4 rounded-xl border" style={{ background: 'rgba(124,58,237,0.08)', borderColor: 'rgba(124,58,237,0.2)' }}>
-                                        <p className="text-sm text-center font-semibold" style={{ color: '#7c3aed' }}>
-                                            <CheckCircle2 className="inline h-4 w-4 mr-1" />
-                                            Showing {filteredSchemes.length} schemes matching your eligibility criteria
+                                    <div className="mt-4 p-4 rounded-xl border" style={{ background: filteredSchemes.length > 0 ? 'rgba(124,58,237,0.08)' : 'rgba(239,68,68,0.06)', borderColor: filteredSchemes.length > 0 ? 'rgba(124,58,237,0.2)' : 'rgba(239,68,68,0.2)' }}>
+                                        <p className="text-sm text-center font-semibold" style={{ color: filteredSchemes.length > 0 ? '#7c3aed' : '#dc2626' }}>
+                                            {filteredSchemes.length > 0 ? (
+                                                <>
+                                                    <CheckCircle2 className="inline h-4 w-4 mr-1" />
+                                                    {`Showing ${filteredSchemes.length} highly relevant${eligibilityFilters.category !== "all" ? ` ${eligibilityFilters.category.toLowerCase()}` : ""} scheme${filteredSchemes.length !== 1 ? "s" : ""} matching your profile`}
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <XCircle className="inline h-4 w-4 mr-1" />
+                                                    No schemes matched your exact criteria — try adjusting your income, age, or category
+                                                </>
+                                            )}
                                         </p>
                                     </div>
                                 )}
+
                             </CardContent>
                         </div>
                     </Card>
@@ -559,54 +654,6 @@ const SchemeDashboard = () => {
                             </div>
 
                             <div className="flex items-center gap-3 flex-wrap">
-                                {showEligibilityResults && (
-                                  <GenerateReportButton 
-                                    module="schemes" 
-                                    recommendations={filteredSchemes}
-                                    insights={`Based on your eligibility profile (Income: PKR ${eligibilityFilters.income}, Age: ${eligibilityFilters.age}, Province: ${eligibilityFilters.province}), we've identified ${filteredSchemes.length} matching government programs.`}
-                                    variant="secondary" 
-                                    className="h-9 rounded-xl font-bold text-xs" 
-                                  />
-                                )}
-                                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                                    <SelectTrigger className="w-[180px] h-9">
-                                        <SelectValue placeholder="Category" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="all">All Categories</SelectItem>
-                                        {categories.map((cat) => (
-                                            <SelectItem key={cat} value={cat}>
-                                                {cat}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-
-                                <Select value={selectedProvince} onValueChange={setSelectedProvince}>
-                                    <SelectTrigger className="w-[180px] h-9">
-                                        <SelectValue placeholder="Province" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="all">All Provinces</SelectItem>
-                                        {provinces.map((prov) => (
-                                            <SelectItem key={prov} value={prov}>
-                                                {prov}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-
-                                <Select value={sortBy} onValueChange={setSortBy}>
-                                    <SelectTrigger className="w-[180px] h-9">
-                                        <SelectValue placeholder="Sort by" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="relevance">Relevance</SelectItem>
-                                        <SelectItem value="name">Name (A-Z)</SelectItem>
-                                        <SelectItem value="benefit-high">Benefit (High to Low)</SelectItem>
-                                        <SelectItem value="benefit-low">Benefit (Low to High)</SelectItem>
-                                    </SelectContent>
-                                </Select>
                             </div>
                         </div>
 

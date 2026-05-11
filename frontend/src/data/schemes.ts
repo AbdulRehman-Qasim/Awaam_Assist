@@ -470,7 +470,7 @@ export const sampleSchemes: Scheme[] = [
     }
 ];
 
-// Helper function to filter schemes based on eligibility
+// ── INTELLIGENT ELIGIBILITY ENGINE ───────────────────────────────────────────
 export const checkSchemeEligibility = (
     scheme: Scheme,
     userProfile: {
@@ -485,75 +485,113 @@ export const checkSchemeEligibility = (
         educationLevel?: string;
     }
 ): { isEligible: boolean; eligibilityPercentage: number; reasons: string[] } => {
-    let score = 0;
-    let maxScore = 0;
     const reasons: string[] = [];
 
-    // Income check (20 points)
+    // ── HARD FAILS (any failure = instantly ineligible) ──────────────────────
+
+    // 1. Income — must be within range
     if (scheme.eligibility.income) {
-        maxScore += 20;
-        if (
-            userProfile.income >= scheme.eligibility.income.min &&
-            userProfile.income <= scheme.eligibility.income.max
-        ) {
-            score += 20;
-        } else {
-            reasons.push(`Income must be between PKR ${scheme.eligibility.income.min.toLocaleString()} and PKR ${scheme.eligibility.income.max.toLocaleString()}`);
+        const { min, max } = scheme.eligibility.income;
+        if (userProfile.income < min || userProfile.income > max) {
+            reasons.push(`Income must be between PKR ${min.toLocaleString()} and PKR ${max.toLocaleString()}`);
+            return { isEligible: false, eligibilityPercentage: 0, reasons };
         }
     }
 
-    // Age check (20 points)
+    // 2. Age — must be within range
     if (scheme.eligibility.age) {
-        maxScore += 20;
-        if (
-            userProfile.age >= scheme.eligibility.age.min &&
-            userProfile.age <= scheme.eligibility.age.max
-        ) {
-            score += 20;
-        } else {
-            reasons.push(`Age must be between ${scheme.eligibility.age.min} and ${scheme.eligibility.age.max} years`);
+        const { min, max } = scheme.eligibility.age;
+        if (userProfile.age < min || userProfile.age > max) {
+            reasons.push(`Age must be between ${min} and ${max} years`);
+            return { isEligible: false, eligibilityPercentage: 0, reasons };
         }
     }
 
-    // Province check (15 points)
-    if (scheme.province !== "Federal") {
-        maxScore += 15;
-        if (userProfile.province === scheme.province) {
-            score += 15;
-        } else {
+    // 3. Gender — scheme-specified gender requirement (hard fail)
+    if (scheme.eligibility.gender && userProfile.gender) {
+        if (
+            scheme.eligibility.gender !== "Any" &&
+            scheme.eligibility.gender.toLowerCase() !== userProfile.gender.toLowerCase()
+        ) {
+            reasons.push(`This scheme is only for ${scheme.eligibility.gender}`);
+            return { isEligible: false, eligibilityPercentage: 0, reasons };
+        }
+    }
+
+    // 4. Province — non-Federal schemes are restricted (hard fail)
+    if (scheme.province !== "Federal" && userProfile.province !== "Federal") {
+        if (scheme.province !== userProfile.province) {
             reasons.push(`Only available in ${scheme.province}`);
-        }
-    } else {
-        // Federal schemes are available everywhere
-        maxScore += 15;
-        score += 15;
-    }
-
-    // Category check (25 points)
-    if (scheme.eligibility.categories.length > 0) {
-        maxScore += 25;
-        if (scheme.eligibility.categories.includes(userProfile.category)) {
-            score += 25;
-        } else {
-            reasons.push(`Category must be one of: ${scheme.eligibility.categories.join(", ")}`);
+            return { isEligible: false, eligibilityPercentage: 0, reasons };
         }
     }
 
-    // Employment status check (20 points)
-    if (scheme.eligibility.employmentStatus.length > 0) {
-        maxScore += 20;
+    // ── SOFT SCORING (optional criteria — raise relevance score) ─────────────
+    let softScore = 0;
+    let softMax = 0;
+
+    // 5. Eligibility categories — user demographic category (Farmer, Student, etc.)
+    //    "Any" user category = wildcard (matches all schemes)
+    if (scheme.eligibility.categories && scheme.eligibility.categories.length > 0) {
+        softMax += 40;
         if (
-            scheme.eligibility.employmentStatus.includes(userProfile.employmentStatus) ||
-            scheme.eligibility.employmentStatus.includes("Any")
+            userProfile.category === "Any" ||
+            scheme.eligibility.categories.includes(userProfile.category) ||
+            scheme.eligibility.categories.includes("Any")
         ) {
-            score += 20;
+            softScore += 40;
         } else {
-            reasons.push(`Employment status must be: ${scheme.eligibility.employmentStatus.join(" or ")}`);
+            // Partial credit: check for semantic overlap
+            const lowerUserCat = userProfile.category.toLowerCase();
+            const hasPartialMatch = scheme.eligibility.categories.some(
+                (c) => c.toLowerCase().includes(lowerUserCat) || lowerUserCat.includes(c.toLowerCase())
+            );
+            if (hasPartialMatch) softScore += 20;
+            else reasons.push(`Prefer: ${scheme.eligibility.categories.join(", ")}`);
         }
     }
 
-    const eligibilityPercentage = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
-    const isEligible = eligibilityPercentage >= 70; // 70% threshold
+    // 6. Employment status
+    if (scheme.eligibility.employmentStatus && scheme.eligibility.employmentStatus.length > 0) {
+        softMax += 30;
+        if (
+            userProfile.employmentStatus === "Any" ||
+            scheme.eligibility.employmentStatus.includes("Any") ||
+            scheme.eligibility.employmentStatus.includes(userProfile.employmentStatus)
+        ) {
+            softScore += 30;
+        } else {
+            reasons.push(`Preferred employment: ${scheme.eligibility.employmentStatus.join(" or ")}`);
+        }
+    }
+
+    // 7. Education level (optional)
+    if (scheme.eligibility.educationLevel && scheme.eligibility.educationLevel.length > 0 && userProfile.educationLevel) {
+        softMax += 15;
+        if (scheme.eligibility.educationLevel.includes(userProfile.educationLevel)) {
+            softScore += 15;
+        }
+    }
+
+    // 8. Family size (optional)
+    if (scheme.eligibility.familySize && userProfile.familySize != null) {
+        softMax += 15;
+        const { min, max } = scheme.eligibility.familySize;
+        if (userProfile.familySize >= min && userProfile.familySize <= max) {
+            softScore += 15;
+        }
+    }
+
+    // ── CALCULATE FINAL SCORE ─────────────────────────────────────────────────
+    // Hard criteria already passed. Soft score determines relevance.
+    // If no soft criteria exist, scheme is 100% eligible (it only had hard checks).
+    const eligibilityPercentage = softMax > 0
+        ? Math.round((softScore / softMax) * 100)
+        : 100;
+
+    // Threshold: must score at least 40% on soft criteria to be shown
+    // (This allows schemes with "Any" employment/category to always appear)
+    const isEligible = softMax === 0 || eligibilityPercentage >= 40;
 
     return {
         isEligible,
@@ -561,6 +599,7 @@ export const checkSchemeEligibility = (
         reasons: isEligible ? [] : reasons,
     };
 };
+
 
 // Get unique categories
 export const getSchemeCategories = (): string[] => {
