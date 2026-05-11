@@ -36,6 +36,8 @@ interface University {
   degree: string;
   discipline: string;
   fee: number;
+  semesterFee?: number;
+  feeType?: string;
   merit: number;
   ranking: number;
   status: number;
@@ -72,7 +74,9 @@ const loadUniversitiesData = async () => {
       province: uni.province,
       degree: uni.degree,
       discipline: uni.discipline,
-      fee: uni.fee,
+      fee: uni.fee || 0,
+      semesterFee: uni.semesterFee || 0,
+      feeType: uni.feeType || 'Annual Fee',
       merit: uni.merit,
       ranking: uni.ranking,
       status: uni.status,
@@ -314,6 +318,16 @@ const UniversityDetailModal = ({
 }: UniversityDetailModalProps) => {
   if (!university) return null;
 
+  const getDeadlineText = () => {
+    if (university.deadline) return university.deadline;
+    if (university.status === 1 || university.status === 'active' || university.status === 'approved' || (typeof university.status === 'string' && university.status.toLowerCase() === 'active')) {
+      return "Open Until Filled";
+    }
+    return "Not Announced Yet";
+  };
+
+  const addressText = university.map?.address || `${university.city || ''}, ${university.province || ''}`.replace(/^, |, $/g, '') || "Location not specified";
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-0">
@@ -375,8 +389,8 @@ const UniversityDetailModal = ({
             />
             <DetailStatCard
               icon={GraduationCap}
-              label="Annual Fee"
-              value={`PKR ${university.fee.toLocaleString()}`}
+              label={(university.feeType === "Semester Fee" || university.semesterFee > 0) ? "Semester Fee" : "Annual Fee"}
+              value={`PKR ${(university.semesterFee || university.fee || 0).toLocaleString()}`}
             />
             <DetailStatCard
               icon={MapPin}
@@ -414,7 +428,7 @@ const UniversityDetailModal = ({
               <div>
                 <span className="text-sm text-muted-foreground">Deadline</span>
                 <p className="font-medium text-foreground">
-                  {university.deadline || "TBA"}
+                  {getDeadlineText()}
                 </p>
               </div>
             </div>
@@ -476,7 +490,7 @@ const UniversityDetailModal = ({
               <h3 className="font-semibold text-foreground mb-3">Address</h3>
               <div className="flex items-start gap-2 text-sm text-muted-foreground">
                 <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0 text-secondary" />
-                <span>{university.map.address}</span>
+                <span>{addressText}</span>
               </div>
             </div>
           </div>

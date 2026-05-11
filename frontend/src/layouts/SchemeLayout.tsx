@@ -41,7 +41,7 @@ const SchemeLayout = () => {
                 setUserName(name);
 
                 const roleFromData = userData.role || parsed.userType || 'Citizen';
-                setUserRole(roleFromData);
+                setUserRole(roleFromData === 'student' ? 'Verified User' : roleFromData);
             } catch (error) {
                 console.error('Error reading stored user:', error);
                 setUserName('Citizen');

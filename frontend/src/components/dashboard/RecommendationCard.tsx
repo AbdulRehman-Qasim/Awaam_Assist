@@ -48,7 +48,8 @@ const MatchRing = ({ pct, color }: { pct: number; color: string }) => {
 };
 
 /* ─── Priority Label ─── */
-const getPriorityConfig = (priorityLevel: string, relevanceLevel: string) => {
+const getPriorityConfig = (priorityLevel: string, relevanceLevel: string, dynamicLabel?: string) => {
+  if (dynamicLabel) return { label: dynamicLabel, bg: 'bg-indigo-600', text: 'text-white', dot: 'bg-indigo-300' };
   if (priorityLevel === 'Local')   return { label: 'Top Priority',  bg: 'bg-blue-600', text: 'text-white', dot: 'bg-blue-300' };
   if (priorityLevel === 'Nearby')  return { label: 'Regional',      bg: 'bg-violet-600', text: 'text-white', dot: 'bg-violet-300' };
   if (relevanceLevel === 'High')   return { label: 'High Match',    bg: 'bg-emerald-600', text: 'text-white', dot: 'bg-emerald-300' };
@@ -92,8 +93,12 @@ export const RecommendationCard: React.FC<RecommendationCardProps> = ({
   } = recommendation || {};
 
   const city    = details.city || details.City || details.location || "";
-  const priority = getPriorityConfig(priorityLevel, relevanceLevel);
+  const dynamicLabel = tags && tags.length > 0 ? tags[0] : undefined;
+  const priority = getPriorityConfig(priorityLevel, relevanceLevel, dynamicLabel);
   const ringColor = getRingColor(matchPercentage);
+
+  // We already used tags[0] for the priority pill, so don't show it twice
+  const displayTags = tags.slice(1);
 
   if (isHidden) return null;
 
@@ -103,15 +108,15 @@ export const RecommendationCard: React.FC<RecommendationCardProps> = ({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95 }}
       viewport={{ once: true }}
-      className="self-start"
+      className="self-start h-full"
     >
-      <div className="group relative bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl hover:border-slate-200 hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col">
+      <div className="group relative bg-white/80 backdrop-blur-md rounded-[1.5rem] border border-slate-100/60 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_8px_30px_-4px_rgba(0,0,0,0.1)] hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col h-full">
 
         {/* ── Top gradient accent bar ── */}
-        <div className={`h-1 w-full bg-gradient-to-r ${getGradientBar(matchPercentage)}`} />
+        <div className={`h-1.5 w-full bg-gradient-to-r ${getGradientBar(matchPercentage)} opacity-90`} />
 
         {/* ── Priority + Rank row ── */}
-        <div className="flex items-center justify-between px-5 pt-4 pb-0">
+        <div className="flex items-center justify-between px-6 pt-5 pb-0">
           <div className="flex items-center gap-2">
             {/* Priority pill */}
             <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${priority.bg} ${priority.text}`}>
@@ -192,13 +197,60 @@ export const RecommendationCard: React.FC<RecommendationCardProps> = ({
                   {city}
                 </div>
               )}
-              {tags.slice(0, 2).map((tag, i) => <SmartBadge key={i} label={tag} />)}
+              {displayTags.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {displayTags.map((tag: string, i: number) => (
+                    <span key={i} className="px-2 py-0.5 rounded-md bg-slate-100/50 text-slate-600 text-[9px] font-bold tracking-wide uppercase border border-slate-200/50">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
           {/* Match ring */}
           <MatchRing pct={matchPercentage} color={ringColor} />
         </div>
+
+        {/* ── Programs List (if university has nested programs) ── */}
+        {details.programs && details.programs.length > 0 && type === 'university' && (
+          <div className="px-5 pb-3">
+            <div className="flex flex-col gap-1.5 mt-1 border-t border-slate-100 pt-3">
+              {details.programs.slice(0, 3).map((prog: any, i: number) => (
+                <div key={i} className="flex items-center justify-between bg-slate-50 border border-slate-100/60 rounded-lg p-2 transition-colors hover:border-slate-200">
+                  <div className="flex flex-col min-w-0 pr-3">
+                    <span className="text-[11px] font-black text-slate-800 leading-tight truncate">
+                      {prog.discipline}
+                    </span>
+                    <span className="text-[9px] font-bold text-slate-400">
+                      {prog.degree}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 text-right flex-shrink-0">
+                    <div className="flex flex-col items-end">
+                      <span className="text-[10px] font-black text-primary leading-none">{prog.programScore}%</span>
+                      <span className="text-[8px] font-bold text-slate-400">Merit {prog.merit}%</span>
+                    </div>
+                    {prog.fee > 0 || prog.semesterFee > 0 ? (
+                      <div className="flex flex-col items-end border-l border-slate-200 pl-3">
+                        <span className="text-[10px] font-black text-slate-700 leading-none">Rs. {(prog.fee || prog.semesterFee).toLocaleString()}</span>
+                        <span className="text-[8px] font-bold text-slate-400">{prog.fee ? 'Annual' : 'Semester'}</span>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              ))}
+              {details.programs.length > 3 && (
+                <div className="text-center mt-1">
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                    + {details.programs.length - 3} more programs available
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* ── Divider ── */}
         <div className="mx-5 border-t border-slate-50" />
@@ -298,7 +350,7 @@ export const RecommendationCard: React.FC<RecommendationCardProps> = ({
           {/* View Details CTA */}
           <button
             onClick={onAction}
-            className="w-full h-10 rounded-xl text-white font-black text-xs flex items-center justify-center gap-2 group/btn transition-all active:scale-[0.98] shadow-md"
+            className="w-full h-11 mt-1 rounded-xl text-white font-black text-[11px] uppercase tracking-[0.1em] flex items-center justify-center gap-2.5 group/btn transition-all duration-300 active:scale-[0.98] hover:shadow-xl"
             style={{
               background: matchPercentage >= 85
                 ? 'linear-gradient(135deg, #10b981, #059669)'
@@ -312,8 +364,10 @@ export const RecommendationCard: React.FC<RecommendationCardProps> = ({
                 : '0 4px 14px rgba(15,23,42,0.20)',
             }}
           >
-            View Details
-            <ArrowUpRight className="w-3.5 h-3.5 group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5 transition-transform" />
+            <span>View Details</span>
+            <div className="bg-white/20 rounded-md p-0.5 group-hover/btn:bg-white/30 transition-all duration-300 group-hover/btn:translate-x-1 group-hover/btn:-translate-y-1">
+              <ArrowUpRight className="w-3.5 h-3.5" />
+            </div>
           </button>
         </div>
       </div>

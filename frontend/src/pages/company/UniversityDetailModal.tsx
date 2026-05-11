@@ -47,6 +47,16 @@ export const UniversityDetailModal = ({
 }: UniversityDetailModalProps) => {
   if (!university) return null;
 
+  const getDeadlineText = () => {
+    if (university.deadline) return university.deadline;
+    if (university.status === 1 || university.status === 'active' || university.status === 'approved') {
+      return "Open Until Filled";
+    }
+    return "Not Announced Yet";
+  };
+
+  const addressText = university.map?.address || `${university.city || ''}, ${university.province || ''}`.replace(/^, |, $/g, '') || "Location not specified";
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-0">
@@ -94,7 +104,7 @@ export const UniversityDetailModal = ({
               <Badge
                 variant={university.admission === "Open" ? "success" : "muted"}
               >
-                Admissions {university.admission}
+                Admissions {university.admission || 'Closed'}
               </Badge>
             </div>
             <h2 className="text-2xl font-bold text-foreground">
@@ -109,22 +119,22 @@ export const UniversityDetailModal = ({
             <StatCard
               icon={TrendingUp}
               label="Merit Required"
-              value={`${university.merit}%`}
+              value={`${university.merit || 0}%`}
             />
             <StatCard
               icon={GraduationCap}
-              label={university.semesterFee ? "Semester Fee" : "Annual Fee"}
+              label={(university.feeType === "Semester Fee" || university.semesterFee > 0) ? "Semester Fee" : "Annual Fee"}
               value={`PKR ${(university.semesterFee || university.fee || 0).toLocaleString()}`}
             />
             <StatCard
               icon={MapPin}
               label="Location"
-              value={university.city}
+              value={university.city || 'Unknown'}
             />
             <StatCard
               icon={Calendar}
               label="Deadline"
-              value={university.deadline || "TBA"}
+              value={getDeadlineText()}
             />
           </div>
 
@@ -151,7 +161,13 @@ export const UniversityDetailModal = ({
               <div>
                 <span className="text-sm text-muted-foreground">Status</span>
                 <p className="font-medium text-foreground">
-                  {university.status === 1 ? "Active" : "Inactive"}
+                  {university.status === 1 || university.status === 'active' ? "Active" : "Inactive"}
+                </p>
+              </div>
+              <div>
+                <span className="text-sm text-muted-foreground">Deadline</span>
+                <p className="font-medium text-foreground">
+                  {getDeadlineText()}
                 </p>
               </div>
             </div>
@@ -213,7 +229,7 @@ export const UniversityDetailModal = ({
               <h3 className="font-semibold text-foreground mb-3">Address</h3>
               <div className="flex items-start gap-2 text-sm text-muted-foreground">
                 <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0 text-secondary" />
-                <span>{university.map.address}</span>
+                <span>{addressText}</span>
               </div>
             </div>
           </div>

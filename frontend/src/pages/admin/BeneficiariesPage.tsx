@@ -64,7 +64,7 @@ const BeneficiariesPage = () => {
             email: "m.hassan@email.com",
             phone: "+92-333-3456789",
             city: "Peshawar",
-            province: "KPK",
+            province: "Khyber Pakhtunkhwa",
             scheme: "Sehat Sahulat Program",
             status: "Pending",
             amountReceived: 0,

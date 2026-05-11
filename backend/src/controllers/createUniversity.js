@@ -50,35 +50,63 @@ const createUniversity = async (req, res) => {
       });
     }
 
-    // Ensure unique incremental key
-    if (data.key === undefined) {
-      const lastDoc = await University.findOne().sort({ key: -1 }).select('key').lean();
-      data.key = lastDoc && typeof lastDoc.key === 'number' ? lastDoc.key + 1 : 0;
-      console.log("ℹ️ Assigned key:", data.key);
+    // Find existing university by title and city
+    let university = await University.findOne({
+      title: { $regex: new RegExp(`^${data.title}$`, 'i') },
+      city: { $regex: new RegExp(`^${data.city}$`, 'i') }
+    });
+
+    if (!university) {
+      // Auto-approve if created by an authorized admin
+      data.status = 'approved';
+
+      // Ensure an id string (frontend may already send)
+      if (!data.id) {
+        data.id = `pk${Date.now()}`; // simple fallback id
+      }
+
+      // Set owner if created by an admin
+      if (req.admin) {
+        data.createdByHospitalAdmin = req.admin._id || req.admin.id;
+      }
+
+      university = await University.create(data);
+      console.log("✅ Saved base university in MongoDB with _id:", university._id?.toString());
+    } else {
+      console.log("ℹ️ University already exists, attaching program instead of duplicating:", university._id?.toString());
     }
 
-    // Auto-approve if created by an authorized admin
-    data.status = 'approved';
+    // Now handle the discipline/program part
+    if (data.discipline && data.discipline.toLowerCase() !== 'general' && data.discipline.trim() !== '') {
+      const Program = require('../models/ProgramSchema');
+      
+      const programData = {
+        universityId: university._id,
+        discipline: data.discipline,
+        degree: data.degree || 'N/A',
+        merit: data.merit || 0,
+        fee: data.fee || 0,
+        semesterFee: data.semesterFee || 0,
+        feeType: data.feeType || 'Annual Fee',
+        description: data.description || '',
+        deadline: data.deadline || '',
+        status: 'active'
+      };
 
-    // Ensure an id string (frontend may already send)
-    if (!data.id) {
-      data.id = `pk${Date.now()}`; // simple fallback id
-      console.log("ℹ️ Generated id:", data.id);
+      await Program.findOneAndUpdate(
+        { universityId: university._id, discipline: data.discipline, degree: data.degree || 'N/A' },
+        programData,
+        { upsert: true, new: true }
+      );
+      console.log("✅ Saved program for university");
     }
 
-    // Set owner if created by an admin
-    if (req.admin) {
-      data.createdByHospitalAdmin = req.admin._id || req.admin.id;
-    }
-
-    const newUni = await University.create(data);
-    console.log("✅ Saved university in MongoDB with _id:", newUni._id?.toString());
-    return res.status(201).json({ success: true, university: newUni });
+    return res.status(201).json({ success: true, university });
   } catch (error) {
-    console.error('Error creating university:', error);
+    console.error('Error creating university/program:', error);
     return res.status(500).json({
       success: false,
-      message: 'Server error while creating university',
+      message: 'Server error while creating university/program',
       error: error.message,
       stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });

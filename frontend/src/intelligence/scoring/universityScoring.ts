@@ -1,151 +1,172 @@
 import { UserProfileContext, RecommendationResult } from "../types";
-import { weightedAverage, getRelevanceLevel, NEARBY_CITIES, getTieBreaker } from "../utils/scoringUtils";
+import { getRelevanceLevel, getTieBreaker } from "../utils/scoringUtils";
+
+const SPECIALIZATION_MAP: Record<string, string[]> = {
+  "iot": ["ai", "embedded", "computer", "data science", "robotics", "software", "mechatronics"],
+  "ai": ["data science", "machine learning", "computer science", "software", "artificial intelligence"],
+  "cybersecurity": ["information security", "computer science", "networks", "software", "security"],
+  "data science": ["ai", "machine learning", "computer science", "statistics", "software", "data"],
+  "robotics": ["mechatronics", "electrical", "mechanical", "computer", "ai", "robot"],
+  "web development": ["software", "computer science", "it", "cs"],
+  "app development": ["software", "computer science", "it", "cs"],
+};
+
+const CAREER_GOAL_MAP: Record<string, string[]> = {
+  "financial analyst": ["finance", "accounting", "economics", "business analytics", "bba", "mba", "commerce"],
+  "software engineer": ["software", "computer science", "it", "cs", "computing", "se"],
+  "doctor": ["medicine", "mbbs", "bds", "surgery", "medical", "health"],
+  "civil engineer": ["civil", "construction", "architecture"],
+  "data scientist": ["data science", "ai", "computer science", "statistics"],
+  "manager": ["bba", "mba", "management", "business", "administration"],
+};
+
+const FEE_RANGE_MAP: Record<string, {min: number, max: number}> = {
+  "Under 50k":    { min: 0,      max: 50000  },
+  "50k-100k":     { min: 50000,  max: 100000 },
+  "100k-200k":    { min: 100000, max: 200000 },
+  "Above 200k":   { min: 200000, max: Infinity },
+};
+
+const getEffectiveFee = (uni: any) => {
+  if (uni.annualFee && uni.annualFee > 0) return uni.annualFee;
+  if (uni.semesterFee && uni.semesterFee > 0) return uni.semesterFee * 2;
+  if (uni.fee && uni.fee > 0) return uni.fee;
+  return 0;
+};
 
 export const calculateUniversityScore = (
   university: any,
   user: UserProfileContext
 ): RecommendationResult | null => {
-  if (!university || typeof university !== 'object') return null;
-  const reasons: string[] = [];
-  const tags: string[] = [];
-  
-  const userCity = (user.location?.city || user.education?.city || '').toLowerCase();
-  const userProvince = (user.location?.province || '').toLowerCase();
-  const uniCity = (university.city || university.City || '').toLowerCase();
-  const uniProvince = (university.province || university.Province || '').toLowerCase();
-  
-  // UNIQUE ENTITY KEY: Institution Name + City ensures campuses are treated independently
-  const entityId = `${university.title}_${uniCity}`.toUpperCase().replace(/\s+/g, '_');
-  const uniId = String(university._id || entityId);
-
-  // 1. LOCATION RELEVANCE (40%) - STRONGEST PRIORITY
-  let locationScore = 0.15; 
-  let locationLabel = "National Recommendation";
-  let priorityLevel: 'Local' | 'Nearby' | 'Province' | 'National' = 'National';
-
-  if (userCity && uniCity === userCity) {
-    locationScore = 1.0; 
-    locationLabel = "In your city";
-    priorityLevel = 'Local';
-    reasons.push(`Perfectly located within ${university.city}`);
-    tags.push("Top Priority");
-  } else if (userCity && NEARBY_CITIES[userCity]?.includes(uniCity)) {
-    locationScore = 0.85; 
-    locationLabel = "Nearby City";
-    priorityLevel = 'Nearby';
-    reasons.push(`Conveniently close to ${user.location?.city}`);
-    tags.push("Regional Match");
-  } else if (userProvince && uniProvince === userProvince) {
-    locationScore = 0.45; 
-    locationLabel = "In your province";
-    priorityLevel = 'Province';
-    reasons.push(`Located within ${university.province}`);
+  if (!university.programs || !Array.isArray(university.programs) || university.programs.length === 0) {
+    return null;
   }
 
-  // 2. ACADEMIC MATCH (30%) - DEGREE + MERIT
-  let educationScore = 0.5;
-  if (user.education?.degree) {
-    const userDegree = user.education.degree.toLowerCase();
-    const uniDegree = (university.degree || '').toLowerCase();
-    const isProgression = (
-      (userDegree.includes('intermediate') && uniDegree.includes('bachelor')) ||
-      (userDegree.includes('bachelor') && uniDegree.includes('master'))
-    );
-    if (isProgression) educationScore = 1.0;
-    else if (userDegree === uniDegree) educationScore = 0.8;
-  }
+  const rawUser = user as any;
+  const userMarks = Number(user.education?.marks) || 0;
+  const expectedMerit = Number(rawUser.education?.expectedMerit) || 0;
+  const userEffectiveScore = Math.max(userMarks, expectedMerit);
+  
+  const userCity = (user.location?.city || user.education?.city || '').toLowerCase().trim();
+  const feeRange = user.education?.feeRange || "";
+  const rangeObj = FEE_RANGE_MAP[feeRange] || { min: 0, max: 1000000 }; // Default high if not set
+  const relocationPref = String(rawUser.education?.relocation || "yes").toLowerCase();
+  const prefProg = (user.education?.preferredProgram || rawUser.education?.disciplineGroup || "").toLowerCase();
 
-  let meritScore = 0.5;
-  if (user.education?.marks !== undefined && (university.merit || university.Merit)) {
-    const uniMerit = university.merit || university.Merit;
-    const diff = user.education.marks - uniMerit;
+  const scoredPrograms = [];
+  let bestProgramData: any = null;
+  let bestScore = -1;
+
+  for (const prog of university.programs) {
+    if (prog.status !== 'active') continue;
+
+    // --- STEP 1: HARD FILTER LAYER ---
     
-    // GRANULAR SCORING: Use a continuous curve instead of steps
-    if (diff >= 0) {
-      meritScore = Math.min(1.0, 0.75 + (diff * 0.02));
-      tags.push("Merit Safe");
+    // 1.1 Budget Filter
+    const fee = getEffectiveFee(prog);
+    if (rangeObj.max > 0 && fee > rangeObj.max) continue; // REJECT: Over budget
+
+    // 1.2 Merit Filter (User marks must be within 15% of requirement)
+    const progMerit = Number(prog.merit) || 0;
+    if (progMerit > 0 && userEffectiveScore < (progMerit - 15)) continue; // REJECT: Merit too high
+
+    // 1.3 Location Filter
+    const uniCity = (university.city || "").toLowerCase().trim();
+    if (relocationPref === 'no' && userCity && uniCity !== userCity) continue; // REJECT: Relocation not allowed
+
+    // 1.4 Program Relevance Filter
+    const progDisc = (prog.discipline || "").toLowerCase();
+    const isRelevant = !prefProg || progDisc.includes(prefProg);
+    if (prefProg && !isRelevant) continue; // REJECT: Mismatched discipline
+
+    // --- STEP 2: SCORING LAYER ---
+
+    // 2.1 Merit Score (Realistic Ratio)
+    // Formula: (user_marks / program_merit_requirement) * 100
+    let meritScore = 100;
+    if (progMerit > 0) {
+      meritScore = (userEffectiveScore / progMerit) * 100;
     } else {
-      meritScore = Math.max(0.1, 0.75 + (diff * 0.08));
-      if (diff >= -2) {
-        tags.push("Borderline Match");
-        reasons.push("Your marks are very close to the expected merit");
-      }
+      meritScore = 85; // Default for missing data but passed filters
+    }
+    meritScore = Math.min(100, Math.max(0, meritScore));
+
+    // 2.2 Budget Score
+    // Formula: 100 if under budget, with advanced ratio for better value
+    let budgetScore = 100;
+    if (fee > 0) {
+        // If fee is much lower than budget max, it's a better score
+        budgetScore = Math.min(100, (rangeObj.max / fee) * 100);
+    }
+
+    // 2.3 Location Score
+    const locationScore = (uniCity === userCity) ? 100 : 60;
+
+    // --- STEP 3: FINAL WEIGHTED SCORE ---
+    // final_score = (merit_score * 0.45) + (budget_score * 0.35) + (location_score * 0.20)
+    const finalScore = Math.round(
+      (meritScore * 0.45) + 
+      (budgetScore * 0.35) + 
+      (locationScore * 0.20)
+    );
+
+    // --- STEP 4: DIAGNOSTICS & EXPLANATION ---
+    const reasons = [];
+    if (fee <= rangeObj.max) reasons.push("budget compatible");
+    if (userEffectiveScore >= progMerit) reasons.push("merit alignment");
+    else reasons.push("merit accessibility");
+    if (uniCity === userCity) reasons.push("location match");
+    if (isRelevant) reasons.push("program relevance");
+
+    const smartExplanation = `Matched because ${reasons.slice(0, -1).join(', ')}, and ${reasons[reasons.length - 1]}.`;
+
+    scoredPrograms.push({
+      ...prog,
+      programScore: finalScore,
+      explanation: smartExplanation,
+      meritScore,
+      budgetScore,
+      locationScore,
+      isRelevant
+    });
+
+    if (finalScore > bestScore) {
+      bestScore = finalScore;
+      bestProgramData = scoredPrograms[scoredPrograms.length - 1];
     }
   }
+
+  if (scoredPrograms.length === 0 || !bestProgramData) return null;
+
+  // Sort and pick best
+  scoredPrograms.sort((a, b) => b.programScore - a.programScore);
   
-  const academicScore = (educationScore * 0.6) + (meritScore * 0.4);
-
-  // 3. FIELD ALIGNMENT (20%)
-  let fieldScore = 0.35;
-  if (user.education?.discipline && university.discipline) {
-    const userField = user.education.discipline.toLowerCase();
-    const uniField = university.discipline.toLowerCase();
-    if (uniField.includes(userField) || userField.includes(uniField)) {
-      fieldScore = 1.0;
-      tags.push(university.discipline);
-      reasons.push(`Matches your interest in ${university.discipline}`);
-    } else {
-      const majorAreas = ['engineering', 'medical', 'science', 'arts', 'business'];
-      const userArea = majorAreas.find(a => userField.includes(a));
-      const uniArea = majorAreas.find(a => uniField.includes(a));
-      if (userArea && uniArea && userArea === uniArea) fieldScore = 0.6;
-    }
-  }
-
-  // 4. PRACTICALITY (10%) - AFFORDABILITY
-  let financialScore = 0.55;
-  if (university.fee) {
-    if (university.fee < 80000) financialScore = 1.0;
-    else if (university.fee < 150000) financialScore = 0.8;
-    else if (university.fee < 300000) financialScore = 0.6;
-  }
-
-  // 5. CAMPUS DIFFERENTIATION (NEW)
-  // Give a subtle boost to main campuses in major hubs to prevent score ties
-  let campusBoost = 0;
-  const majorHubs = ['lahore', 'karachi', 'islamabad', 'peshawar', 'quetta', 'multan', 'faisalabad'];
-  if (majorHubs.includes(uniCity)) campusBoost = 0.05;
-
-  // TIE-BREAKER: Increased impact (up to 2.0%) to ensure rounding doesn't collapse scores
-  const tieBreaker = getTieBreaker(uniId) * 2;
-
-  // Final Weighted Average
-  const weightedSum = weightedAverage([
-    { score: locationScore + campusBoost, weight: 40 },
-    { score: academicScore, weight: 30 },
-    { score: fieldScore, weight: 20 },
-    { score: financialScore, weight: 10 }
-  ]);
-
-  // We add tie-breaker AFTER rounding to ensure unique visible percentages
-  const basePercentage = Math.max(0, Math.min(100, Math.round(weightedSum)));
-  const finalPercentage = basePercentage + (tieBreaker > 1 ? 1 : 0); // Discrete separation
-  
-  // Actually, let's just make it float-aware for the internal sort and then unique for display
-  const percentage = Math.round(weightedSum + tieBreaker);
+  const uniId = String(university._id || university.id);
+  const tieBreaker = getTieBreaker(uniId);
+  const finalMatchPercentage = Math.min(100, Math.round(bestScore + (tieBreaker > 0 ? 1 : 0)));
 
   return {
     id: uniId,
     type: 'university',
     title: university.title,
-    score: percentage,
-    matchPercentage: percentage,
-    relevanceLevel: getRelevanceLevel(percentage),
-    reasons: reasons.slice(0, 3),
-    tags: [locationLabel, ...tags].slice(0, 3),
-    details: university,
-    priorityLevel,
+    score: finalMatchPercentage,
+    matchPercentage: finalMatchPercentage,
+    relevanceLevel: finalMatchPercentage >= 85 ? 'High' : finalMatchPercentage >= 70 ? 'Medium' : 'Low',
+    reasons: [bestProgramData.explanation],
+    explanation: bestProgramData.explanation,
+    tags: [
+        finalMatchPercentage >= 90 ? "Best Overall Match" : "Recommended",
+        bestProgramData.budgetScore >= 95 ? "Budget Friendly" : null,
+        bestProgramData.meritScore >= 95 ? "Academic Fit" : null
+    ].filter(Boolean) as string[],
+    details: { ...university, programs: scoredPrograms },
+    priorityLevel: bestProgramData.locationScore === 100 ? 'Local' : 'National',
     diagnostics: {
-      entityId: uniId,
-      universityName: university.title,
-      campusCity: university.city || university.City,
-      locationScore: Math.round(locationScore * 100),
-      academicScore: Math.round(academicScore * 100),
-      finalScore: percentage,
-      priorityLevel,
-      finalRankingReason: priorityLevel === 'Local' ? "Best choice in your city" : 
-                         priorityLevel === 'Nearby' ? "Regional campus proximity" :
-                         "Academic compatibility"
+      locationScore: Math.round(bestProgramData.locationScore),
+      academicScore: Math.round(bestProgramData.meritScore),
+      fieldScore: bestProgramData.isRelevant ? 100 : 50,
+      priorityLevel: bestProgramData.locationScore === 100 ? 'Local' : 'National',
+      finalRankingReason: bestProgramData.explanation
     }
   };
 };

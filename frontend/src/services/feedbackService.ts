@@ -43,11 +43,29 @@ export const FeedbackService = {
       
       const result = await response.json();
       if (!result.success) throw new Error(result.message);
-      return result.data;
+      return result;          // returns { data, isUpdate }
     } catch (error: any) {
       console.error("Feedback Error:", error);
       toast.error("Failed to submit rating");
       throw error;
+    }
+  },
+
+  /**
+   * Returns a map of { [module]: { rating, comment, submittedAt } }
+   * for all modules the current user has already rated.
+   */
+  async getMyRatings(): Promise<Record<string, { rating: number; comment: string; submittedAt: string }>> {
+    try {
+      const response = await fetch(`${API_URL}/api/feedback/my-ratings`, {
+        headers: getHeaders(),
+      });
+      const result = await response.json();
+      if (!result.success) throw new Error(result.message);
+      return result.data;
+    } catch (error: any) {
+      console.error("getMyRatings error:", error);
+      return {};   // fail silently — show form as if no previous rating
     }
   },
 

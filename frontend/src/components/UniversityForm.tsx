@@ -70,6 +70,7 @@ const universitySchema = z.object({
     merit: z.number().min(0, "Merit cannot be negative").max(100, "Merit cannot exceed 100%"),
     info: z.string().optional(),
     web: z.string().url("Invalid website URL").or(z.literal("")).optional(),
+    deadline: z.string().optional(),
 });
 
 const UniversityForm: React.FC<UniversityFormProps> = ({
@@ -100,6 +101,7 @@ const UniversityForm: React.FC<UniversityFormProps> = ({
         info: "",
         contact: "",
         web: "",
+        deadline: "",
     });
 
     useEffect(() => {
@@ -119,6 +121,7 @@ const UniversityForm: React.FC<UniversityFormProps> = ({
                 info: university.info || "",
                 contact: university.contact || "",
                 web: university.web || "",
+                deadline: university.deadline || "",
             });
         } else if (!isSuperAdmin && admin) {
             // For Uni Admin, pre-fill university name/city/province from their registration
@@ -143,6 +146,7 @@ const UniversityForm: React.FC<UniversityFormProps> = ({
                 info: "",
                 contact: "",
                 web: "",
+                deadline: "",
             });
         }
     }, [isOpen, university]); // Only depend on isOpen and university
@@ -368,11 +372,24 @@ const UniversityForm: React.FC<UniversityFormProps> = ({
                                 <SelectContent>
                                     <SelectItem value="Punjab">Punjab</SelectItem>
                                     <SelectItem value="Sindh">Sindh</SelectItem>
-                                    <SelectItem value="KPK">KPK</SelectItem>
+                                    <SelectItem value="Khyber Pakhtunkhwa">Khyber Pakhtunkhwa</SelectItem>
                                     <SelectItem value="Balochistan">Balochistan</SelectItem>
-                                    <SelectItem value="Islamabad">Islamabad</SelectItem>
+                                    <SelectItem value="Gilgit-Baltistan">Gilgit-Baltistan</SelectItem>
+                                    <SelectItem value="Azad Jammu & Kashmir">Azad Jammu & Kashmir</SelectItem>
+                                    <SelectItem value="Islamabad Capital Territory">Islamabad Capital Territory</SelectItem>
                                 </SelectContent>
                             </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="deadline">Application Deadline</Label>
+                            <Input
+                                id="deadline"
+                                type="text"
+                                value={formData.deadline}
+                                onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+                                placeholder="e.g. 15th Aug 2024"
+                            />
                         </div>
                     </div>
 

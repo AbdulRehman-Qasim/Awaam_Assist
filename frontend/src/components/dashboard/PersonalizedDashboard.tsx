@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import {
   Sparkles, AlertCircle, MapPin, GraduationCap, ShieldCheck,
@@ -24,6 +25,70 @@ import { CORE_MODULES, CORE_MODULE_IDS, type CoreModuleId, type ProfileFieldDef 
 import { ReportHistory } from "../shared/ReportHistory";
 import MyAppointments from "./MyAppointments";
 import { Calendar as CalendarIcon } from "lucide-react";
+import { HealthcareModuleForm, isHealthcareFormValid } from "./HealthcareModuleForm";
+import { EducationModuleForm, isEducationFormValid } from "./EducationModuleForm";
+import { SchemesModuleForm, isSchemesFormValid } from "./SchemesModuleForm";
+const FieldRenderer = ({ field, value, moduleId, updateField }: { 
+  field: ProfileFieldDef, 
+  value: any, 
+  moduleId: string, 
+  updateField: (f: ProfileFieldDef, v: any) => void 
+}) => {
+  const id = `profile-${moduleId}-${field.path}`;
+  const commonClass = "h-11 rounded-2xl border-slate-200 bg-slate-50/50 font-bold focus-visible:ring-primary transition-all duration-200 hover:bg-slate-100/50";
+
+  return (
+    <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-300">
+      <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2 mb-1 ml-1" htmlFor={id}>
+        {field.label}
+        {["income", "age", "province", "employmentStatus", "educationLevel", "familySize", "bispStatus"].some(p => field.path.endsWith(p)) && (
+          <span className="text-rose-500">*</span>
+        )}
+      </Label>
+
+      {field.type === "select" ? (
+        <Select
+          value={(value ?? "") as string}
+          onValueChange={(next) => updateField(field, next)}
+        >
+          <SelectTrigger className={commonClass}>
+            <SelectValue placeholder={field.placeholder || "Select"} />
+          </SelectTrigger>
+          <SelectContent className="rounded-2xl border-slate-100 shadow-xl">
+            {(field.options || []).map((opt) => (
+              <SelectItem key={opt.value} value={opt.value} className="rounded-xl focus:bg-primary/5 focus:text-primary font-bold">
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      ) : field.type === "textarea" ? (
+        <Textarea
+          id={id}
+          value={(value ?? "") as string}
+          placeholder={field.placeholder}
+          className="min-h-[120px] rounded-2xl border-slate-200 bg-slate-50/50 font-bold focus-visible:ring-primary transition-all hover:bg-slate-100/50"
+          onChange={(e) => updateField(field, e.target.value)}
+        />
+      ) : (
+        <Input
+          id={id}
+          type={field.type === "number" ? "number" : "text"}
+          value={value ?? ""}
+          placeholder={field.placeholder}
+          className={commonClass}
+          onChange={(e) => updateField(field, e.target.value)}
+          onKeyDown={(e) => {
+            // Prevent e, +, - in number inputs (Part 2)
+            if (field.type === "number" && ["e", "E", "+", "-"].includes(e.key)) {
+              e.preventDefault();
+            }
+          }}
+        />
+      )}
+    </div>
+  );
+};
 
 const PersonalizedDashboard = () => {
   const [loadingProfile, setLoadingProfile] = useState(true);
@@ -35,6 +100,8 @@ const PersonalizedDashboard = () => {
   const [activeTab, setActiveTab] = useState<string>("overview");
   const [localDraft, setLocalDraft] = useState<any>(null);
   const [pendingModuleAdd, setPendingModuleAdd] = useState<CoreModuleId[]>([]);
+  // Used to force localDraft to re-sync when profile refreshes after save
+  const [syncTimestamp, setSyncTimestamp] = useState(0);
   const debouncedSaveTimer = useRef<number | null>(null);
 
   const userBasics = useMemo(() => {
@@ -80,6 +147,8 @@ const PersonalizedDashboard = () => {
         },
       };
       localStorage.setItem("user", JSON.stringify(next));
+      // Notify CompanyLayout navbar to refresh its module list
+      window.dispatchEvent(new Event("modulesUpdated"));
     } catch {
       // ignore localStorage parse issues
     }
@@ -87,7 +156,7 @@ const PersonalizedDashboard = () => {
 
   const handleUpdateProfile = async (
     updatedData: { selectedModules?: string[]; profile?: any },
-    options: { closeOnSuccess?: boolean } = {}
+    options: { closeOnSuccess?: boolean; successMessage?: string } = {}
   ) => {
     if (!token || !profile) return;
     setIsUpdating(true);
@@ -103,17 +172,26 @@ const PersonalizedDashboard = () => {
         headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({ selectedModules: nextSelectedModules, profile: mergedProfile })
       });
+      const result = await response.json();
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Update Failed");
+        throw new Error(result.message || "Update Failed");
       }
+
+      // Always re-fetch from server to get authoritative, fresh profile data
       await fetchProfile();
+
+      // Bump version to force recommendation re-fetch and feed re-render
       setProfileVersion(v => v + 1);
+      // Bump syncTimestamp so localDraft useEffect re-runs from fresh profile
+      setSyncTimestamp(t => t + 1);
       persistUserLocalStorage(nextSelectedModules);
-      toast.success("Recommendations updated", {
-        description: "Intelligence Engine has adapted to your new profile."
+
+      toast.success(options.successMessage || "Intelligence Engine Updated", {
+        description: "Your personalized dashboard has been synchronized."
       });
-      if (options.closeOnSuccess !== false) setIsEditModalOpen(false);
+
+      if (options.closeOnSuccess === true) setIsEditModalOpen(false);
     } catch (err: any) {
       toast.error(err.message || "Profile update failed");
     } finally {
@@ -132,6 +210,7 @@ const PersonalizedDashboard = () => {
     return CORE_MODULE_IDS.filter((m) => !current.has(m));
   }, [rawModules]);
 
+  // Re-sync localDraft whenever profile refreshes (after save or initial load)
   useEffect(() => {
     if (!profile) return;
     setLocalDraft({
@@ -142,7 +221,7 @@ const PersonalizedDashboard = () => {
         healthcare: { ...(profile.profile?.healthcare || {}) },
       },
     });
-  }, [profile?._id]);
+  }, [profile?._id, syncTimestamp]);
 
   const isInitialLoad = loadingProfile || (loadingIntelligence && !recommendations);
   const hasNoMatches = !loadingIntelligence && recommendations &&
@@ -192,12 +271,18 @@ const PersonalizedDashboard = () => {
   const displayEmail = String(profile?.userId?.student_email || userBasics?.data?.student_email || "Verified Citizen");
   const firstName = displayName.split(' ')[0] || "Guest";
 
-  const selectedModules = rawModules.filter((mod: string) => {
+  // Authoritative active modules — use profile directly so we always reflect server state
+  const activeModules: string[] = profile?.selectedModules || [];
+
+  // selectedModules are modules that are active AND have at least some data configured
+  const selectedModules = activeModules.filter((mod: string) => {
     if (mod === 'education') return !!(details.education?.degree || details.education?.marks);
-    if (mod === 'schemes') return !!(details.schemes?.income);
-    if (mod === 'healthcare') return !!(details.healthcare?.hospitalCategory || details.healthcare?.city);
+    if (mod === 'schemes') return isSchemesFormValid(details.schemes);
+    if (mod === 'healthcare') return !!(details.healthcare && Object.keys(details.healthcare).length > 0);
     return true;
   });
+
+  const isHealthcareActive = activeModules.includes('healthcare');
 
 
   const getByPath = (obj: any, path: string) => {
@@ -241,87 +326,181 @@ const PersonalizedDashboard = () => {
   };
 
   const updateField = (field: ProfileFieldDef, rawValue: any) => {
-    if (!localDraft) return;
     const isNumber = field.type === "number";
-    const value = isNumber ? (rawValue === "" ? "" : Number(rawValue)) : rawValue;
-    const next = {
-      ...localDraft,
-      profile: setByPath(localDraft.profile, field.path, value),
-    };
-    setLocalDraft(next);
-    scheduleAutosave(next);
+    let value = rawValue;
+
+    if (isNumber) {
+      if (rawValue === "") {
+        value = "";
+      } else {
+        const sanitized = String(rawValue).replace(/[^0-9]/g, "");
+        value = sanitized === "" ? "" : Number(sanitized);
+        if (field.path.includes("age") && value > 120) value = 120;
+        if (field.path.includes("income") && value > 10000000) value = 10000000;
+        if (field.path.includes("familySize") && value > 50) value = 50;
+      }
+    }
+
+    setLocalDraft(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        profile: setByPath(prev.profile, field.path, value),
+      };
+    });
+  };
+
+  const isModuleFormValid = (moduleId: string) => {
+    if (!localDraft) return false;
+    const values = localDraft.profile?.[moduleId] || {};
+
+    if (moduleId === "healthcare") return isHealthcareFormValid(values);
+
+    if (moduleId === "schemes") {
+      const required = ["income", "age", "province", "employmentStatus", "educationLevel", "familySize", "bispStatus"];
+      const hasAllRequired = required.every(key =>
+        values[key] !== undefined && values[key] !== null && values[key] !== ""
+      );
+      const income = Number(values.income);
+      const age = Number(values.age);
+      const familySize = Number(values.familySize);
+      const numericValid =
+        !isNaN(income) && income >= 0 &&
+        !isNaN(age) && age > 0 && age < 120 &&
+        !isNaN(familySize) && familySize > 0 && familySize < 50;
+      return hasAllRequired && numericValid;
+    }
+
+    if (moduleId === "education") {
+      return isEducationFormValid(values);
+    }
+
+    return true;
+  };
+
+  // Helper: update healthcare fields inside localDraft (supports single field or multiple)
+  const updateHealthcareFields = (updates: Record<string, any>) => {
+    setLocalDraft(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        profile: {
+          ...prev.profile,
+          healthcare: {
+            ...(prev.profile?.healthcare || {}),
+            ...updates,
+          },
+        },
+      };
+    });
   };
 
   const metrics = {
     universities: recommendations?.universities?.length || 0,
     schemes: recommendations?.schemes?.length || 0,
     hospitals: recommendations?.hospitals?.length || 0,
-    confidence: Number(recommendations?.overallConfidence) || 0
+    confidence: Number(recommendations?.overallConfidence) || 0,
+    breakdown: recommendations?.moduleBreakdown || {}
+  };
+
+  const getIntelligenceLabel = (score: number) => {
+    if (score >= 85) return "Excellent Match Intelligence";
+    if (score >= 70) return "Good Match Intelligence";
+    return "Moderate Match Intelligence";
   };
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
   return (
-    <div className="space-y-10 max-w-7xl mx-auto pb-32 animate-in fade-in slide-in-from-bottom-2 duration-700">
+    <div className="space-y-10 max-w-7xl mx-auto pb-32">
 
       {/* ═══════════════════════════════════
            1. HERO WELCOME BANNER
       ═══════════════════════════════════ */}
-      <div className="relative rounded-3xl overflow-hidden hero-gradient p-8 lg:p-10 shadow-xl"
-        style={{ boxShadow: '0 20px 60px hsl(var(--primary) / 0.25)' }}>
-        {/* Subtle grid */}
-        <div className="absolute inset-0 opacity-[0.04]"
+      <div className="relative rounded-[2rem] overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-8 lg:p-10 shadow-2xl border border-slate-800/50"
+        style={{ boxShadow: '0 20px 60px -15px rgba(0,0,0,0.5)' }}>
+        {/* Subtle grid & Glow orb */}
+        <div className="absolute inset-0 opacity-[0.03]"
           style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,.6) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.6) 1px,transparent 1px)', backgroundSize: '40px 40px' }} />
-        {/* Glow orb */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-blue-400/20 rounded-full blur-[120px] pointer-events-none translate-x-1/3 -translate-y-1/3" />
+        <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/20 rounded-full blur-[100px] pointer-events-none translate-x-1/3 -translate-y-1/3" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-[100px] pointer-events-none -translate-x-1/3 translate-y-1/3" />
 
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          <div className="space-y-3">
-            {/* Status pill */}
-            <div className="inline-flex items-center gap-2 bg-white/10 border border-white/15 rounded-full px-3.5 py-1.5">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
-              </span>
-              <span className="text-[10px] font-black text-white/80 uppercase tracking-widest">Intelligence Engine Active</span>
-              {!hasNoMatches && (
-                <>
-                  <span className="text-white/30">·</span>
-                  <span className="text-[10px] font-black text-white/60">{metrics.confidence}% Match Accuracy</span>
-                </>
-              )}
-            </div>
-
-            <h1 className="text-3xl lg:text-4xl font-black text-white tracking-tight leading-tight">
-              {greeting}, <span className="text-blue-200">{firstName}!</span>
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+          <div className="space-y-4 max-w-2xl">
+            <h1 className="text-2xl lg:text-3xl font-black text-white tracking-tight leading-tight">
+              {greeting}, <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400">{firstName}!</span>
             </h1>
-            <p className="text-white/60 font-medium text-sm max-w-lg leading-relaxed">
+            <p className="text-slate-300 font-medium text-sm leading-relaxed max-w-lg">
               {hasNoMatches
                 ? "Our AI is ready to find opportunities for you. Complete your profile to unlock precision matching."
                 : `We found high-confidence matches in ${recommendations?.profileNarrative && recommendations.profileNarrative.includes('in ') ? (recommendations.profileNarrative.split('in ')[1]?.split(' for')[0]?.split('.')[0] || 'your region') : 'your region'}. Your personalized intelligence is ready.`
               }
             </p>
+            
+            <div className="flex items-center gap-4 pt-2">
+              <button
+                onClick={() => setIsEditModalOpen(true)}
+                className="inline-flex items-center gap-2 px-5 h-10 bg-white/10 border border-white/20 text-white font-bold text-[11px] uppercase tracking-widest rounded-xl hover:bg-white/20 transition-all backdrop-blur-md active:scale-[0.98]"
+              >
+                <Settings className="w-3.5 h-3.5" />
+                Update Profile
+              </button>
+            </div>
           </div>
 
-          {/* Avatar + Update Profile */}
-          <div className="flex items-center gap-4 flex-shrink-0">
+          {/* Right Side: Score Ring & Profile Minimal */}
+          <div className="flex flex-col sm:flex-row items-center gap-6 lg:gap-8 flex-shrink-0">
+            {!hasNoMatches && (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.7, delay: 0.2 }}
+                className="flex items-center gap-5 bg-white/5 backdrop-blur-md border border-white/10 p-4 pr-6 rounded-[1.5rem] shadow-xl"
+              >
+                {/* Left: Circular progress */}
+                <div className="relative w-[76px] h-[76px] flex items-center justify-center flex-shrink-0">
+                  <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="42" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-white/10" />
+                    <motion.circle 
+                      cx="50" cy="50" r="42" 
+                      stroke="currentColor" 
+                      strokeWidth="8" 
+                      fill="transparent" 
+                      strokeDasharray={2 * Math.PI * 42} 
+                      initial={{ strokeDashoffset: 2 * Math.PI * 42 }}
+                      animate={{ strokeDashoffset: (2 * Math.PI * 42) - ((metrics.confidence || 0) / 100) * (2 * Math.PI * 42) }}
+                      transition={{ duration: 1.5, ease: "easeOut", delay: 0.5 }}
+                      strokeLinecap="round"
+                      className="text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.5)]" 
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-[20px] font-black text-white leading-none tracking-tight">{metrics.confidence || 0}<span className="text-[12px]">%</span></span>
+                  </div>
+                </div>
+
+                {/* Right: Text aligned center-left */}
+                <div className="flex flex-col justify-center gap-1.5 text-left">
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full w-max">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+                    <span className="text-[9px] font-black uppercase tracking-[0.15em] text-emerald-400">Engine Active</span>
+                  </div>
+                  <div className="text-[15px] font-black text-white tracking-tight leading-tight">
+                    {getIntelligenceLabel(metrics.confidence || 0)}
+                  </div>
+                  <div className="text-[11px] font-medium text-white/50">
+                    Based on your preferences
+                  </div>
+                </div>
+              </motion.div>
+            )}
+            
             <div className="flex items-center gap-3">
-              <div className="w-14 h-14 rounded-2xl bg-white/15 border border-white/20 flex items-center justify-center text-white text-xl font-black flex-shrink-0 backdrop-blur-sm">
+              <div className="w-12 h-12 rounded-[18px] bg-gradient-to-br from-blue-500 to-violet-600 border border-white/20 flex items-center justify-center text-white text-lg font-black shadow-lg backdrop-blur-sm hover:scale-105 transition-transform cursor-pointer">
                 {displayName.charAt(0).toUpperCase()}
               </div>
-              <div className="hidden sm:block">
-                <div className="text-white font-black text-sm leading-tight">{displayName}</div>
-                <div className="text-white/50 text-[11px] font-medium">{displayEmail}</div>
-              </div>
             </div>
-            <button
-              onClick={() => setIsEditModalOpen(true)}
-              className="inline-flex items-center gap-2 px-5 h-10 bg-white/15 border border-white/20 text-white font-black text-xs rounded-xl hover:bg-white/25 transition-all backdrop-blur-sm active:scale-[0.98]"
-            >
-              <Settings className="w-3.5 h-3.5" />
-              Update Profile
-            </button>
           </div>
         </div>
       </div>
@@ -334,153 +513,180 @@ const PersonalizedDashboard = () => {
       {/* ═══════════════════════════════════
            3. PROFILE + READINESS ROW
       ═══════════════════════════════════ */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
 
         {/* Profile Info Card */}
-        <div className="lg:col-span-8">
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm h-full overflow-hidden">
-            {/* Card header */}
-            <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 bg-slate-50/40">
-              <div className="flex items-center gap-4">
-                <div className="relative">
-                  <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white text-lg font-black shadow-lg">
-                    {displayName.charAt(0).toUpperCase()}
-                  </div>
-                  <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 rounded-lg border-2 border-white flex items-center justify-center">
-                    <ShieldCheck className="w-2.5 h-2.5 text-white" />
-                  </div>
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+          className="lg:col-span-8"
+        >
+          <div className="bg-white rounded-2xl border border-slate-100/80 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.06)] h-full overflow-hidden flex flex-col hover:shadow-[0_8px_30px_-6px_rgba(0,0,0,0.1)] transition-all duration-300">
+            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-3.5">
+                <div className="w-11 h-11 rounded-xl bg-slate-900 flex items-center justify-center text-white text-base font-black shadow-md">
+                  {displayName.charAt(0).toUpperCase()}
                 </div>
                 <div>
-                  <h2 className="font-black text-slate-900 text-sm">{displayName}</h2>
-                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400 mt-0.5">
-                    <CheckCircle2 className="w-3 h-3 text-primary" />
-                    {displayEmail}
-                  </div>
+                  <h2 className="font-black text-slate-900 text-sm tracking-tight">{displayName}</h2>
+                  <div className="text-[11px] font-semibold text-slate-400 mt-0.5">{displayEmail}</div>
                 </div>
               </div>
-              <div className="inline-flex items-center gap-1.5 bg-primary/5 border border-primary/10 rounded-full px-3 py-1">
-                <Sparkles className="w-3 h-3 text-primary animate-pulse" />
-                <span className="text-[9px] font-black text-primary uppercase tracking-widest">Your Profile</span>
+              <div className="inline-flex items-center gap-1.5 bg-emerald-50 border border-emerald-100 rounded-full px-3 py-1.5">
+                <Sparkles className="w-3 h-3 text-emerald-500" />
+                <span className="text-[9px] font-black text-emerald-600 uppercase tracking-[0.18em]">Verified</span>
               </div>
             </div>
 
-            {/* Profile details grid - Vertical & Premium */}
-            <div className="p-6 grid grid-cols-1 sm:grid-cols-3 gap-6 h-full min-h-[220px]">
+            <div className="p-5 grid grid-cols-1 sm:grid-cols-3 gap-4 flex-1">
               {[
-                {
-                  label: "Education Level",
-                  value: details?.education?.degree || "Not Set",
-                  icon: GraduationCap,
-                  gradient: "from-blue-500/10 to-indigo-500/10",
-                  iconColor: "text-blue-600",
-                  iconBg: "bg-blue-100",
-                },
-                {
-                  label: "Your City",
-                  value: details?.education?.city || "Not Set",
-                  icon: MapPin,
-                  gradient: "from-emerald-500/10 to-teal-500/10",
-                  iconColor: "text-emerald-600",
-                  iconBg: "bg-emerald-100",
-                },
-                {
-                  label: "Discipline",
-                  value: details?.education?.discipline || (details?.education?.preferredProgram ? `Interested in ${details.education.preferredProgram}` : "Not Set"),
-                  icon: Zap,
-                  gradient: "from-violet-500/10 to-purple-500/10",
-                  iconColor: "text-violet-600",
-                  iconBg: "bg-violet-100",
-                },
-              ].map(({ label, value, icon: Icon, iconColor, iconBg, gradient }) => (
-                <div 
-                  key={label} 
-                  className={`relative flex flex-col items-center justify-center text-center p-6 rounded-[2rem] bg-gradient-to-br ${gradient} border border-white shadow-sm group hover:shadow-xl hover:-translate-y-1 transition-all duration-500`}
-                >
-                  {/* Decorative background circle */}
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-white/20 rounded-full -mr-8 -mt-8 blur-2xl group-hover:bg-white/40 transition-colors" />
-                  
-                  <div className={`w-16 h-16 rounded-2xl ${iconBg} flex items-center justify-center mb-4 shadow-inner group-hover:scale-110 transition-transform duration-500`}>
-                    <Icon className={`w-8 h-8 ${iconColor}`} />
+                { label: "Education Level", value: details?.education?.degree || "Not Set", icon: GraduationCap, bg: "bg-blue-50", color: "text-blue-600" },
+                { label: "Your City", value: details?.education?.city || "Not Set", icon: MapPin, bg: "bg-emerald-50", color: "text-emerald-600" },
+                { label: "Preferred Program", value: details?.education?.preferredProgram || "Not Set", icon: Zap, bg: "bg-violet-50", color: "text-violet-600" },
+              ].map(({ label, value, icon: Icon, bg, color }) => (
+                <div key={label} className="p-4 rounded-xl border border-slate-100 bg-slate-50/60 hover:bg-white hover:border-slate-200 hover:shadow-sm transition-all duration-300 group cursor-default">
+                  <div className={`w-9 h-9 rounded-xl ${bg} flex items-center justify-center mb-3 group-hover:scale-105 transition-transform duration-300`}>
+                    <Icon className={`w-4 h-4 ${color}`} />
                   </div>
-                  
-                  <div>
-                    <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">{label}</div>
-                    <div className="text-lg font-black text-slate-900 leading-tight">{value}</div>
-                  </div>
-
-                  {/* Bottom indicator */}
-                  <div className="mt-4 w-12 h-1 rounded-full bg-white/50 overflow-hidden">
-                    <div className={`h-full w-2/3 ${iconBg.replace('bg-', 'bg-').replace('100', '500')} rounded-full`} />
-                  </div>
+                  <div className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400 mb-1">{label}</div>
+                  <div className="text-[13px] font-black text-slate-800 leading-tight">{value}</div>
                 </div>
               ))}
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Report History Card */}
-        <div className="lg:col-span-4">
-          <div className="bg-white rounded-3xl border border-slate-100 shadow-sm h-full flex flex-col overflow-hidden">
-            <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/40 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <History className="w-4 h-4 text-primary" />
-                </div>
-                <h3 className="text-sm font-black text-slate-900 tracking-tight">Report History</h3>
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+          className="lg:col-span-4"
+        >
+          <div className="bg-white rounded-2xl border border-slate-100/80 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.06)] h-full flex flex-col overflow-hidden hover:shadow-[0_8px_30px_-6px_rgba(0,0,0,0.1)] transition-all duration-300">
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-slate-900 flex items-center justify-center">
+                <History className="w-4 h-4 text-white" />
+              </div>
+              <div>
+                <h3 className="text-[13px] font-black text-slate-900 tracking-tight">Report History</h3>
+                <p className="text-[10px] font-semibold text-slate-400 mt-0.5">Generated intelligence reports</p>
               </div>
             </div>
             
-            <div className="p-6 flex-1 overflow-y-auto max-h-[320px] scrollbar-hide">
+            <div className="p-5 flex-1 overflow-y-auto max-h-[280px] scrollbar-hide">
               <ReportHistory />
             </div>
           </div>
-        </div>
+        </motion.div>
       </div>
 
       {/* ═══════════════════════════════════
-           4. MY APPOINTMENTS
+           4. MY APPOINTMENTS (Healthcare Only)
       ═══════════════════════════════════ */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-2">
-          <CalendarIcon className="w-4 h-4 text-primary" />
-          <h2 className="text-xs font-black uppercase tracking-widest text-slate-500">My Appointments</h2>
-        </div>
-        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 sm:p-8">
-            <MyAppointments />
-        </div>
-      </div>
-
-      {/* ═══════════════════════════════════
-           4. AI SMART TIPS
-      ═══════════════════════════════════ */}
-      {!hasNoMatches && (
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-primary" />
-            <h2 className="text-xs font-black uppercase tracking-widest text-slate-500">Smart Tips</h2>
+      {isHealthcareActive && (
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+          className="space-y-4"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center">
+              <CalendarIcon className="w-4 h-4 text-blue-500" />
+            </div>
+            <div>
+              <h2 className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">My Appointments</h2>
+            </div>
+            <div className="flex-1 h-px bg-gradient-to-r from-slate-100 to-transparent" />
           </div>
-          <AIInsights insights={recommendations?.insights || []} />
-        </div>
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.06)] p-6 sm:p-8">
+            <MyAppointments />
+          </div>
+        </motion.div>
       )}
 
       {/* ═══════════════════════════════════
-           5. RECOMMENDATION FEED
+           5. AI SMART TIPS
       ═══════════════════════════════════ */}
-      <div className="pt-4 border-t border-slate-100">
+      {!hasNoMatches && (
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+          className="space-y-4"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-violet-50 flex items-center justify-center">
+              <Sparkles className="w-4 h-4 text-violet-500" />
+            </div>
+            <div>
+              <h2 className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">Smart Tips</h2>
+            </div>
+            <div className="flex-1 h-px bg-gradient-to-r from-slate-100 to-transparent" />
+          </div>
+          <AIInsights insights={recommendations?.insights || []} />
+        </motion.div>
+      )}
+
+      {/* ═══════════════════════════════════
+           6. RECOMMENDATION FEED
+      ═══════════════════════════════════ */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.35, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+        className="space-y-3"
+      >
+        <div className="flex items-center gap-3 pb-2">
+          <div className="w-8 h-8 rounded-xl bg-slate-900 flex items-center justify-center">
+            <BrainCircuit className="w-4 h-4 text-white" />
+          </div>
+          <div>
+            <h2 className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">Personalized Intelligence Feed</h2>
+          </div>
+          <div className="flex-1 h-px bg-gradient-to-r from-slate-100 to-transparent" />
+        </div>
         <DashboardFeed
-          key={`${profile?.profile?.education?.city || ''}_${profile?.profile?.education?.degree || ''}`}
+          key={`feed-v${profileVersion}`}
           recommendations={recommendations}
           loading={loadingIntelligence}
           selectedModules={selectedModules}
         />
-      </div>
+      </motion.div>
 
       {/* ═══════════════════════════════════
            PROFILE & MODULE MANAGER (Dynamic)
       ═══════════════════════════════════ */}
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-        <DialogContent className="sm:max-w-[980px] rounded-3xl border-none shadow-2xl p-0 overflow-hidden">
-          <div className="hero-gradient p-7 relative overflow-hidden">
+        <DialogContent
+          className="sm:max-w-[980px] w-[95vw] rounded-3xl border-none shadow-2xl p-0 overflow-hidden flex flex-col max-h-[92vh]"
+          onPointerDownOutside={(e) => {
+            // Prevent Dialog from closing when user clicks inside a Radix Select/Popover portal
+            const target = e.target as Element;
+            if (
+              target.closest('[data-radix-select-content]') ||
+              target.closest('[data-radix-popper-content-wrapper]') ||
+              target.closest('[role="listbox"]') ||
+              target.closest('[role="option"]')
+            ) {
+              e.preventDefault();
+            }
+          }}
+          onInteractOutside={(e) => {
+            const target = e.target as Element;
+            if (
+              target.closest('[data-radix-select-content]') ||
+              target.closest('[data-radix-popper-content-wrapper]') ||
+              target.closest('[role="listbox"]') ||
+              target.closest('[role="option"]')
+            ) {
+              e.preventDefault();
+            }
+          }}
+        >
+          <div className="hero-gradient p-7 relative overflow-hidden flex-shrink-0">
             <div className="absolute top-0 right-0 p-6 opacity-10">
               <Settings className="w-24 h-24 rotate-12" />
             </div>
@@ -495,7 +701,7 @@ const PersonalizedDashboard = () => {
             </div>
           </div>
 
-          <div className="p-7 bg-white">
+          <div className="p-7 pb-20 bg-white overflow-y-auto flex-1 scrollbar-hide md:scrollbar-default">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
                 <TabsList className="rounded-2xl bg-slate-50 p-1.5 border border-slate-100">
@@ -620,7 +826,8 @@ const PersonalizedDashboard = () => {
                               await handleUpdateProfile({
                                 selectedModules: nextSelected,
                                 profile: nextDraft.profile,
-                              }, { closeOnSuccess: false });
+                              }, { closeOnSuccess: false, successMessage: `${pendingModuleAdd.join(', ')} module activated. Fill in your details below.` });
+                              // Navigate to first newly added module tab after modal stays open
                               const jumpTo = pendingModuleAdd[0] || "overview";
                               setPendingModuleAdd([]);
                               setActiveTab(jumpTo);
@@ -672,70 +879,94 @@ const PersonalizedDashboard = () => {
                         </div>
 
                         <div className="p-6">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                            {fields.map((f) => {
-                              const v = getByPath(valuesRoot, f.path);
-                              const id = `profile-${moduleId}-${f.path}`;
-
-                              const commonClass =
-                                "h-11 rounded-2xl border-slate-200 bg-slate-50/50 font-bold focus-visible:ring-primary";
-
-                              return (
-                                <div key={f.path} className="space-y-2">
-                                  <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500" htmlFor={id}>
-                                    {f.label}
-                                  </Label>
-
-                                  {f.type === "select" ? (
-                                    <Select
-                                      value={(v ?? "") as string}
-                                      onValueChange={(next) => updateField(f, next)}
-                                    >
-                                      <SelectTrigger className={commonClass}>
-                                        <SelectValue placeholder={f.placeholder || "Select"} />
-                                      </SelectTrigger>
-                                      <SelectContent className="rounded-2xl">
-                                        {(f.options || []).map((opt) => (
-                                          <SelectItem key={opt.value} value={opt.value}>
-                                            {opt.label}
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                  ) : f.type === "textarea" ? (
-                                    <Textarea
-                                      id={id}
-                                      value={(v ?? "") as string}
-                                      placeholder={f.placeholder}
-                                      className="min-h-[120px] rounded-2xl border-slate-200 bg-slate-50/50 font-bold focus-visible:ring-primary"
-                                      onChange={(e) => updateField(f, e.target.value)}
-                                    />
-                                  ) : (
-                                    <Input
-                                      id={id}
-                                      type={f.type === "number" ? "number" : "text"}
-                                      value={v ?? ""}
-                                      placeholder={f.placeholder}
-                                      className={commonClass}
-                                      onChange={(e) => updateField(f, e.target.value)}
-                                    />
-                                  )}
-                                </div>
-                              );
-                            })}
+                          <div className="space-y-8">
+                            {moduleId === "schemes" ? (
+                              <SchemesModuleForm
+                                values={localDraft?.profile?.schemes || {}}
+                                onChange={(updates) => {
+                                  const s = localDraft?.profile?.schemes || {};
+                                  setLocalDraft({
+                                    ...localDraft,
+                                    profile: {
+                                      ...localDraft.profile,
+                                      schemes: { ...s, ...updates }
+                                    }
+                                  });
+                                }}
+                              />
+                            ) : moduleId === "healthcare" ? (
+                              <HealthcareModuleForm
+                                values={localDraft?.profile?.healthcare || {}}
+                                onChange={updateHealthcareFields}
+                              />
+                            ) : moduleId === "education" ? (
+                              <EducationModuleForm
+                                values={localDraft?.profile?.education || {}}
+                                onChange={(updates) => {
+                                  const e = localDraft?.profile?.education || {};
+                                  setLocalDraft({
+                                    ...localDraft,
+                                    profile: {
+                                      ...localDraft.profile,
+                                      education: { ...e, ...updates }
+                                    }
+                                  });
+                                }}
+                              />
+                            ) : (
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                {fields.map((f) => (
+                                  <FieldRenderer key={f.path} field={f} value={getByPath(valuesRoot, f.path)} moduleId={moduleId} updateField={updateField} />
+                                ))}
+                              </div>
+                            )}
                           </div>
 
-                          <div className="mt-6 pt-5 border-t border-slate-100 flex items-center justify-between gap-4">
-                            <div className="text-[11px] font-bold text-slate-500">
-                              Tip: edits are saved automatically. You can close this dialog anytime.
+                          <div className="mt-8 pt-6 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+                            <div className="flex items-center gap-2">
+                              <div className={`w-2 h-2 rounded-full ${isModuleFormValid(moduleId) ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-slate-300'}`} />
+                              <div className="text-[11px] font-bold text-slate-500">
+                                {isModuleFormValid(moduleId) 
+                                  ? "Form complete and valid. Ready to sync." 
+                                  : "Please complete all required fields with valid data."}
+                              </div>
                             </div>
-                            <Button
-                              variant="outline"
-                              className="rounded-2xl font-black"
-                              onClick={() => setIsEditModalOpen(false)}
-                            >
-                              Done
-                            </Button>
+                            
+                            <div className="flex items-center gap-3 w-full sm:w-auto">
+                              <Button
+                                variant="outline"
+                                className="rounded-2xl font-black flex-1 sm:flex-none h-11"
+                                onClick={() => setIsEditModalOpen(false)}
+                              >
+                                Cancel
+                              </Button>
+                              <Button
+                                disabled={!isModuleFormValid(moduleId) || isUpdating}
+                                className="rounded-2xl font-black flex-1 sm:flex-none h-11 min-w-[200px] shadow-lg shadow-primary/20"
+                                onClick={async () => {
+                                  if (!localDraft) return;
+                                  await handleUpdateProfile({
+                                    selectedModules: localDraft.selectedModules,
+                                    profile: localDraft.profile,
+                                  }, { closeOnSuccess: true });
+                                }}
+                              >
+                                {isUpdating ? (
+                                  <span className="flex items-center gap-2">
+                                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                                    </svg>
+                                    Syncing...
+                                  </span>
+                                ) : (
+                                  <span className="flex items-center gap-2">
+                                    <Sparkles className="w-4 h-4" />
+                                    Sync & Update Recommendations
+                                  </span>
+                                )}
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -750,16 +981,17 @@ const PersonalizedDashboard = () => {
       </Dialog>
 
       {/* FOOTER */}
-      <div className="pt-16 border-t border-slate-100 text-center pb-8">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-12 h-0.5 bg-slate-100 rounded-full" />
-          <p className="text-slate-400 font-black text-xs tracking-[0.4em] flex items-center gap-3">
-            <BrainCircuit className="w-5 h-5 text-primary" />
-            AwamAssist Intelligence
-          </p>
-          <p className="text-[10px] text-slate-300 font-bold uppercase tracking-widest">
-            Simple · Private · Helpful
-          </p>
+      <div className="pt-16 border-t border-slate-100/60 text-center pb-8">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-10 h-10 rounded-2xl bg-slate-900 flex items-center justify-center shadow-md">
+            <BrainCircuit className="w-5 h-5 text-white" />
+          </div>
+          <p className="text-slate-700 font-black text-xs tracking-[0.3em] uppercase">AwamAssist Intelligence</p>
+          <p className="text-[10px] text-slate-400 font-semibold tracking-widest uppercase">Simple · Private · Helpful</p>
+          <div className="flex items-center gap-2 mt-1">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-[10px] text-slate-400 font-bold">All systems operational</span>
+          </div>
         </div>
       </div>
     </div>

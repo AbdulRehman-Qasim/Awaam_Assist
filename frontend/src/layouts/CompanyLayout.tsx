@@ -39,20 +39,35 @@ const CompanyLayout = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  useEffect(() => {
+  const readModulesFromStorage = () => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       try {
         const parsed = JSON.parse(storedUser);
         const userData = parsed.data || {};
         setUserName(userData.student_name || userData.name || 'Citizen');
-        setUserRole(userData.role || parsed.userType || 'Citizen');
+        const role = userData.role || parsed.userType || 'Citizen';
+        setUserRole(role === 'student' ? 'Verified User' : role);
         setSelectedModules(userData.selectedModules || []);
       } catch (error) {
         console.error('Error reading stored user:', error);
       }
     }
     setLoading(false);
+  };
+
+  useEffect(() => {
+    readModulesFromStorage();
+
+    // Re-sync whenever dashboard saves new modules to localStorage
+    const handleModulesUpdated = () => readModulesFromStorage();
+    window.addEventListener('modulesUpdated', handleModulesUpdated);
+    window.addEventListener('storage', handleModulesUpdated);
+
+    return () => {
+      window.removeEventListener('modulesUpdated', handleModulesUpdated);
+      window.removeEventListener('storage', handleModulesUpdated);
+    };
   }, []);
 
   /* Build navigation dynamically based on selected modules */
@@ -77,7 +92,7 @@ const CompanyLayout = () => {
   const initials = userName ? userName.charAt(0).toUpperCase() : 'U';
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen flex flex-col" style={{ background: 'linear-gradient(135deg, #f0f4ff 0%, #e8f0fe 30%, #f5f3ff 60%, #fdf4ff 100%)' }}>
 
       {/* ── TOP NAVBAR ─────────────────────────────────────────── */}
       <header

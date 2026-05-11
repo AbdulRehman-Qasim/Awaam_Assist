@@ -49,6 +49,8 @@ const profileSchema = new mongoose.Schema(
         province: String,
         city: String,
         educationLevel: String,
+        gender: String,
+        maritalStatus: String,
         // Expanded fields
         familySize: Number,
         parentOccupation: String,
@@ -66,15 +68,19 @@ const profileSchema = new mongoose.Schema(
         financialNeedType: [String]
       },
       healthcare: {
+        province: String,
         city: String,
         tehsil: String,
         hospitalCategory: String,
         urgencyLevel: String,
         budgetRange: Number,
+        maxBudget: Number,
         treatmentType: String,
         travelPreference: String,
         distanceTolerance: String,
+        maxDistance: String,
         medicalSupport: [String],
+        supportRequirements: [String],
         financialAssistance: String,
         // Expanded fields
         nearbyPreference: String,
@@ -84,10 +90,12 @@ const profileSchema = new mongoose.Schema(
         genderPreference: String,
         treatmentCity: String,
         transportAvailability: String,
+        transport: String,
         areaType: String,
         bloodGroup: String,
         familyMedicalSupport: String,
         medicalInsurance: String,
+        hasInsurance: String,
         emergencyContact: String
       },
     },

@@ -94,7 +94,7 @@ const AnalyticsPage = () => {
     const provinceData = [
         { name: "Punjab", schemes: 28, beneficiaries: "1.2M", percentage: 45 },
         { name: "Sindh", schemes: 22, beneficiaries: "850K", percentage: 32 },
-        { name: "KPK", schemes: 12, beneficiaries: "380K", percentage: 14 },
+        { name: "Khyber Pakhtunkhwa", schemes: 12, beneficiaries: "380K", percentage: 14 },
         { name: "Balochistan", schemes: 7, beneficiaries: "220K", percentage: 9 },
     ];
 

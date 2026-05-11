@@ -274,11 +274,11 @@ const SchemeSettings = () => {
                                 <SelectContent>
                                     <SelectItem value="Punjab">Punjab</SelectItem>
                                     <SelectItem value="Sindh">Sindh</SelectItem>
-                                    <SelectItem value="KPK">Khyber Pakhtunkhwa</SelectItem>
+                                    <SelectItem value="Khyber Pakhtunkhwa">Khyber Pakhtunkhwa</SelectItem>
                                     <SelectItem value="Balochistan">Balochistan</SelectItem>
-                                    <SelectItem value="GB">Gilgit-Baltistan</SelectItem>
-                                    <SelectItem value="AJK">Azad Jammu & Kashmir</SelectItem>
-                                    <SelectItem value="ICT">Islamabad Capital Territory</SelectItem>
+                                    <SelectItem value="Gilgit-Baltistan">Gilgit-Baltistan</SelectItem>
+                                    <SelectItem value="Azad Jammu & Kashmir">Azad Jammu & Kashmir</SelectItem>
+                                    <SelectItem value="Islamabad Capital Territory">Islamabad Capital Territory</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>

@@ -84,44 +84,41 @@ export class RecommendationEngine {
         });
     };
 
-    // 1. Process Universities (Strict Education Intent)
-    const baseUniversities = hasEducationIntent ? sortRecommendations(
-      rawUniversities
+    // --- STEP 2: SCORING & RANKING ---
+    const allScoredUnis = hasEducationIntent ? rawUniversities
         .filter(u => u && typeof u === 'object')
         .map(uni => {
           try { return calculateUniversityScore(uni, user); }
           catch (e) { console.error("Score Error (Uni):", e); return null; }
         })
-        .filter((res): res is RecommendationResult => res !== null && res.score >= 30)
-    ).slice(0, 3) : [];
+        .filter((res): res is RecommendationResult => res !== null) : [];
 
-    // 2. Process Schemes (Strict Financial Intent)
-    const baseSchemes = hasFinancialIntent ? sortRecommendations(
-      rawSchemes
+    const allScoredSchemes = hasFinancialIntent ? rawSchemes
         .filter(s => s && typeof s === 'object')
         .map(scheme => {
           try { return calculateSchemeScore(scheme, user); }
           catch (e) { console.error("Score Error (Scheme):", e); return null; }
         })
-        .filter((res): res is RecommendationResult => res !== null && res.score >= 30)
-    ).slice(0, 3) : [];
+        .filter((res): res is RecommendationResult => res !== null) : [];
 
-    // 3. Process Hospitals (Strict Health Intent)
-    const baseHospitals = hasHealthIntent ? sortRecommendations(
-      rawHospitals
+    const allScoredHospitals = hasHealthIntent ? rawHospitals
         .filter(h => h && typeof h === 'object')
         .map(hosp => {
           try { return calculateHospitalScore(hosp, user); }
           catch (e) { console.error("Score Error (Hosp):", e); return null; }
         })
-        .filter((res): res is RecommendationResult => res !== null && res.score >= 30)
-    ).slice(0, 3) : [];
+        .filter((res): res is RecommendationResult => res !== null) : [];
 
     // --- STEP 3: UNIQUE REASON GENERATION (Duplication Control) ---
     const attachExplanations = (recs: RecommendationResult[], type: 'university' | 'scheme' | 'hospital') => {
       const usedExplanations = new Set<string>();
       
       return recs.map(rec => {
+        if (rec.explanation && !usedExplanations.has(rec.explanation)) {
+          usedExplanations.add(rec.explanation);
+          return rec;
+        }
+
         let explanation = '';
         let offset = 0;
         
@@ -136,16 +133,39 @@ export class RecommendationEngine {
       });
     };
 
-    const rankedUniversities = attachExplanations(baseUniversities, 'university');
-    const rankedSchemes = attachExplanations(baseSchemes, 'scheme');
-    const rankedHospitals = attachExplanations(baseHospitals, 'hospital');
+    const rankedUniversities = attachExplanations(sortRecommendations(allScoredUnis).slice(0, 3), 'university');
+    const rankedSchemes = attachExplanations(sortRecommendations(allScoredSchemes).slice(0, 3), 'scheme');
+    const rankedHospitals = attachExplanations(sortRecommendations(allScoredHospitals).slice(0, 3), 'hospital');
 
-    // 4. Intelligence Metrics
+    // --- STEP 4: INTELLIGENCE METRICS (PURE MATHEMATICAL AVERAGING) ---
+    const eduAvg = allScoredUnis.length > 0 ? allScoredUnis.reduce((acc, res) => acc + res.score, 0) / allScoredUnis.length : 0;
+    const schemeAvg = allScoredSchemes.length > 0 ? allScoredSchemes.reduce((acc, res) => acc + res.score, 0) / allScoredSchemes.length : 0;
+    const hospAvg = allScoredHospitals.length > 0 ? allScoredHospitals.reduce((acc, res) => acc + res.score, 0) / allScoredHospitals.length : 0;
+
+    const activeModuleScores = [];
+    if (hasEducationIntent && allScoredUnis.length > 0) activeModuleScores.push({ id: 'education', avg: eduAvg, weight: 0.5 });
+    if (hasFinancialIntent && allScoredSchemes.length > 0) activeModuleScores.push({ id: 'schemes', avg: schemeAvg, weight: 0.3 });
+    if (hasHealthIntent && allScoredHospitals.length > 0) activeModuleScores.push({ id: 'healthcare', avg: hospAvg, weight: 0.2 });
+
+    let overallConfidence = 0;
+    const moduleBreakdown: any = {};
+
+    if (activeModuleScores.length > 0) {
+      // RULE: Normalized weighted average based on 50/30/20 ratio for ACTIVE modules only
+      const totalWeight = activeModuleScores.reduce((acc, m) => acc + m.weight, 0);
+      overallConfidence = activeModuleScores.reduce((acc, m) => acc + (m.avg * (m.weight / totalWeight)), 0);
+
+      // Populate accurate breakdown for UI
+      if (hasEducationIntent && allScoredUnis.length > 0) moduleBreakdown.education = Math.round(eduAvg);
+      if (hasFinancialIntent && allScoredSchemes.length > 0) moduleBreakdown.schemes = Math.round(schemeAvg);
+      if (hasHealthIntent && allScoredHospitals.length > 0) moduleBreakdown.healthcare = Math.round(hospAvg);
+    }
+
+    // Explicit 1-decimal place rounding for final display, strictly bounded to 100%
+    overallConfidence = Math.min(100, Number(overallConfidence.toFixed(1)));
+
     const allResults = [...rankedUniversities, ...rankedSchemes, ...rankedHospitals];
-    const avgScore = allResults.length > 0 ? allResults.reduce((acc, res) => acc + res.score, 0) / allResults.length : 0;
-    
     const profileCompleteness = this.calculateProfileCompleteness(user);
-    const overallConfidence = Math.round((avgScore * 0.7) + (profileCompleteness * 0.3));
 
     // 5. Generate Contextual Narratives & Insights (Intent-Aware)
     // We override the user's interests in the context to ensure the generator only sees ACTIVE intents.
@@ -193,6 +213,7 @@ export class RecommendationEngine {
       schemes: rankedSchemes,
       hospitals: rankedHospitals,
       overallConfidence,
+      moduleBreakdown,
       profileNarrative,
       insights,
       diagnostics
@@ -213,7 +234,7 @@ export class RecommendationEngine {
       },
       education: {
         degree: profile.education?.degree,
-        discipline: profile.education?.discipline,
+        preferredProgram: profile.education?.preferredProgram || profile.education?.disciplineGroup || profile.education?.discipline,
         marks: profile.education?.marks,
         city: profile.education?.city
       },
@@ -244,7 +265,7 @@ export class RecommendationEngine {
 
     check(user.location?.city);
     check(user.education?.degree);
-    check(user.education?.discipline);
+    check(user.education?.preferredProgram);
     check(user.education?.marks);
     check(user.schemes?.income);
     check(user.schemes?.age);

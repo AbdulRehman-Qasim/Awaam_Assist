@@ -74,10 +74,11 @@ const scoreEducation = (uni, edu) => {
   }
 
   // Discipline match (max 30pts)
+  const prefProg = (edu.preferredProgram || edu.disciplineGroup || edu.discipline || "").toLowerCase();
   const dm = disciplineMatch(
     uni.discipline || "",
-    edu.discipline || edu.programInterest || edu.preferredProgram || "",
-    edu.preferredProgram || ""
+    edu.discipline || edu.programInterest || prefProg,
+    prefProg
   );
   if (dm >= 0.8) { score += 30; reasons.push(`Matches your ${edu.preferredProgram || edu.discipline || "preferred"} program interest`); }
   else if (dm >= 0.6) { score += 18; reasons.push(`Partially aligns with your academic interest`); }

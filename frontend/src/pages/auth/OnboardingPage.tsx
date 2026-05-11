@@ -52,6 +52,8 @@ const SCHEMES_REQUIRED_FIELDS = [
   "schemes.province",
   "schemes.city",
   "schemes.educationLevel",
+  "schemes.familySize",
+  "schemes.bispStatus",
 ] as const;
 // schemes.financialNeedType is checked separately (array must have length > 0)
 
@@ -164,7 +166,7 @@ const OnboardingPage = () => {
         studentStatus: "Yes",
         familySize: "",
         houseOwnership: "Owned",
-        existingSupport: "None",
+        bispStatus: "None",
         disabilityStatus: "No",
         internetAccess: "Yes",
         deviceAccess: "Yes",
@@ -343,6 +345,8 @@ const OnboardingPage = () => {
     city: watch("schemes.city"),
     employmentStatus: watch("schemes.employmentStatus"),
     educationLevel: watch("schemes.educationLevel"),
+    familySize: watch("schemes.familySize"),
+    bispStatus: watch("schemes.bispStatus"),
     financialNeedType: watch("schemes.financialNeedType"),
   };
 
@@ -351,6 +355,7 @@ const OnboardingPage = () => {
     tehsil: watch("healthcare.tehsil"),
     treatmentType: watch("healthcare.treatmentType"),
     budgetRange: watch("healthcare.budgetRange"),
+    hospitalCategory: watch("healthcare.hospitalCategory"),
   };
 
   // ─── MODULE COMPLETION CHECKS (direct, no stale refs) ───
@@ -370,6 +375,8 @@ const OnboardingPage = () => {
     watchedSchemes.city &&
     watchedSchemes.employmentStatus &&
     watchedSchemes.educationLevel &&
+    watchedSchemes.familySize &&
+    watchedSchemes.bispStatus &&
     watchedSchemes.financialNeedType &&
     (watchedSchemes.financialNeedType as string[]).length > 0
   );
@@ -378,7 +385,8 @@ const OnboardingPage = () => {
     watchedHealthcare.city &&
     watchedHealthcare.tehsil &&
     watchedHealthcare.treatmentType &&
-    watchedHealthcare.budgetRange
+    watchedHealthcare.budgetRange &&
+    watchedHealthcare.hospitalCategory
   );
 
   // ─── OVERALL COMPLETION (only checks selected modules) ───
@@ -431,32 +439,36 @@ const OnboardingPage = () => {
     setLoading(true);
     try {
       const formData = getValues();
+      const payload = {
+        selectedModules,
+        profile: {
+          education: selectedModules.includes("education") ? {
+            ...formData.education,
+            marks: formData.education.marks ? Number(formData.education.marks) : 0,
+            expectedMerit: formData.education.expectedMerit ? Number(formData.education.expectedMerit) : 0
+          } : null,
+          schemes: selectedModules.includes("schemes") ? {
+            ...formData.schemes,
+            income: Number(formData.schemes.income),
+            age: Number(formData.schemes.age),
+            familySize: formData.schemes.familySize ? Number(formData.schemes.familySize) : undefined
+          } : null,
+          healthcare: selectedModules.includes("healthcare") ? {
+            ...formData.healthcare,
+            budgetRange: Number(formData.healthcare.budgetRange)
+          } : null,
+        }
+      };
+
+      console.log("Submitting Onboarding Payload:", payload);
+
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/user/complete-profile`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
         },
-        body: JSON.stringify({
-          selectedModules,
-          profile: {
-            education: selectedModules.includes("education") ? {
-              ...formData.education,
-              marks: formData.education.marks ? Number(formData.education.marks) : 0,
-              expectedMerit: formData.education.expectedMerit ? Number(formData.education.expectedMerit) : 0
-            } : null,
-            schemes: selectedModules.includes("schemes") ? {
-              ...formData.schemes,
-              income: Number(formData.schemes.income),
-              age: Number(formData.schemes.age),
-              familySize: formData.schemes.familySize ? Number(formData.schemes.familySize) : undefined
-            } : null,
-            healthcare: selectedModules.includes("healthcare") ? {
-              ...formData.healthcare,
-              budgetRange: Number(formData.healthcare.budgetRange)
-            } : null,
-          }
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
@@ -1203,7 +1215,7 @@ const OnboardingPage = () => {
                       <div className="space-y-2">
                         <Label className="text-slate-600 text-xs font-bold uppercase">Existing Govt Support</Label>
                         <Controller
-                          name="schemes.existingSupport"
+                          name="schemes.bispStatus"
                           control={control}
                           render={({ field }) => (
                             <Select onValueChange={field.onChange} value={field.value}>

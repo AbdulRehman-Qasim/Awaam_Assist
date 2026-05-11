@@ -9,6 +9,7 @@ export interface University {
   merit: number;
   fee: number;
   semesterFee?: number;
+  feeType?: string;
   url: string;
   web?: string;
   contact?: string;

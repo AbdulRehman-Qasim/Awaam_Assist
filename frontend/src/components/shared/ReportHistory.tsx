@@ -7,9 +7,13 @@ import { format } from 'date-fns';
 import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 
+import { AIReportModal } from './AIReportModal';
+
 export const ReportHistory: React.FC = () => {
   const [reports, setReports] = useState<ReportRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedReport, setSelectedReport] = useState<ReportRecord | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const loadHistory = async () => {
     setIsLoading(true);
@@ -111,7 +115,10 @@ export const ReportHistory: React.FC = () => {
                     variant="default"
                     size="sm"
                     className="flex-1 h-9 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all duration-300"
-                    onClick={() => reportService.downloadReport(report.reportUrl)}
+                    onClick={() => {
+                      setSelectedReport(report);
+                      setIsModalOpen(true);
+                    }}
                   >
                     View Insights
                     <ChevronRight className="ml-2 w-3.5 h-3.5" />
@@ -130,6 +137,13 @@ export const ReportHistory: React.FC = () => {
           </p>
         </div>
       )}
+
+      <AIReportModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        reportData={selectedReport} 
+        module={selectedReport?.module || ''} 
+      />
     </div>
   );
 };

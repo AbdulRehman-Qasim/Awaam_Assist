@@ -59,15 +59,15 @@ const SectionHeader = ({ cfg, count, moduleKey, items, insights }: {
   const Icon = cfg.icon;
   return (
     <div className="flex items-center justify-between">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3.5">
         {/* Icon with gradient background */}
-        <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${cfg.gradient} flex items-center justify-center shadow-sm`}>
-          <Icon className="w-5 h-5 text-white" />
+        <div className={`w-10 h-10 rounded-[14px] bg-gradient-to-br ${cfg.gradient} flex items-center justify-center shadow-[0_4px_14px_-4px_rgba(0,0,0,0.25)]`}>
+          <Icon className="w-4.5 h-4.5 text-white w-[18px] h-[18px]" />
         </div>
         <div>
-          <h2 className="text-lg font-black text-slate-900 tracking-tight">{cfg.title}</h2>
-          <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-            {count} result{count !== 1 ? 's' : ''} found
+          <h2 className="text-base font-black text-slate-900 tracking-tight">{cfg.title}</h2>
+          <div className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400 mt-0.5">
+            {count} result{count !== 1 ? 's' : ''} · AI-ranked
           </div>
         </div>
       </div>
@@ -80,13 +80,14 @@ const SectionHeader = ({ cfg, count, moduleKey, items, insights }: {
           insights={insights}
           variant="outline" 
           size="sm" 
-          className="h-8 rounded-xl text-[10px] font-black uppercase tracking-widest"
+          className="h-8 rounded-xl text-[10px] font-black uppercase tracking-widest border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all"
+          disabled={items.length === 0}
         />
 
         {/* See All link */}
         <Link
           to={cfg.seeAllHref}
-          className={`inline-flex items-center gap-1.5 px-3 h-8 rounded-xl text-[10px] font-black uppercase tracking-widest ${cfg.accentBg} ${cfg.accentText} border border-current/10 hover:brightness-95 transition-all`}
+          className={`inline-flex items-center gap-1.5 px-3 h-8 rounded-xl text-[10px] font-black uppercase tracking-widest ${cfg.accentBg} ${cfg.accentText} hover:brightness-95 transition-all`}
         >
           See All
           <ArrowRight className="w-3 h-3" />
@@ -98,19 +99,19 @@ const SectionHeader = ({ cfg, count, moduleKey, items, insights }: {
 
 /* ─── Empty State ─── */
 const EmptyState = ({ icon: Icon, message, href }: { icon: any; message: string; href: string }) => (
-  <div className="col-span-full py-14 px-6 text-center bg-slate-50/60 rounded-2xl border border-dashed border-slate-200 flex flex-col items-center gap-4">
-    <div className="w-14 h-14 rounded-2xl bg-white shadow-sm border border-slate-100 flex items-center justify-center text-slate-300">
-      <Icon className="w-7 h-7" />
+  <div className="col-span-full py-16 px-6 text-center bg-gradient-to-b from-slate-50/40 to-white rounded-2xl border border-dashed border-slate-200 flex flex-col items-center gap-5">
+    <div className="w-16 h-16 rounded-2xl bg-white shadow-[0_4px_20px_-4px_rgba(0,0,0,0.08)] border border-slate-100 flex items-center justify-center text-slate-300">
+      <Icon className="w-8 h-8" />
     </div>
-    <div className="space-y-1">
-      <p className="text-slate-800 font-black text-sm">Insufficient Data for Matching</p>
-      <p className="text-slate-500 font-bold text-xs max-w-xs mx-auto">{message}</p>
+    <div className="space-y-1.5">
+      <p className="text-slate-700 font-black text-sm">Insufficient Data for Matching</p>
+      <p className="text-slate-400 font-semibold text-xs max-w-[260px] mx-auto leading-relaxed">{message}</p>
     </div>
     <Link
       to="/complete-profile"
-      className="inline-flex items-center gap-2 px-5 h-9 rounded-xl border border-slate-200 text-slate-600 font-black text-xs hover:bg-white hover:shadow-sm transition-all"
+      className="inline-flex items-center gap-2 px-5 h-9 rounded-xl bg-slate-900 text-white font-black text-[11px] uppercase tracking-widest hover:bg-slate-800 transition-all shadow-sm"
     >
-      <BrainCircuit className="w-3.5 h-3.5 text-primary" />
+      <BrainCircuit className="w-3.5 h-3.5" />
       Optimize Recommendations
     </Link>
   </div>
@@ -130,7 +131,7 @@ export const DashboardFeed: React.FC<DashboardFeedProps> = ({
     if (loading) return <ModuleSkeleton title={cfg.title} />;
 
     return (
-      <section className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-700">
+      <section className="space-y-6">
         <SectionHeader 
           cfg={cfg} 
           count={items.length} 
@@ -161,7 +162,7 @@ export const DashboardFeed: React.FC<DashboardFeedProps> = ({
   };
 
   return (
-    <div className="space-y-14">
+    <div className="space-y-16">
       {selectedModules.includes('education') && renderSection('education', recommendations?.universities || [])}
       {selectedModules.includes('schemes')   && renderSection('schemes',   recommendations?.schemes     || [])}
       {selectedModules.includes('healthcare')&& renderSection('healthcare',recommendations?.hospitals   || [])}

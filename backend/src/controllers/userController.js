@@ -14,25 +14,37 @@ exports.completeProfile = async (req, res) => {
       return res.status(400).json({ success: false, message: "selectedModules is required" });
     }
 
-    // Validation Logic - Only strictly require core fields that the frontend marks as required
+    // Validation Logic - Must match exactly what the frontend form collects
     if (selectedModules.includes("education")) {
-      const { degree, preferredProgram, city, feeRange } = profileData.education || {};
-      if (!degree || !preferredProgram || !city || !feeRange) {
+      const { degree, city } = profileData.education || {};
+      if (!degree || !city) {
         return res.status(400).json({ success: false, message: "Missing required core fields for Education module" });
       }
     }
 
     if (selectedModules.includes("schemes")) {
-      const { income, age, employmentStatus, province, city, educationLevel } = profileData.schemes || {};
-      if (income === undefined || age === undefined || !employmentStatus || !province || !city || !educationLevel) {
-        return res.status(400).json({ success: false, message: "Missing required core fields for Schemes module" });
+      const { income, age, employmentStatus, province, educationLevel, familySize, bispStatus } = profileData.schemes || {};
+      const missingFields = [];
+      if (income === undefined || income === null || income === "") missingFields.push("income");
+      if (age === undefined || age === null || age === "") missingFields.push("age");
+      if (!employmentStatus) missingFields.push("employmentStatus");
+      if (!province) missingFields.push("province");
+      if (!educationLevel) missingFields.push("educationLevel");
+      if (familySize === undefined || familySize === null || familySize === "") missingFields.push("familySize");
+      if (!bispStatus) missingFields.push("bispStatus");
+
+      if (missingFields.length > 0) {
+        return res.status(400).json({ 
+          success: false, 
+          message: `Missing required core fields for Schemes module: ${missingFields.join(", ")}` 
+        });
       }
     }
 
     if (selectedModules.includes("healthcare")) {
-      const { city, tehsil } = profileData.healthcare || {};
-      if (!city || !tehsil) {
-        return res.status(400).json({ success: false, message: "Missing required core fields for Healthcare module" });
+      const { city, hospitalCategory, treatmentType } = profileData.healthcare || {};
+      if (!city || !hospitalCategory || !treatmentType) {
+        return res.status(400).json({ success: false, message: "Missing required core fields for Healthcare module (city, hospital type, treatment type required)" });
       }
     }
 
@@ -70,14 +82,13 @@ exports.completeProfile = async (req, res) => {
 
     await profile.save();
 
+    // Re-fetch to get the populated profile for the response
+    const savedProfile = await Profile.findOne({ userId }).populate("userId", "student_name student_email");
+
     return res.status(200).json({
       success: true,
       message: "Profile saved successfully",
-      data: {
-        userId: profile.userId,
-        selectedModules: profile.selectedModules,
-        onboardingCompleted: profile.onboardingCompleted,
-      },
+      data: savedProfile,
     });
   } catch (error) {
     console.error("Complete Profile Error:", error);

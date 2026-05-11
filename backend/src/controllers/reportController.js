@@ -3,99 +3,133 @@ const path = require('path');
 const fs = require('fs');
 const Report = require('../models/ReportSchema');
 const Profile = require('../models/ProfileSchema');
-const University = require('../models/UniversitySchema');
-const Scheme = require('../models/SchemeSchema');
-const Hospital = require('../models/HospitalSchema');
-const { scoreUniversities } = require('../utils/RecommendationEngine');
+const { generateIntelligentReport } = require('../services/ai/aiProvider');
+
+// ─── In-memory Rate Limiter ───────────────────────────────────────────────
+const rateLimitMap = new Map();
 
 /**
- * Generate PDF Report
+ * Extracts the TRUE dashboard match score from a recommendation object.
+ * Checks every possible field name the frontend engine may assign.
+ * NEVER uses a fake default — if no score is found, returns 0 (honest).
  */
+const extractScore = (item) => {
+  const candidates = [
+    item.matchPercentage,  // primary field from universityScoring.ts
+    item.matchScore,
+    item.score,
+    item.compatibility,
+    item.percentage,
+    item.match,
+  ];
+  for (const c of candidates) {
+    const n = Number(c);
+    if (c !== undefined && c !== null && !isNaN(n) && n > 0) {
+      return Math.min(100, Math.round(n));
+    }
+  }
+  return 0;
+};
+
+// ─── Score Helpers ────────────────────────────────────────────────────────
+const scoreColor = (s) => {
+  if (s >= 90) return '#059669';
+  if (s >= 75) return '#2563eb';
+  if (s >= 60) return '#d97706';
+  return '#dc2626';
+};
+
+const scoreLabel = (s) => {
+  if (s >= 90) return 'Exceptional Match';
+  if (s >= 75) return 'Strong Match';
+  if (s >= 60) return 'Good Match';
+  return 'Partial Match';
+};
+
+// ─── Generate PDF Report ──────────────────────────────────────────────────
 /**
- * Generate PDF Report
- * Single Source of Truth: Uses UI-provided recommendations if available, otherwise calculates them.
+ * Single Source of Truth: uses UI-provided recommendation objects with their
+ * EXACT dashboard scores. No re-calculation. No fake defaults.
  */
 exports.generateReport = async (req, res) => {
   try {
     const { module, recommendations: uiRecommendations, insights: uiInsights } = req.body;
     const userId = req.userId;
 
+    // Rate Limiting: 1 request per 10 seconds per user
+    const now = Date.now();
+    const lastRequest = rateLimitMap.get(userId);
+    if (lastRequest && now - lastRequest < 10000) {
+      return res.status(429).json({ success: false, message: 'Too many requests. Please wait 10 seconds before generating another report.' });
+    }
+    rateLimitMap.set(userId, now);
+
     if (!['healthcare', 'education', 'schemes'].includes(module)) {
       return res.status(400).json({ success: false, message: 'Invalid module specified' });
     }
 
-    // 1. Gather Data
     const userProfile = await Profile.findOne({ userId }).lean();
     if (!userProfile) {
       return res.status(404).json({ success: false, message: 'Profile not found' });
     }
 
-    let recommendations = uiRecommendations || [];
-    let insights = uiInsights || "";
+    const recommendations = uiRecommendations || [];
+    const insights = uiInsights || '';
 
-    // 2. Fallback Calculation (only if not provided by UI)
     if (recommendations.length === 0) {
-      if (module === 'education') {
-        const edu = userProfile.profile.education || {};
-        const candidates = await University.find({}).limit(100);
-        recommendations = scoreUniversities(candidates, userProfile.profile, {});
-        insights = `Based on your academic profile (${edu.marks || 'N/A'}%) and location (${edu.city || 'specified'}), we've identified top educational matches.`;
-      } else if (module === 'schemes') {
-        const sch = userProfile.profile.schemes || {};
-        const candidates = await Scheme.find({
-          $or: [{ province: new RegExp(sch.province, 'i') }, { province: 'All Pakistan' }]
-        }).limit(10);
-        recommendations = candidates.map(s => {
-          const eligibility = s.checkEligibility(sch);
-          return {
-            ...s.toObject(),
-            score: eligibility.eligibilityPercentage,
-            reason: eligibility.reasons.length > 0 ? eligibility.reasons : ["Matches your profile criteria"]
-          };
-        }).sort((a, b) => b.score - a.score).slice(0, 5);
-        insights = `Your household profile matches several government welfare schemes in ${sch.province || 'Punjab'}.`;
-      } else if (module === 'healthcare') {
-        const hc = userProfile.profile.healthcare || {};
-        const candidates = await Hospital.find({ 
-          City: new RegExp(hc.city, 'i'),
-          status: 'approved'
-        }).limit(5);
-        recommendations = candidates.map(h => {
-          const hospital = h.toObject();
-          return {
-            ...hospital,
-            score: 85 + Math.floor(Math.random() * 10),
-            reason: [`Located in ${hospital.City}`, `${hospital.Cateogry || 'General'} facilities`]
-          };
-        });
-        insights = `Prioritizing hospitals in ${hc.city || 'your area'} to match your medical requirements.`;
-      }
+      return res.status(400).json({
+        success: false,
+        message: 'No recommendations provided. Please ensure your profile is complete.',
+      });
     }
 
-    // 3. Enrich Recommendations for the Report (Ensure fields are normalized)
-    const enrichedRecs = recommendations.map((item, idx) => ({
-      name: item.schemeName || item.hospitalName || item['Hospital Name'] || item.name || item.title || 'Recommendation',
-      score: item.score || item.matchScore || 85,
-      location: item.province || item.City || item.city || item.location || 'Pakistan',
-      reasons: item.reasons || (item.reason && Array.isArray(item.reason) ? item.reason : [item.description || "Highly compatible match"]),
-      rank: idx + 1
-    }));
+    // Normalize recommendations — preserve EXACT dashboard scores
+    const enrichedRecs = recommendations.map((item, idx) => {
+      const finalScore = extractScore(item);
 
-    // 4. Generate HTML Template
-    const htmlContent = getReportTemplate(module, userProfile, enrichedRecs, insights);
+      let reasons = [];
+      if (Array.isArray(item.reasons) && item.reasons.length > 0) {
+        reasons = item.reasons;
+      } else if (Array.isArray(item.explanation) && item.explanation.length > 0) {
+        reasons = item.explanation;
+      } else if (typeof item.explanation === 'string' && item.explanation.trim()) {
+        reasons = [item.explanation];
+      } else if (typeof item.reason === 'string' && item.reason.trim()) {
+        reasons = [item.reason];
+      } else {
+        reasons = ['Profile compatibility verified'];
+      }
 
-    // 5. PDF Generation
+      return {
+        name: item.schemeName || item.hospitalName || item['Hospital Name'] || item.name || item.title || 'Recommendation',
+        score: finalScore,
+        location: item.location || item.province || item.City || item.city || item.details?.city || item.details?.City || 'Pakistan',
+        reasons,
+        rank: item.rank !== undefined ? item.rank : idx + 1,
+        program: item.details?.programs?.[0] || item.details?.program || item.program || null,
+        type: item.details?.type || item.type || null,
+        fee: item.details?.fee || item.fee || null,
+        website: item.details?.web || item.details?.url || item.website || null,
+      };
+    });
+
+    // Generate AI analysis
+    const aiHtmlContent = await generateIntelligentReport(module, userProfile.profile?.[module] || {}, enrichedRecs);
+
+    // Build premium HTML
+    const htmlContent = getReportTemplate(module, userProfile, enrichedRecs, insights, aiHtmlContent);
+
+    // PDF generation
     const browser = await puppeteer.launch({
       executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-      headless: "new"
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      headless: 'new',
     });
     const page = await browser.newPage();
     await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
-    
+
     const fileName = `report_${module}_${userId}_${Date.now()}.pdf`;
     const filePath = path.join(__dirname, '../../uploads/reports', fileName);
-    
     if (!fs.existsSync(path.dirname(filePath))) {
       fs.mkdirSync(path.dirname(filePath), { recursive: true });
     }
@@ -104,12 +138,10 @@ exports.generateReport = async (req, res) => {
       path: filePath,
       format: 'A4',
       printBackground: true,
-      margin: { top: '20px', bottom: '20px', left: '20px', right: '20px' }
+      margin: { top: '0px', bottom: '0px', left: '0px', right: '0px' },
     });
-
     await browser.close();
 
-    // 6. Save Snapshot
     const reportUrl = `/uploads/reports/${fileName}`;
     const newReport = new Report({
       userId,
@@ -118,21 +150,27 @@ exports.generateReport = async (req, res) => {
       reportSnapshot: {
         userProfile: userProfile.profile,
         recommendations: enrichedRecs,
-        insights
-      }
+        insights,
+        aiHtmlContent,
+      },
     });
     await newReport.save();
 
-    res.json({ success: true, data: newReport });
+    res.json({
+      success: true,
+      data: newReport,
+      aiSummary: aiHtmlContent,
+      recommendations: enrichedRecs,
+      scores: enrichedRecs.map((r) => r.score),
+      metadata: { module, userId, generatedAt: newReport.createdAt, reportUrl },
+    });
   } catch (error) {
     console.error('Report generation error:', error);
     res.status(500).json({ success: false, message: 'Failed to generate report', error: error.message });
   }
 };
 
-/**
- * Get Report History
- */
+// ─── Get Report History ───────────────────────────────────────────────────
 exports.getReportHistory = async (req, res) => {
   try {
     const userId = req.userId;
@@ -143,177 +181,363 @@ exports.getReportHistory = async (req, res) => {
   }
 };
 
-// --- HTML Template Generator ---
-function getReportTemplate(module, profile, data, insights) {
-  const date = new Date().toLocaleDateString('en-PK', { 
-    day: '2-digit', 
-    month: '2-digit', 
-    year: 'numeric' 
-  });
-  
-  const title = module.charAt(0).toUpperCase() + module.slice(1) + " Personal Intelligence Report";
-  
-  // Calculate some summary metrics
+// ─── Premium HTML Template ────────────────────────────────────────────────
+function getReportTemplate(module, profile, data, insights, aiHtmlContent) {
+  const date = new Date().toLocaleDateString('en-PK', { day: '2-digit', month: 'long', year: 'numeric' });
+  const reportId = Math.random().toString(36).substr(2, 9).toUpperCase();
+  const moduleTitle = module.charAt(0).toUpperCase() + module.slice(1);
   const totalMatches = data.length;
-  const avgMatchScore = totalMatches > 0 
-    ? Math.round(data.reduce((acc, curr) => acc + (curr.score || 0), 0) / totalMatches)
+  const avgMatchScore = totalMatches > 0
+    ? Math.round(data.reduce((a, c) => a + (c.score || 0), 0) / totalMatches)
     : 0;
+  const topScore = data.length > 0 ? data[0].score : 0;
 
-  // Reusable styles for premium look
-  const styles = `
-    <style>
-      body { font-family: 'Inter', -apple-system, sans-serif; color: #0f172a; line-height: 1.6; margin: 0; padding: 0; background: #fff; }
-      .header { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; padding: 50px 40px; border-radius: 0 0 40px 40px; }
-      .logo { font-size: 26px; font-weight: 900; letter-spacing: -1px; }
-      .subtitle { opacity: 0.6; font-size: 13px; margin-top: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; }
-      .container { padding: 40px; }
-      .section { margin-bottom: 40px; }
-      .section-title { font-size: 14px; font-weight: 900; margin-bottom: 16px; color: #64748b; text-transform: uppercase; letter-spacing: 0.1em; border-bottom: 2px solid #f1f5f9; padding-bottom: 8px; }
-      
-      /* Summary Grid */
-      .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
-      .summary-card { background: #f8fafc; border: 1px solid #e2e8f0; padding: 20px; border-radius: 20px; text-align: center; }
-      .summary-label { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 8px; }
-      .summary-value { font-size: 20px; font-weight: 900; color: #0f172a; }
-
-      .card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 24px; padding: 24px; }
-      .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-      .info-item { }
-      .info-label { font-size: 10px; font-weight: 800; text-transform: uppercase; color: #64748b; letter-spacing: 0.05em; margin-bottom: 4px; }
-      .info-value { font-size: 15px; font-weight: 700; color: #0f172a; }
-
-      .insight-box { background: #eff6ff; border-left: 5px solid #3b82f6; padding: 24px; border-radius: 4px 20px 20px 4px; margin-top: 8px; }
-      
-      .rec-item { display: flex; align-items: start; gap: 20px; padding: 20px; background: white; border: 1px solid #f1f5f9; border-radius: 20px; margin-bottom: 16px; }
-      .rec-rank { width: 40px; height: 40px; background: #0f172a; color: white; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 18px; shrink: 0; }
-      .rec-content { flex: 1; }
-      .rec-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-      .rec-name { font-size: 17px; font-weight: 800; color: #0f172a; }
-      .score-badge { padding: 4px 12px; border-radius: 100px; font-size: 11px; font-weight: 900; background: #dcfce7; color: #166534; text-transform: uppercase; }
-      .rec-loc { font-size: 13px; font-weight: 600; color: #64748b; display: flex; align-items: center; gap: 4px; }
-      .rec-reasons { margin-top: 12px; font-size: 12px; color: #475569; display: flex; flex-wrap: wrap; gap: 8px; }
-      .reason-tag { background: #f1f5f9; padding: 4px 10px; border-radius: 8px; font-weight: 600; }
-
-      .footer { margin-top: 80px; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 32px; }
-    </style>
-  `;
-
-  let profileContent = "";
+  // ── Profile Snapshot rows ──────────────────────────────────────────────
+  let profileRows = '';
   if (module === 'education') {
-    const edu = profile.profile.education || {};
-    profileContent = `
-      <div class="grid">
-        <div class="info-item"><div class="info-label">Degree Goal</div><div class="info-value">${edu.degree || 'Not Specified'}</div></div>
-        <div class="info-item"><div class="info-label">Current Marks</div><div class="info-value">${edu.marks || '0'}%</div></div>
-        <div class="info-item"><div class="info-label">Target City</div><div class="info-value">${edu.city || 'Not Specified'}</div></div>
-        <div class="info-item"><div class="info-label">Programs</div><div class="info-value">${edu.preferredProgram || 'All Disciplines'}</div></div>
-      </div>
+    const edu = profile.profile?.education || {};
+    profileRows = `
+      <div class="prow"><span class="plabel">Degree Goal</span><span class="pval">${edu.degree || 'Not Specified'}</span></div>
+      <div class="prow"><span class="plabel">Current Marks</span><span class="pval">${edu.marks || '0'}%</span></div>
+      <div class="prow"><span class="plabel">Target City</span><span class="pval">${edu.city || 'Not Specified'}</span></div>
+      <div class="prow"><span class="plabel">Preferred Program</span><span class="pval">${edu.preferredProgram || 'All Programs'}</span></div>
+      <div class="prow"><span class="plabel">Budget (PKR)</span><span class="pval">${edu.budget ? Number(edu.budget).toLocaleString() : 'Flexible'}</span></div>
+      <div class="prow"><span class="plabel">Specialization</span><span class="pval">${edu.specialization || 'General'}</span></div>
     `;
   } else if (module === 'schemes') {
-    const sch = profile.profile.schemes || {};
-    profileContent = `
-      <div class="grid">
-        <div class="info-item"><div class="info-label">Monthly Income</div><div class="info-value">PKR ${sch.income || 'Not Specified'}</div></div>
-        <div class="info-item"><div class="info-label">Province</div><div class="info-value">${sch.province || 'Not Specified'}</div></div>
-        <div class="info-item"><div class="info-label">Employment</div><div class="info-value">${sch.employmentStatus || 'Not Specified'}</div></div>
-        <div class="info-item"><div class="info-label">Category</div><div class="info-value">${sch.category || 'General Citizen'}</div></div>
-      </div>
+    const sch = profile.profile?.schemes || {};
+    profileRows = `
+      <div class="prow"><span class="plabel">Monthly Income</span><span class="pval">PKR ${Number(sch.income || 0).toLocaleString()}</span></div>
+      <div class="prow"><span class="plabel">Age</span><span class="pval">${sch.age || 'N/A'} years</span></div>
+      <div class="prow"><span class="plabel">Province</span><span class="pval">${sch.province || 'Not Specified'}</span></div>
+      <div class="prow"><span class="plabel">Employment</span><span class="pval">${sch.employmentStatus || 'Not Specified'}</span></div>
+      <div class="prow"><span class="plabel">Family Size</span><span class="pval">${sch.familySize || 'N/A'} members</span></div>
+      <div class="prow"><span class="plabel">Financial Needs</span><span class="pval">${Array.isArray(sch.financialNeedType) && sch.financialNeedType.length ? sch.financialNeedType.join(', ') : 'General'}</span></div>
     `;
-  } else if (module === 'healthcare') {
-    const hc = profile.profile.healthcare || {};
-    profileContent = `
-      <div class="grid">
-        <div class="info-item"><div class="info-label">Location</div><div class="info-value">${hc.city || 'Not Specified'}</div></div>
-        <div class="info-item"><div class="info-label">Budget Range</div><div class="info-value">PKR ${hc.budgetRange || 'Flexible'}</div></div>
-        <div class="info-item"><div class="info-label">Category</div><div class="info-value">${hc.hospitalCategory || 'General'}</div></div>
-        <div class="info-item"><div class="info-label">Type</div><div class="info-value">${hc.treatmentType || 'General Consultation'}</div></div>
-      </div>
+  } else {
+    const hc = profile.profile?.healthcare || {};
+    profileRows = `
+      <div class="prow"><span class="plabel">City</span><span class="pval">${hc.city || 'Not Specified'}</span></div>
+      <div class="prow"><span class="plabel">Max Budget</span><span class="pval">PKR ${Number(hc.maxBudget || 0).toLocaleString()}</span></div>
+      <div class="prow"><span class="plabel">Category</span><span class="pval">${hc.hospitalCategory || 'General'}</span></div>
+      <div class="prow"><span class="plabel">Treatment Type</span><span class="pval">${hc.treatmentType || 'General'}</span></div>
     `;
   }
 
-  const recContent = data.map(item => `
-    <div class="rec-item">
-      <div class="rec-rank">${item.rank}</div>
-      <div class="rec-content">
+  // ── Recommendation cards ───────────────────────────────────────────────
+  const recCards = data.map((item, i) => {
+    const sc = item.score;
+    const col = scoreColor(sc);
+    const lbl = scoreLabel(sc);
+    const barWidth = Math.min(100, sc);
+    const rankBadge = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`;
+    const tagsHtml = item.reasons
+      .slice(0, 4)
+      .map((r) => `<span class="tag">${r}</span>`)
+      .join('');
+    const extraHtml = [
+      item.program ? `<span class="tag">📚 ${item.program}</span>` : '',
+      item.type ? `<span class="tag">🏥 ${item.type}</span>` : '',
+    ].filter(Boolean).join('');
+
+    return `
+    <div class="rec-card" style="--accent:${col};">
+      <div class="rec-card-inner">
         <div class="rec-header">
-          <div class="rec-name">${item.name}</div>
-          <div class="score-badge">${item.score}% Match</div>
+          <div class="rec-left">
+            <div class="rank-badge">${rankBadge}</div>
+            <div>
+              <div class="rec-name">${item.name}</div>
+              <div class="rec-loc">📍 ${item.location}</div>
+            </div>
+          </div>
+          <div class="score-circle" style="border-color:${col}; color:${col};">
+            <div class="score-num">${sc}%</div>
+            <div class="score-lbl">${lbl}</div>
+          </div>
         </div>
-        <div class="rec-loc">${item.location}</div>
-        <div class="rec-reasons">
-          ${item.reasons.map(r => `<span class="reason-tag">${r}</span>`).join('')}
+        <div class="bar-wrap">
+          <div class="bar-track"><div class="bar-fill" style="width:${barWidth}%;background:${col};"></div></div>
+          <span class="bar-label" style="color:${col};">${sc}% Match</span>
         </div>
+        <div class="tags">${tagsHtml}${extraHtml}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // ── Styles ─────────────────────────────────────────────────────────────
+  const styles = `
+    <style>
+      /* ── Print / PDF page setup ── */
+      @page {
+        size: A4;
+        margin: 0;
+      }
+      @page :first {
+        margin: 0;
+      }
+
+      /* ── Base reset ── */
+      *{box-sizing:border-box;margin:0;padding:0;}
+      body{
+        font-family:'Inter',-apple-system,sans-serif;
+        color:#0f172a;
+        background:#fff;
+        -webkit-print-color-adjust:exact;
+        print-color-adjust:exact;
+        orphans:3;
+        widows:3;
+      }
+      .page{max-width:900px;margin:0 auto;}
+
+      /* ── Cover ── */
+      .cover{
+        background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 55%,#0f172a 100%);
+        padding:56px 52px 52px;
+        position:relative;
+        overflow:hidden;
+        page-break-inside:avoid;
+        break-inside:avoid;
+      }
+      .cover::before{content:'';position:absolute;top:-80px;right:-80px;width:360px;height:360px;background:radial-gradient(circle,rgba(59,130,246,.25) 0%,transparent 70%);border-radius:50%;}
+      .cover::after{content:'';position:absolute;bottom:-60px;left:-60px;width:280px;height:280px;background:radial-gradient(circle,rgba(16,185,129,.15) 0%,transparent 70%);border-radius:50%;}
+      .cover-inner{position:relative;z-index:1;}
+      .brand{display:flex;align-items:center;gap:12px;margin-bottom:40px;}
+      .brand-dot{width:10px;height:10px;background:#3b82f6;border-radius:50%;}
+      .brand-name{font-size:12px;font-weight:800;color:rgba(255,255,255,.55);letter-spacing:.22em;text-transform:uppercase;}
+      .cover-title{font-size:40px;font-weight:900;color:#fff;letter-spacing:-1.5px;line-height:1.1;margin-bottom:10px;}
+      .cover-title span{color:#60a5fa;}
+      .cover-sub{font-size:13px;font-weight:500;color:rgba(255,255,255,.45);margin-bottom:44px;}
+      .cover-meta{display:flex;gap:36px;}
+      .meta-label{font-size:9px;font-weight:800;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.18em;margin-bottom:4px;}
+      .meta-val{font-size:13px;font-weight:700;color:rgba(255,255,255,.85);}
+
+      /* ── Stats strip — keep together, no break ── */
+      .stats-strip{
+        background:#f8fafc;
+        border-bottom:1px solid #e2e8f0;
+        display:flex;
+        page-break-inside:avoid;
+        break-inside:avoid;
+      }
+      .stat-box{flex:1;padding:22px 24px;border-right:1px solid #e2e8f0;text-align:center;}
+      .stat-box:last-child{border-right:none;}
+      .stat-num{font-size:26px;font-weight:900;color:#0f172a;line-height:1;margin-bottom:5px;}
+      .stat-lbl{font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.16em;}
+
+      /* ── Page body ── */
+      .body{padding:44px 52px;}
+
+      /* ── Sections ── */
+      .section{
+        margin-bottom:40px;
+        page-break-inside:avoid;
+        break-inside:avoid;
+      }
+      .section-head{
+        display:flex;
+        align-items:center;
+        gap:12px;
+        margin-bottom:20px;
+        page-break-after:avoid;
+        break-after:avoid;
+      }
+      .section-num{width:28px;height:28px;background:#0f172a;color:#fff;font-size:11px;font-weight:900;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+      .section-title{font-size:12px;font-weight:900;color:#0f172a;text-transform:uppercase;letter-spacing:.16em;}
+      .section-line{flex:1;height:1px;background:#e2e8f0;}
+
+      /* Section 3 (Ranked Recommendations) — no forced page break, just natural flow */
+      .section-recs{
+        margin-bottom:0;
+        page-break-inside:avoid;
+        break-inside:avoid;
+      }
+
+      /* ── Profile grid ── */
+      .profile-card{
+        background:#f8fafc;
+        border:1px solid #e2e8f0;
+        border-radius:18px;
+        overflow:hidden;
+        display:grid;
+        grid-template-columns:1fr 1fr 1fr;
+        page-break-inside:avoid;
+        break-inside:avoid;
+      }
+      .prow{padding:13px 18px;border-bottom:1px solid #f1f5f9;display:flex;flex-direction:column;gap:3px;page-break-inside:avoid;break-inside:avoid;}
+      .plabel{font-size:9px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.14em;}
+      .pval{font-size:13px;font-weight:700;color:#0f172a;}
+
+      /* ── AI Analysis box ── */
+      .ai-box{
+        background:linear-gradient(135deg,#eff6ff 0%,#f0fdf4 100%);
+        border:1px solid #bfdbfe;
+        border-radius:18px;
+        padding:36px;
+        page-break-inside:avoid;
+        break-inside:avoid;
+      }
+      /* AI sub-headings always stay with the paragraph that follows */
+      .ai-box h2,.ai-box h3{
+        color:#1e3a5f;
+        font-size:14px;
+        font-weight:800;
+        margin:20px 0 8px;
+        padding-bottom:5px;
+        border-bottom:1px solid rgba(59,130,246,.2);
+        page-break-after:avoid;
+        break-after:avoid;
+        orphans:2;
+        widows:2;
+      }
+      .ai-box h2:first-child,.ai-box h3:first-child{margin-top:0;}
+      .ai-box p{
+        font-size:13px;
+        color:#334155;
+        line-height:1.8;
+        margin-bottom:10px;
+        font-weight:500;
+        orphans:3;
+        widows:3;
+      }
+      .ai-box ul,.ai-box ol{
+        font-size:13px;
+        color:#334155;
+        padding-left:20px;
+        margin:6px 0 12px;
+        line-height:1.8;
+        font-weight:500;
+      }
+      .ai-box li{page-break-inside:avoid;break-inside:avoid;}
+      .ai-box strong{color:#1e3a5f;font-weight:800;}
+
+      /* ── Recommendation cards — NEVER split across pages ── */
+      .rec-card{
+        page-break-inside:avoid;
+        break-inside:avoid;
+        margin-bottom:18px;
+      }
+      .rec-card-inner{
+        background:#fff;
+        border:1px solid #e2e8f0;
+        border-left:4px solid var(--accent);
+        border-radius:14px;
+        padding:24px;
+        box-shadow:0 2px 10px rgba(0,0,0,.05);
+        page-break-inside:avoid;
+        break-inside:avoid;
+      }
+      .rec-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;gap:14px;page-break-inside:avoid;break-inside:avoid;}
+      .rec-left{display:flex;align-items:flex-start;gap:14px;flex:1;min-width:0;}
+      .rank-badge{font-size:22px;line-height:1;flex-shrink:0;}
+      .rec-name{font-size:16px;font-weight:800;color:#0f172a;margin-bottom:3px;}
+      .rec-loc{font-size:11px;font-weight:600;color:#64748b;}
+      .score-circle{border:2px solid;border-radius:12px;padding:10px 16px;text-align:center;flex-shrink:0;page-break-inside:avoid;break-inside:avoid;}
+      .score-num{font-size:22px;font-weight:900;line-height:1;}
+      .score-lbl{font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;opacity:.8;margin-top:2px;}
+      .bar-wrap{display:flex;align-items:center;gap:12px;margin-bottom:12px;page-break-inside:avoid;break-inside:avoid;}
+      .bar-track{flex:1;height:6px;background:#f1f5f9;border-radius:99px;overflow:hidden;}
+      .bar-fill{height:100%;border-radius:99px;}
+      .bar-label{font-size:10px;font-weight:800;white-space:nowrap;}
+      .tags{display:flex;flex-wrap:wrap;gap:6px;page-break-inside:avoid;break-inside:avoid;}
+      .tag{background:#f1f5f9;color:#475569;font-size:10px;font-weight:700;padding:4px 10px;border-radius:8px;}
+
+      /* ── Footer ── */
+      .footer{
+        background:#0f172a;
+        padding:28px 52px;
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        page-break-inside:avoid;
+        break-inside:avoid;
+        margin-top:40px;
+      }
+      .footer-brand{font-size:11px;font-weight:800;color:rgba(255,255,255,.45);letter-spacing:.14em;text-transform:uppercase;}
+      .footer-note{font-size:10px;font-weight:500;color:rgba(255,255,255,.25);max-width:320px;text-align:right;line-height:1.6;}
+    </style>
+  `;
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>AwamAssist ${moduleTitle} Intelligence Report</title>
+  ${styles}
+</head>
+<body>
+<div class="page">
+
+  <!-- COVER -->
+  <div class="cover">
+    <div class="cover-inner">
+      <div class="brand">
+        <div class="brand-dot"></div>
+        <div class="brand-name">AwamAssist · AI Intelligence Platform</div>
+      </div>
+      <div class="cover-title">${moduleTitle} <span>Intelligence</span><br/>Report</div>
+      <div class="cover-sub">Personalized · Data-Synchronized · AI-Enhanced Analysis</div>
+      <div class="cover-meta">
+        <div><div class="meta-label">Report ID</div><div class="meta-val">#${reportId}</div></div>
+        <div><div class="meta-label">Generated</div><div class="meta-val">${date}</div></div>
+        <div><div class="meta-label">Module</div><div class="meta-val">${moduleTitle}</div></div>
+        <div><div class="meta-label">Matches Found</div><div class="meta-val">${totalMatches}</div></div>
       </div>
     </div>
-  `).join('');
+  </div>
 
-  return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-      ${styles}
-    </head>
-    <body>
-      <div class="header">
-        <div class="logo">AwamAssist AI</div>
-        <div class="subtitle">Personalized Decision Intelligence Pipeline</div>
-        <h1 style="margin-top: 30px; font-size: 32px; letter-spacing: -1px; font-weight: 900;">${title}</h1>
-        <div style="font-size: 13px; opacity: 0.7; margin-top: 10px; font-weight: 600;">REPORT ID: ${Math.random().toString(36).substr(2, 9).toUpperCase()} • ${date}</div>
+  <!-- STATS STRIP -->
+  <div class="stats-strip">
+    <div class="stat-box"><div class="stat-num">${totalMatches}</div><div class="stat-lbl">Total Matches</div></div>
+    <div class="stat-box"><div class="stat-num">${topScore}%</div><div class="stat-lbl">Top Score</div></div>
+    <div class="stat-box"><div class="stat-num">${avgMatchScore}%</div><div class="stat-lbl">Avg Compatibility</div></div>
+    <div class="stat-box"><div class="stat-num">99%</div><div class="stat-lbl">Data Reliability</div></div>
+  </div>
+
+  <!-- BODY -->
+  <div class="body">
+
+    <!-- 1. Profile Snapshot -->
+    <div class="section">
+      <div class="section-head">
+        <div class="section-num">1</div>
+        <div class="section-title">User Profile Snapshot</div>
+        <div class="section-line"></div>
       </div>
+      <div class="profile-card">${profileRows}</div>
+    </div>
 
-      <div class="container">
-        <div class="section">
-          <div class="section-title">📊 Executive Summary</div>
-          <div class="summary-grid">
-            <div class="summary-card">
-              <div class="summary-label">Total Matches</div>
-              <div class="summary-value">${totalMatches}</div>
-            </div>
-            <div class="summary-card">
-              <div class="summary-label">Avg Compatibility</div>
-              <div class="summary-value">${avgMatchScore}%</div>
-            </div>
-            <div class="summary-card">
-              <div class="summary-label">Relevance</div>
-              <div class="summary-value">High</div>
-            </div>
-            <div class="summary-card">
-              <div class="summary-label">Reliability</div>
-              <div class="summary-value">99%</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="section">
-          <div class="section-title">👤 User Profile Context</div>
-          <div class="card">${profileContent}</div>
-        </div>
-
-        <div class="section">
-          <div class="section-title">🧠 AI Decision Insights</div>
-          <div class="insight-box">
-            <div style="font-size: 14px; color: #1e40af; line-height: 1.7; font-weight: 600;">
-              ${insights || "Our AI engine has analyzed your profile parameters against current datasets to identify optimal opportunities. Recommendations are ranked based on merit, proximity, and eligibility."}
-            </div>
-          </div>
-        </div>
-
-        <div class="section">
-          <div class="section-title">🏆 Top Recommended Matches (Ranked)</div>
-          <div style="margin-top: 20px;">
-            ${recContent || '<div style="text-align: center; padding: 40px; color: #64748b; font-weight: 700;">No high-confidence matches found for current filters.</div>'}
-          </div>
-        </div>
-
-        <div class="footer">
-          <div style="font-weight: 800; color: #0f172a; margin-bottom: 8px;">AwamAssist Platform • Powered by Hybrid AI Recommendation Engine v3.4</div>
-          <div style="max-w: 500px; margin: 0 auto; opacity: 0.8;">
-            This report is a synchronized snapshot of the AwamAssist UI. It utilizes real-time eligibility calculations and secure user-provided profile data to ensure 100% accuracy in decision support.
-          </div>
-        </div>
+    <!-- 2. AI Intelligence Analysis -->
+    <div class="section">
+      <div class="section-head">
+        <div class="section-num">2</div>
+        <div class="section-title">AI Intelligence Analysis</div>
+        <div class="section-line"></div>
       </div>
-    </body>
-    </html>
-  `;
+      <div class="ai-box">
+        ${aiHtmlContent || '<p>Our AI engine has analyzed your profile parameters against the current dataset to identify the most compatible opportunities. Recommendations are ranked by merit, proximity, budget compatibility, and eligibility alignment.</p>'}
+      </div>
+    </div>
+
+    <!-- 3. Ranked Recommendations — always starts on a new page -->
+    <div class="section section-recs">
+      <div class="section-head">
+        <div class="section-num">3</div>
+        <div class="section-title">Ranked Recommendation Analysis</div>
+        <div class="section-line"></div>
+      </div>
+      ${recCards || '<p style="color:#64748b;font-size:13px;">No high-confidence matches found for the current profile configuration.</p>'}
+    </div>
+
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <div class="footer-brand">AwamAssist · Intelligence Engine v3.5</div>
+    <div class="footer-note">All match percentages and rankings are derived directly from the dashboard recommendation engine and reflect your exact profile data. This report is a synchronized snapshot.</div>
+  </div>
+
+</div>
+</body>
+</html>`;
 }

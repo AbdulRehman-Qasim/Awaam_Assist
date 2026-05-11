@@ -3,7 +3,8 @@ const Feedback = require('../models/FeedbackSchema');
 
 /**
  * Submit Module Rating (Healthcare, Education, Schemes)
- * Unified submission handler — upserts to prevent duplicates
+ * Uses findOneAndUpdate (upsert) — guarantees at most ONE record per user+module.
+ * This is the DB-level deduplication layer.
  */
 exports.submitModuleRating = async (req, res) => {
   try {
@@ -23,17 +24,48 @@ exports.submitModuleRating = async (req, res) => {
       { 
         rating, 
         comment: comment || '', 
-        createdAt: Date.now() 
+        updatedAt: Date.now() 
       },
-      { upsert: true, new: true }
+      { upsert: true, new: true, setDefaultsOnInsert: true }
     );
 
-    res.json({ success: true, data: feedback });
+    // Tell the frontend whether this was a new submission or an update
+    const isUpdate = feedback.createdAt < feedback.updatedAt;
+    res.json({ success: true, data: feedback, isUpdate });
   } catch (error) {
     console.error("Feedback submission error:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+/**
+ * Get the current user's existing module ratings.
+ * Returns one record per module if the user has already rated it.
+ * Used by the frontend to initialise the feedback widget state.
+ */
+exports.getMyRatings = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const feedbacks = await Feedback.find({ userId, type: 'rating' }).lean();
+
+    // Return a map keyed by module for O(1) frontend lookup
+    const byModule = {};
+    for (const fb of feedbacks) {
+      byModule[fb.module] = {
+        rating: fb.rating,
+        comment: fb.comment || '',
+        submittedAt: fb.createdAt,
+        feedbackId: fb._id,
+      };
+    }
+
+    res.json({ success: true, data: byModule });
+  } catch (error) {
+    console.error('getMyRatings error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 
 /**
  * Submit Recommendation Feedback (Helpful/Not Relevant)

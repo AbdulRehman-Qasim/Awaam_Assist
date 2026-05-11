@@ -119,6 +119,7 @@ const userAuth = require("./middleware/userAuth");
 // Import feedback controllers
 const {
   submitModuleRating,
+  getMyRatings,
   submitRecommendationFeedback,
   submitPlatformFeedback,
   getFeedbackAnalytics,
@@ -288,6 +289,7 @@ app.get("/api/user/recommendations", userAuth, getRecommendations);
 
 // Feedback routes
 app.post("/api/feedback/module", userAuth, submitModuleRating);
+app.get("/api/feedback/my-ratings", userAuth, getMyRatings);
 app.post("/api/feedback/recommendation", userAuth, submitRecommendationFeedback);
 app.post("/api/feedback/platform", userAuth, submitPlatformFeedback);
 app.get("/api/feedback/user-history", userAuth, getUserFeedbackHistory);

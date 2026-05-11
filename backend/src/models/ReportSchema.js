@@ -22,7 +22,8 @@ const reportSchema = new mongoose.Schema({
   reportSnapshot: {
     userProfile: Object,
     recommendations: Array,
-    insights: String
+    insights: String,
+    aiHtmlContent: String
   }
 }, { timestamps: true });
 

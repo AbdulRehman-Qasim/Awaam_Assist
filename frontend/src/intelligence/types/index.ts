@@ -26,7 +26,7 @@ export interface UserProfileContext {
   };
   education?: {
     degree?: string;
-    discipline?: string;
+    preferredProgram?: string;
     marks?: number;
     city?: string;
     feeRange?: string;
@@ -76,6 +76,11 @@ export interface RecommendationEngineOutput {
   schemes: RecommendationResult[];
   hospitals: RecommendationResult[];
   overallConfidence: number;
+  moduleBreakdown?: {
+    education?: number;
+    schemes?: number;
+    healthcare?: number;
+  };
   profileNarrative: string;
   insights: any[];
   diagnostics: Diagnostics;

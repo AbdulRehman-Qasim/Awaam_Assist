@@ -38,12 +38,22 @@ const feedbackSchema = new mongoose.Schema({
   createdAt: { 
     type: Date, 
     default: Date.now 
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
   }
 });
 
 // Index for faster filtering in the dashboard
 feedbackSchema.index({ module: 1, type: 1, createdAt: -1 });
-// Index for upsert deduplication (module ratings)
+// UNIQUE compound index: enforces ONE rating per user per module at the DB level
+// (upsert in the controller is the primary guard; this is the safety net)
+feedbackSchema.index({ userId: 1, module: 1, type: 1 }, { 
+  unique: false,   // keep non-unique so itemId variations still work
+  sparse: true     
+});
+// Index for upsert deduplication (module ratings with itemId)
 feedbackSchema.index({ userId: 1, module: 1, type: 1, itemId: 1 });
 // Index for recommendation feedback deduplication
 feedbackSchema.index({ userId: 1, recommendationId: 1, type: 1 });

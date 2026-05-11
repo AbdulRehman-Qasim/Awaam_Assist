@@ -356,7 +356,6 @@ const HeroSection = ({
             style={{ animationDelay: "0.3s" }}
           >
             <StatItem icon={BookOpen} value={`${stats.totalUniversities}+`}  label="Universities" loading={statsLoading} />
-            <StatItem icon={Users}    value={`${stats.totalPrograms * 220}+`} label="Students Helped" loading={statsLoading} />
             <StatItem icon={Award}    value={`${stats.totalPrograms}+`}       label="Programs" loading={statsLoading} />
             <StatItem icon={Search}   value={`${stats.totalCities}+`}         label="Cities" loading={statsLoading} />
           </div>
@@ -612,19 +611,6 @@ const UniversityFilters = ({
             )}
           </Button>
 
-          <Select value={filters.sortBy} onValueChange={(v) => updateFilter('sortBy', v)}>
-            <SelectTrigger className="w-[160px] h-9 rounded-xl">
-              <SelectValue placeholder="Sort by" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ranking">Top Ranked</SelectItem>
-              <SelectItem value="merit-low">Merit (Low to High)</SelectItem>
-              <SelectItem value="merit-high">Merit (High to Low)</SelectItem>
-              <SelectItem value="fee-low">Fee (Low to High)</SelectItem>
-              <SelectItem value="fee-high">Fee (High to Low)</SelectItem>
-              <SelectItem value="name">Name (A-Z)</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
       </div>
 
@@ -671,20 +657,6 @@ const UniversityFilters = ({
                 <SelectContent>
                   <SelectItem value="all">All Provinces</SelectItem>
                   {filterOptions.provinces.map((prov) => <SelectItem key={prov} value={prov}>{prov}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-xs font-black text-muted-foreground uppercase tracking-wider">Sort By</label>
-              <Select value={filters.sortBy} onValueChange={(v) => updateFilter('sortBy', v)}>
-                <SelectTrigger className="rounded-xl"><SelectValue placeholder="Sort by" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ranking">Top Ranked</SelectItem>
-                  <SelectItem value="merit-low">Merit (Low to High)</SelectItem>
-                  <SelectItem value="merit-high">Merit (High to Low)</SelectItem>
-                  <SelectItem value="fee-low">Fee (Low to High)</SelectItem>
-                  <SelectItem value="fee-high">Fee (High to Low)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -773,9 +745,7 @@ const UniversityCard = ({
     setImgSrc(resolveImage(university));
   }, [university.url, university.logo, university.id]);
 
-  const rankingLabel = university.ranking && university.ranking > 0
-    ? `#${university.ranking}`
-    : null;
+  const rankingLabel = null;
 
   const feeDisplay = university.fee > 0
     ? `PKR ${university.fee.toLocaleString()}${university.feeType === 'Semester Fee' ? '/sem' : '/yr'}`
@@ -1441,7 +1411,7 @@ const FavoritesPanel = ({
 
                     <div className="flex flex-wrap items-center gap-2 mb-3">
                       <Badge variant="secondary" className="text-xs">
-                        <Award className="h-3 w-3 mr-1" />#{uni.ranking}
+                        <Award className="h-3 w-3 mr-1" />Program Detail
                       </Badge>
                       <Badge variant="outline" className="text-xs">
                         <MapPin className="h-3 w-3 mr-1" />
@@ -1505,7 +1475,7 @@ const Index = () => {
     maxMerit: 100,
     minFee: 0,
     maxFee: 1000000,
-    sortBy: "ranking",
+    sortBy: "name",
   });
 
   // UI State
