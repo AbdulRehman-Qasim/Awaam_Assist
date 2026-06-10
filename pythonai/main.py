@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
+import os
 import re
 import requests
 import json
@@ -31,10 +32,10 @@ app.add_middleware(
 
 # Model configuration - Download and use Hugging Face model
 model_name = "TinyLlama/TinyLlama-1.1B-intermediate-step-240k-503b"
-use_huggingface = True  # Enable Hugging Face model with TinyLlama
+use_huggingface = os.getenv("USE_HUGGINGFACE", "false").lower() in ["1", "true", "yes"]
 
 # Database URLs
-BACKEND_URL = "https://awaam-assist.onrender.com"
+BACKEND_URL = os.getenv("BACKEND_URL", "https://awaam-assist.onrender.com").rstrip("/")
 
 # Global data cache
 hospitals_data = []
@@ -1439,7 +1440,7 @@ async def chat(request: ChatRequest):
         
         return ChatResponse(
             reply=response_text, 
-            model="hybrid-huggingface-rule-based"
+            model="hybrid-huggingface-rule-based" if model is not None else "rule-based"
         )
         
     except Exception as e:
@@ -1455,4 +1456,5 @@ async def health_check():
     }
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    port = int(os.getenv("PORT", "8001"))
+    uvicorn.run(app, host="0.0.0.0", port=port)
