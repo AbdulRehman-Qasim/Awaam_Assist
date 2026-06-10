@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://awaam-assist.onrender.com';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://awaam-assist.onrender.com';
 
 // Create axios instance with default config
 const api = axios.create({

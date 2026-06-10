@@ -30,7 +30,7 @@ const ChatWidget = () => {
         setUserName(name);
 
         // Connect to backend
-        const newSocket = io(import.meta.env.VITE_API_URL || 'http://awaam-assist.onrender.com', {
+        const newSocket = io(import.meta.env.VITE_API_URL || 'https://awaam-assist.onrender.com', {
             reconnectionAttempts: 3,
             reconnectionDelay: 2000,
             timeout: 5000,

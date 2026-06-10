@@ -33,7 +33,7 @@ const HospitalAdminRegister = () => {
 
     setLoading(true);
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://awaam-assist.onrender.com';
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://awaam-assist.onrender.com';
       const response = await fetch(`${apiUrl}/hospital-admin/register`, {
         method: 'POST',
         headers: {

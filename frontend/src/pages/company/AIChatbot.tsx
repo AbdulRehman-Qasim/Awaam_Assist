@@ -69,7 +69,7 @@ const AIChatbot = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://awaam-assist.onrender.com'}/api/chat`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'https://awaam-assist.onrender.com'}/api/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -53,7 +53,7 @@ const SchemeRegister = () => {
         setLoading(true);
 
         try {
-            const response = await axios.post(`${import.meta.env.VITE_API_URL || 'http://awaam-assist.onrender.com'}/register`, {
+            const response = await axios.post(`${import.meta.env.VITE_API_URL || 'https://awaam-assist.onrender.com'}/register`, {
                 student_name: formData.name,
                 student_email: formData.email,
                 password: formData.password,

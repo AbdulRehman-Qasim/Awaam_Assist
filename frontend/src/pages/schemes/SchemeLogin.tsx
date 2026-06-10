@@ -30,7 +30,7 @@ const SchemeLogin = () => {
         setLoading(true);
 
         try {
-            const response = await axios.post(`${import.meta.env.VITE_API_URL || 'http://awaam-assist.onrender.com'}/login`, {
+            const response = await axios.post(`${import.meta.env.VITE_API_URL || 'https://awaam-assist.onrender.com'}/login`, {
                 student_email: formData.email,
                 password: formData.password,
             });

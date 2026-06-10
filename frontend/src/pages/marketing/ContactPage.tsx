@@ -91,7 +91,7 @@ const ContactPage = () => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://awaam-assist.onrender.com';
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://awaam-assist.onrender.com';
       const response = await axios.post(`${API_BASE_URL}/contact`, formData, {
         headers: { 'Content-Type': 'application/json' },
         timeout: 10000,

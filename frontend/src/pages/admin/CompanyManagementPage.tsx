@@ -131,7 +131,7 @@ const CompanyManagementPage = () => {
         try {
             setLoading(true);
             const token = localStorage.getItem("adminToken");
-            const apiUrl = import.meta.env.VITE_API_URL || "http://awaam-assist.onrender.com";
+            const apiUrl = import.meta.env.VITE_API_URL || "https://awaam-assist.onrender.com";
 
             const response = await fetch(`${apiUrl}/admin/companies`, {
                 headers: {
@@ -226,7 +226,7 @@ const CompanyManagementPage = () => {
 
         try {
             const token = localStorage.getItem("adminToken");
-            const apiUrl = import.meta.env.VITE_API_URL || "http://awaam-assist.onrender.com";
+            const apiUrl = import.meta.env.VITE_API_URL || "https://awaam-assist.onrender.com";
 
             const response = await fetch(`${apiUrl}/admin/companies/${id}`, {
                 method: "DELETE",
@@ -259,7 +259,7 @@ const CompanyManagementPage = () => {
         try {
             const newStatus = uni.status === 1 ? 0 : 1;
             const token = localStorage.getItem("adminToken");
-            const apiUrl = import.meta.env.VITE_API_URL || "http://awaam-assist.onrender.com";
+            const apiUrl = import.meta.env.VITE_API_URL || "https://awaam-assist.onrender.com";
 
             const identifier = getUniversityIdentifier(uni);
             if (!identifier) {
@@ -298,8 +298,8 @@ const CompanyManagementPage = () => {
         return (
             <Badge
                 className={`cursor-pointer transition-colors ${uni.status === 1
-                        ? "bg-green-100 text-green-800 hover:bg-green-200"
-                        : "bg-gray-100 text-gray-800 hover:bg-gray-200"
+                    ? "bg-green-100 text-green-800 hover:bg-green-200"
+                    : "bg-gray-100 text-gray-800 hover:bg-gray-200"
                     }`}
                 onClick={() => handleToggleStatus(uni)}
             >

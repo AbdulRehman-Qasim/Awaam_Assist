@@ -188,7 +188,7 @@ const UniversityForm: React.FC<UniversityFormProps> = ({
 
         try {
             const token = localStorage.getItem("adminToken");
-            const apiUrl = import.meta.env.VITE_API_URL || "http://awaam-assist.onrender.com";
+            const apiUrl = import.meta.env.VITE_API_URL || "https://awaam-assist.onrender.com";
 
             const isEditMode = Boolean(university && (university._id || university.id));
             const method = isEditMode ? "PUT" : "POST";

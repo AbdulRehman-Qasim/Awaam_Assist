@@ -102,7 +102,7 @@ export interface HospitalQueryParams {
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
-const BASE = import.meta.env.VITE_API_URL || 'http://awaam-assist.onrender.com';
+const BASE = import.meta.env.VITE_API_URL || 'https://awaam-assist.onrender.com';
 
 export const hospitalPublicAPI = {
   /** Fetch all hospitals with optional filter params */

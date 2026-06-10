@@ -21,7 +21,7 @@ const SchemeAdminLogin = () => {
         setLoading(true);
 
         try {
-            const apiUrl = import.meta.env.VITE_API_URL || 'http://awaam-assist.onrender.com';
+            const apiUrl = import.meta.env.VITE_API_URL || 'https://awaam-assist.onrender.com';
             const response = await fetch(`${apiUrl}/admin/login`, {
                 method: "POST",
                 headers: {

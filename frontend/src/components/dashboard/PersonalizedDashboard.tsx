@@ -91,7 +91,7 @@ const FieldRenderer = ({ field, value, moduleId, updateField }: {
 };
 
 const PersonalizedDashboard = () => {
-  const apiBaseUrl = import.meta.env.VITE_API_URL || "http://awaam-assist.onrender.com";
+  const apiBaseUrl = import.meta.env.VITE_API_URL || "https://awaam-assist.onrender.com";
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [profile, setProfile] = useState<any>(null);
   const [profileError, setProfileError] = useState<string | null>(null);
@@ -794,8 +794,8 @@ const PersonalizedDashboard = () => {
                                     )
                                   }
                                   className={`text-left p-4 rounded-2xl border-2 transition-all ${isSelected
-                                      ? "border-primary bg-primary/5 shadow-sm"
-                                      : "border-slate-100 bg-white hover:border-slate-200"
+                                    ? "border-primary bg-primary/5 shadow-sm"
+                                    : "border-slate-100 bg-white hover:border-slate-200"
                                     }`}
                                 >
                                   <div className={`rounded-2xl p-3 bg-gradient-to-br ${def.accentClass} inline-flex`}>
