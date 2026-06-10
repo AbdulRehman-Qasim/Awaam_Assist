@@ -49,13 +49,13 @@ const TOPIC_ICONS: Record<string, any> = {
 };
 
 const TOPICS = [
-  { value: 'general',     label: 'General Inquiry' },
-  { value: 'admission',   label: 'Admission Inquiry' },
-  { value: 'merit',       label: 'Merit Question' },
-  { value: 'fees',        label: 'Fee Structure' },
-  { value: 'discipline',  label: 'Discipline Information' },
+  { value: 'general', label: 'General Inquiry' },
+  { value: 'admission', label: 'Admission Inquiry' },
+  { value: 'merit', label: 'Merit Question' },
+  { value: 'fees', label: 'Fee Structure' },
+  { value: 'discipline', label: 'Discipline Information' },
   { value: 'partnership', label: 'University Partnership' },
-  { value: 'healthcare',  label: 'Healthcare Support' },
+  { value: 'healthcare', label: 'Healthcare Support' },
 ];
 
 /* ═══════════════════════════════════════════
@@ -91,7 +91,7 @@ const ContactPage = () => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://awaam-assist.onrender.com';
       const response = await axios.post(`${API_BASE_URL}/contact`, formData, {
         headers: { 'Content-Type': 'application/json' },
         timeout: 10000,

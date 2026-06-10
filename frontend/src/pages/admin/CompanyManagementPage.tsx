@@ -69,7 +69,7 @@ const CompanyManagementPage = () => {
     const [filterStatus, setFilterStatus] = useState("all");
     const [selectedUniversity, setSelectedUniversity] = useState<University | null>(null);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-    
+
     // State for the Add/Edit form
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
     const [editingUniversity, setEditingUniversity] = useState<University | null>(null);
@@ -131,7 +131,7 @@ const CompanyManagementPage = () => {
         try {
             setLoading(true);
             const token = localStorage.getItem("adminToken");
-            const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
+            const apiUrl = import.meta.env.VITE_API_URL || "http://awaam-assist.onrender.com";
 
             const response = await fetch(`${apiUrl}/admin/companies`, {
                 headers: {
@@ -226,7 +226,7 @@ const CompanyManagementPage = () => {
 
         try {
             const token = localStorage.getItem("adminToken");
-            const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
+            const apiUrl = import.meta.env.VITE_API_URL || "http://awaam-assist.onrender.com";
 
             const response = await fetch(`${apiUrl}/admin/companies/${id}`, {
                 method: "DELETE",
@@ -259,7 +259,7 @@ const CompanyManagementPage = () => {
         try {
             const newStatus = uni.status === 1 ? 0 : 1;
             const token = localStorage.getItem("adminToken");
-            const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
+            const apiUrl = import.meta.env.VITE_API_URL || "http://awaam-assist.onrender.com";
 
             const identifier = getUniversityIdentifier(uni);
             if (!identifier) {
@@ -296,12 +296,11 @@ const CompanyManagementPage = () => {
 
     const getStatusBadge = (uni: University) => {
         return (
-            <Badge 
-                className={`cursor-pointer transition-colors ${
-                    uni.status === 1 
-                        ? "bg-green-100 text-green-800 hover:bg-green-200" 
+            <Badge
+                className={`cursor-pointer transition-colors ${uni.status === 1
+                        ? "bg-green-100 text-green-800 hover:bg-green-200"
                         : "bg-gray-100 text-gray-800 hover:bg-gray-200"
-                }`}
+                    }`}
                 onClick={() => handleToggleStatus(uni)}
             >
                 {uni.status === 1 ? "Active" : "Inactive"}
@@ -326,12 +325,12 @@ const CompanyManagementPage = () => {
                         {isSuperAdmin ? "University Management" : "University Profile"}
                     </h1>
                     <p className="text-gray-600 mt-1">
-                        {isSuperAdmin 
-                            ? "Manage registered universities and programs" 
+                        {isSuperAdmin
+                            ? "Manage registered universities and programs"
                             : `Manage programs for ${admin?.entity_name || "your institution"}`}
                     </p>
                 </div>
-                <Button 
+                <Button
                     className="bg-blue-600 hover:bg-blue-700 text-white"
                     onClick={() => {
                         setEditingUniversity(null);
@@ -358,7 +357,7 @@ const CompanyManagementPage = () => {
                                     className="pl-10"
                                 />
                             </div>
-                            <Button 
+                            <Button
                                 onClick={filterData}
                                 className="bg-blue-600 hover:bg-blue-700 whitespace-nowrap"
                             >
@@ -488,8 +487,8 @@ const CompanyManagementPage = () => {
                                             )}
                                             <td className="py-3 px-4 text-sm text-gray-600">{uni.discipline}</td>
                                             <td className="py-3 px-4">
-                                                 {getStatusBadge(uni)}
-                                             </td>
+                                                {getStatusBadge(uni)}
+                                            </td>
                                             <td className="py-3 px-4 text-right">
                                                 <div className="flex justify-end gap-2">
                                                     <Button
@@ -502,8 +501,8 @@ const CompanyManagementPage = () => {
                                                     >
                                                         <Eye className="h-4 w-4 text-blue-600" />
                                                     </Button>
-                                                    <Button 
-                                                        variant="ghost" 
+                                                    <Button
+                                                        variant="ghost"
                                                         size="sm"
                                                         onClick={() => {
                                                             setEditingUniversity(uni);
@@ -557,13 +556,13 @@ const CompanyManagementPage = () => {
                                         <p className="text-sm text-gray-600">Status</p>
                                         <div className="flex items-center gap-2 mt-1">
                                             {getStatusBadge(selectedUniversity)}
-                                            <Button 
-                                                size="sm" 
-                                                variant="outline" 
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
                                                 className="h-7 px-2 text-[10px] uppercase font-bold"
                                                 onClick={() => {
                                                     handleToggleStatus(selectedUniversity);
-                                                    setSelectedUniversity({...selectedUniversity, status: selectedUniversity.status === 1 ? 0 : 1});
+                                                    setSelectedUniversity({ ...selectedUniversity, status: selectedUniversity.status === 1 ? 0 : 1 });
                                                 }}
                                             >
                                                 {selectedUniversity.status === 1 ? "Deactivate" : "Activate"}
@@ -583,7 +582,7 @@ const CompanyManagementPage = () => {
                                         </p>
                                     </div>
                                 </div>
-                                
+
                                 {selectedUniversity.info && (
                                     <div>
                                         <p className="text-sm text-gray-600 mb-1">Details</p>

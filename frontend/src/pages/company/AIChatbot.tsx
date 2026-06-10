@@ -69,7 +69,7 @@ const AIChatbot = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/chat`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://awaam-assist.onrender.com'}/api/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -245,8 +245,8 @@ const AIChatbot = () => {
                     </div>
                     <div className="flex flex-col gap-1.5">
                       <div className={`p-4 rounded-3xl shadow-sm text-sm leading-relaxed whitespace-pre-line break-words ${m.role === 'user'
-                          ? 'bg-primary text-white rounded-tr-none'
-                          : 'bg-white text-foreground rounded-tl-none border border-white shadow-lg shadow-primary/5'
+                        ? 'bg-primary text-white rounded-tr-none'
+                        : 'bg-white text-foreground rounded-tl-none border border-white shadow-lg shadow-primary/5'
                         }`}>
                         {m.role === 'bot' && m.id === typingMessageId ? typedContent : m.content}
                       </div>

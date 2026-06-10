@@ -28,11 +28,11 @@ import { Calendar as CalendarIcon } from "lucide-react";
 import { HealthcareModuleForm, isHealthcareFormValid } from "./HealthcareModuleForm";
 import { EducationModuleForm, isEducationFormValid } from "./EducationModuleForm";
 import { SchemesModuleForm, isSchemesFormValid } from "./SchemesModuleForm";
-const FieldRenderer = ({ field, value, moduleId, updateField }: { 
-  field: ProfileFieldDef, 
-  value: any, 
-  moduleId: string, 
-  updateField: (f: ProfileFieldDef, v: any) => void 
+const FieldRenderer = ({ field, value, moduleId, updateField }: {
+  field: ProfileFieldDef,
+  value: any,
+  moduleId: string,
+  updateField: (f: ProfileFieldDef, v: any) => void
 }) => {
   const id = `profile-${moduleId}-${field.path}`;
   const commonClass = "h-11 rounded-2xl border-slate-200 bg-slate-50/50 font-bold focus-visible:ring-primary transition-all duration-200 hover:bg-slate-100/50";
@@ -91,7 +91,7 @@ const FieldRenderer = ({ field, value, moduleId, updateField }: {
 };
 
 const PersonalizedDashboard = () => {
-  const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
+  const apiBaseUrl = import.meta.env.VITE_API_URL || "http://awaam-assist.onrender.com";
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [profile, setProfile] = useState<any>(null);
   const [profileError, setProfileError] = useState<string | null>(null);
@@ -438,7 +438,7 @@ const PersonalizedDashboard = () => {
                 : `We found high-confidence matches in ${recommendations?.profileNarrative && recommendations.profileNarrative.includes('in ') ? (recommendations.profileNarrative.split('in ')[1]?.split(' for')[0]?.split('.')[0] || 'your region') : 'your region'}. Your personalized intelligence is ready.`
               }
             </p>
-            
+
             <div className="flex items-center gap-4 pt-2">
               <button
                 onClick={() => setIsEditModalOpen(true)}
@@ -453,7 +453,7 @@ const PersonalizedDashboard = () => {
           {/* Right Side: Score Ring & Profile Minimal */}
           <div className="flex flex-col sm:flex-row items-center gap-6 lg:gap-8 flex-shrink-0">
             {!hasNoMatches && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.7, delay: 0.2 }}
@@ -463,17 +463,17 @@ const PersonalizedDashboard = () => {
                 <div className="relative w-[76px] h-[76px] flex items-center justify-center flex-shrink-0">
                   <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
                     <circle cx="50" cy="50" r="42" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-white/10" />
-                    <motion.circle 
-                      cx="50" cy="50" r="42" 
-                      stroke="currentColor" 
-                      strokeWidth="8" 
-                      fill="transparent" 
-                      strokeDasharray={2 * Math.PI * 42} 
+                    <motion.circle
+                      cx="50" cy="50" r="42"
+                      stroke="currentColor"
+                      strokeWidth="8"
+                      fill="transparent"
+                      strokeDasharray={2 * Math.PI * 42}
                       initial={{ strokeDashoffset: 2 * Math.PI * 42 }}
                       animate={{ strokeDashoffset: (2 * Math.PI * 42) - ((metrics.confidence || 0) / 100) * (2 * Math.PI * 42) }}
                       transition={{ duration: 1.5, ease: "easeOut", delay: 0.5 }}
                       strokeLinecap="round"
-                      className="text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.5)]" 
+                      className="text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.5)]"
                     />
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -496,7 +496,7 @@ const PersonalizedDashboard = () => {
                 </div>
               </motion.div>
             )}
-            
+
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-[18px] bg-gradient-to-br from-blue-500 to-violet-600 border border-white/20 flex items-center justify-center text-white text-lg font-black shadow-lg backdrop-blur-sm hover:scale-105 transition-transform cursor-pointer">
                 {displayName.charAt(0).toUpperCase()}
@@ -575,7 +575,7 @@ const PersonalizedDashboard = () => {
                 <p className="text-[10px] font-semibold text-slate-400 mt-0.5">Generated intelligence reports</p>
               </div>
             </div>
-            
+
             <div className="p-5 flex-1 overflow-y-auto max-h-[280px] scrollbar-hide">
               <ReportHistory />
             </div>
@@ -793,11 +793,10 @@ const PersonalizedDashboard = () => {
                                       prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m]
                                     )
                                   }
-                                  className={`text-left p-4 rounded-2xl border-2 transition-all ${
-                                    isSelected
+                                  className={`text-left p-4 rounded-2xl border-2 transition-all ${isSelected
                                       ? "border-primary bg-primary/5 shadow-sm"
                                       : "border-slate-100 bg-white hover:border-slate-200"
-                                  }`}
+                                    }`}
                                 >
                                   <div className={`rounded-2xl p-3 bg-gradient-to-br ${def.accentClass} inline-flex`}>
                                     <Icon className="w-5 h-5 text-slate-900/70" />
@@ -927,12 +926,12 @@ const PersonalizedDashboard = () => {
                             <div className="flex items-center gap-2">
                               <div className={`w-2 h-2 rounded-full ${isModuleFormValid(moduleId) ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-slate-300'}`} />
                               <div className="text-[11px] font-bold text-slate-500">
-                                {isModuleFormValid(moduleId) 
-                                  ? "Form complete and valid. Ready to sync." 
+                                {isModuleFormValid(moduleId)
+                                  ? "Form complete and valid. Ready to sync."
                                   : "Please complete all required fields with valid data."}
                               </div>
                             </div>
-                            
+
                             <div className="flex items-center gap-3 w-full sm:w-auto">
                               <Button
                                 variant="outline"
@@ -955,8 +954,8 @@ const PersonalizedDashboard = () => {
                                 {isUpdating ? (
                                   <span className="flex items-center gap-2">
                                     <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
                                     </svg>
                                     Syncing...
                                   </span>

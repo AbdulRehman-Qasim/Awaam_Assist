@@ -17,13 +17,13 @@ import { Badge } from "@/components/ui/badge";
 
 const SettingsPage = () => {
     const { toast } = useToast();
-    const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
+    const apiUrl = import.meta.env.VITE_API_URL || "http://awaam-assist.onrender.com";
     const token = localStorage.getItem("adminToken");
 
     const [loading, setLoading] = useState(true);
     const [savingProfile, setSavingProfile] = useState(false);
     const [savingPassword, setSavingPassword] = useState(false);
-    
+
     // Country data (Pakistan ISO: PK)
     const pakistanStates = State.getStatesOfCountry('PK');
 
@@ -260,8 +260,8 @@ const SettingsPage = () => {
                             {profile.scheme_cities ? profile.scheme_cities.split(", ").map(city => (
                                 <Badge key={city} variant="secondary" className="flex items-center gap-1 bg-white border">
                                     {city}
-                                    <X 
-                                        className="h-3 w-3 cursor-pointer hover:text-red-500" 
+                                    <X
+                                        className="h-3 w-3 cursor-pointer hover:text-red-500"
                                         onClick={() => handleRemoveCity(city)}
                                     />
                                 </Badge>

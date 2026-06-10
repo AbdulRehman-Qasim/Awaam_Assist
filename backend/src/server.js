@@ -383,7 +383,7 @@ app.post("/api/chat", async (req, res) => {
   try {
     const { message, user_id } = req.body;
     if (!message) return res.status(400).json({ success: false, message: "Message is required" });
-    const pythonServiceUrl = process.env.PYTHON_AI_URL || "http://localhost:8001";
+    const pythonServiceUrl = process.env.PYTHON_AI_URL || "https://awaam-assist-ai.onrender.com";
     const response = await axios.post(`${pythonServiceUrl}/chat`, { message, user_id: user_id || "anonymous" });
     res.json({ success: true, reply: response.data.reply, model: response.data.model });
   } catch (error) {

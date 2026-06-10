@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_URL = import.meta.env.VITE_API_URL || 'http://awaam-assist.onrender.com';
 
 export interface ReportRecord {
   _id: string;
@@ -44,9 +44,9 @@ export const reportService = {
 
   downloadReport: (url: string) => {
     // Construct full URL if it's relative
-    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://awaam-assist.onrender.com';
     const fullUrl = url.startsWith('http') ? url : `${baseUrl}${url}`;
-    
+
     // Open in new tab or trigger download
     window.open(fullUrl, '_blank');
   }

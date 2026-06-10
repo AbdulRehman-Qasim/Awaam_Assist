@@ -188,7 +188,7 @@ const UniversityForm: React.FC<UniversityFormProps> = ({
 
         try {
             const token = localStorage.getItem("adminToken");
-            const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
+            const apiUrl = import.meta.env.VITE_API_URL || "http://awaam-assist.onrender.com";
 
             const isEditMode = Boolean(university && (university._id || university.id));
             const method = isEditMode ? "PUT" : "POST";
@@ -319,7 +319,7 @@ const UniversityForm: React.FC<UniversityFormProps> = ({
                         </div>
 
                         <div className="space-y-2">
-                             <Label htmlFor="feeAmount">
+                            <Label htmlFor="feeAmount">
                                 {formData.feeType === "Annual Fee" ? "Annual Fee (PKR)" : "Semester Fee (PKR)"} <span className="text-destructive">*</span>
                             </Label>
                             <Input

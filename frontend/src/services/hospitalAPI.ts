@@ -53,7 +53,7 @@ export interface HospitalRecord {
   treatmentCost: number;
   availability: string;
   info: string;
-  
+
   description: string;
   supportFeatures: string[];
   waitingTime: string;
@@ -102,17 +102,17 @@ export interface HospitalQueryParams {
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
-const BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const BASE = import.meta.env.VITE_API_URL || 'http://awaam-assist.onrender.com';
 
 export const hospitalPublicAPI = {
   /** Fetch all hospitals with optional filter params */
   getAll: async (params: HospitalQueryParams = {}): Promise<HospitalRecord[]> => {
     const sp = new URLSearchParams();
-    if (params.city         && params.city         !== 'all') sp.append('city',          params.city);
-    if (params.category     && params.category     !== 'all') sp.append('category',      params.category);
-    if (params.q            && params.q.trim())               sp.append('q',             params.q.trim());
-    if (params.availability && params.availability !== 'all') sp.append('availability',  params.availability);
-    if (params.maxCost      && Number(params.maxCost) > 0)    sp.append('maxCost',       params.maxCost);
+    if (params.city && params.city !== 'all') sp.append('city', params.city);
+    if (params.category && params.category !== 'all') sp.append('category', params.category);
+    if (params.q && params.q.trim()) sp.append('q', params.q.trim());
+    if (params.availability && params.availability !== 'all') sp.append('availability', params.availability);
+    if (params.maxCost && Number(params.maxCost) > 0) sp.append('maxCost', params.maxCost);
     if (params.treatmentType && params.treatmentType !== 'all') sp.append('treatmentType', params.treatmentType);
 
     const res = await fetch(`${BASE}/api/hospitals?${sp.toString()}`);

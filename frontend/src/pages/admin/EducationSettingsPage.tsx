@@ -7,11 +7,11 @@ import { useToast } from "@/hooks/use-toast";
 import { Save, Lock, Building2, User, MapPin, X } from "lucide-react";
 import { State, City } from 'country-state-city';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 
 interface AdminProfileForm {
@@ -57,7 +57,7 @@ const EducationSettingsPage = () => {
     confirmPassword: "",
   });
 
-  const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
+  const apiUrl = import.meta.env.VITE_API_URL || "http://awaam-assist.onrender.com";
   const token = localStorage.getItem("adminToken");
 
   useEffect(() => {
@@ -232,9 +232,9 @@ const EducationSettingsPage = () => {
             </div>
             <div>
               <Label htmlFor="admin_email">Admin Email</Label>
-              <Input 
-                id="admin_email" 
-                value={profile.admin_email} 
+              <Input
+                id="admin_email"
+                value={profile.admin_email}
                 onChange={(e) => setProfile({ ...profile, admin_email: e.target.value })}
               />
             </div>
@@ -262,9 +262,9 @@ const EducationSettingsPage = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label>Province</Label>
-              <Select 
+              <Select
                 disabled
-                value={profile.scheme_province} 
+                value={profile.scheme_province}
                 onValueChange={(v) => setProfile({ ...profile, scheme_province: v, entity_address: v })}
               >
                 <SelectTrigger className="bg-slate-50">
@@ -281,9 +281,9 @@ const EducationSettingsPage = () => {
             </div>
             <div>
               <Label>City</Label>
-              <Select 
+              <Select
                 disabled
-                value={profile.entity_address && profile.entity_address.includes(',') ? profile.entity_address.split(',')[0] : ""} 
+                value={profile.entity_address && profile.entity_address.includes(',') ? profile.entity_address.split(',')[0] : ""}
                 onValueChange={(v) => setProfile({ ...profile, entity_address: `${v}, ${profile.scheme_province}` })}
               >
                 <SelectTrigger className="bg-slate-50">

@@ -30,7 +30,7 @@ const ChatWidget = () => {
         setUserName(name);
 
         // Connect to backend
-        const newSocket = io(import.meta.env.VITE_API_URL || 'http://localhost:5000', {
+        const newSocket = io(import.meta.env.VITE_API_URL || 'http://awaam-assist.onrender.com', {
             reconnectionAttempts: 3,
             reconnectionDelay: 2000,
             timeout: 5000,
@@ -147,8 +147,8 @@ const ChatWidget = () => {
                             type="submit"
                             size="icon"
                             className={`rounded-full h-10 w-10 shadow-lg transition-transform hover:scale-105 active:scale-95 ${newMessage.trim()
-                                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700'
-                                    : 'bg-gray-200 text-gray-400 hover:bg-gray-300'
+                                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700'
+                                : 'bg-gray-200 text-gray-400 hover:bg-gray-300'
                                 }`}
                             disabled={!newMessage.trim()}
                         >
