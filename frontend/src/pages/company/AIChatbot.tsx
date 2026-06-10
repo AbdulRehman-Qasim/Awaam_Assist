@@ -69,7 +69,8 @@ const AIChatbot = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'https://awaam-assist.onrender.com'}/api/chat`, {
+      const aiBaseUrl = import.meta.env.VITE_AI_URL || 'https://awaam-assist-ai.onrender.com';
+      const response = await fetch(`${aiBaseUrl}/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -84,7 +85,7 @@ const AIChatbot = () => {
 
       const data = await response.json();
 
-      if (data.success) {
+      if (data.success || data.reply) {
         const botMessage: Message = {
           id: createMessageId(),
           role: 'bot',
