@@ -132,10 +132,24 @@ const getHospitalAppointments = async (req, res) => {
     const { hospitalId } = req.params;
     const admin = req.admin;
 
-    // 1. Fetch the requested hospital
-    const targetHospital = await Hospital.findById(hospitalId);
-    if (!targetHospital) {
-      return res.status(404).json({ success: false, message: "Hospital not found." });
+    // 1. Fetch the requested hospital. Some older hospital-admin sessions can
+    // carry a stale managed_entity_id, so fall back to the admin's hospital name.
+    let targetHospital = await Hospital.findById(hospitalId);
+    const adminHospitalName = admin.entity_name || admin.hospital_name;
+
+    if (!targetHospital && adminHospitalName) {
+      targetHospital = await Hospital.findOne({
+        'Hospital Name': { $regex: new RegExp(`^${adminHospitalName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
+      });
+    }
+
+    if (!targetHospital && admin.role !== 'super_admin') {
+      return res.status(200).json({
+        success: true,
+        data: [],
+        count: 0,
+        message: "No linked hospital was found for this admin."
+      });
     }
 
     // 2. Security Check: Is this admin authorized?
@@ -143,7 +157,7 @@ const getHospitalAppointments = async (req, res) => {
     const isAuthorized = 
       admin.role === 'super_admin' || 
       admin.managed_entity_id?.toString() === hospitalId ||
-      admin.entity_name?.toLowerCase() === targetHospital['Hospital Name']?.toLowerCase();
+      adminHospitalName?.toLowerCase() === targetHospital?.['Hospital Name']?.toLowerCase();
 
     if (!isAuthorized) {
       return res.status(403).json({
@@ -153,17 +167,36 @@ const getHospitalAppointments = async (req, res) => {
     }
 
     // 3. To handle duplicates/multiple branches, we find all hospital IDs with this name
-    const hospitalsWithSameName = await Hospital.find({ 
-      'Hospital Name': { $regex: new RegExp(`^${targetHospital['Hospital Name']}$`, 'i') },
-      City: targetHospital.City
-    }).select('_id');
+    const hospitalName = targetHospital?.['Hospital Name'] || adminHospitalName;
+    const hospitalQuery = hospitalName
+      ? {
+          'Hospital Name': { $regex: new RegExp(`^${hospitalName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
+          ...(targetHospital?.City ? { City: targetHospital.City } : {}),
+        }
+      : {};
+
+    const hospitalsWithSameName = hospitalName
+      ? await Hospital.find(hospitalQuery).select('_id')
+      : [];
     
     const hospitalIds = hospitalsWithSameName.map(h => h._id);
+    if (hospitalId && !hospitalIds.some(id => id.toString() === hospitalId)) {
+      hospitalIds.push(hospitalId);
+    }
 
-    // 4. Fetch appointments for all these IDs
-    const appointments = await Appointment.find({ 
-      hospitalId: { $in: hospitalIds } 
-    }).sort({ appointmentDate: 1, appointmentTime: 1 });
+    // 4. Fetch appointments for all these IDs, plus name-based records for
+    // appointments saved before hospital IDs were corrected.
+    const appointmentOr = [];
+    if (hospitalIds.length) appointmentOr.push({ hospitalId: { $in: hospitalIds } });
+    if (hospitalName) {
+      appointmentOr.push({
+        hospitalName: { $regex: new RegExp(`^${hospitalName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
+      });
+    }
+
+    const appointments = appointmentOr.length
+      ? await Appointment.find({ $or: appointmentOr }).sort({ appointmentDate: 1, appointmentTime: 1 })
+      : [];
     
     res.status(200).json({
       success: true,

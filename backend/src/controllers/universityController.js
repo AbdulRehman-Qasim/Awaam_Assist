@@ -1,5 +1,6 @@
 const University = require('../models/UniversitySchema');
 const { buildPublicApprovalQuery } = require('../modules/superAdmin/services/superAdminService');
+const { parseFee } = require('../utils/feeUtils');
 
 // Get all universities with full backend-side filtering
 const getAllUniversities = async (req, res) => {
@@ -13,37 +14,68 @@ const getAllUniversities = async (req, res) => {
         if (city && city !== 'all') initialMatch.city = { $regex: city, $options: 'i' };
         
         // 2. Post-Lookup Match (Program level filters & cross-filters)
-        let postMatch = { "programs.status": "active" };
+        // We use $elemMatch to ensure that the filters (discipline, merit, fee) 
+        // apply to the SAME program within a university.
+        let programCriteria = { status: "active" };
 
-        if (search) {
-            postMatch.$or = [
-                { title: { $regex: search, $options: 'i' } },
-                { city: { $regex: search, $options: 'i' } },
-                { province: { $regex: search, $options: 'i' } },
-                { "programs.discipline": { $regex: search, $options: 'i' } },
-                { "programs.degree": { $regex: search, $options: 'i' } }
-            ];
+        if (discipline && discipline !== 'all') {
+            programCriteria.discipline = { $regex: discipline, $options: 'i' };
         }
-
-        if (discipline && discipline !== 'all') postMatch["programs.discipline"] = { $regex: discipline, $options: 'i' };
-        if (degree && degree !== 'all') postMatch["programs.degree"] = { $regex: degree, $options: 'i' };
+        
+        if (degree && degree !== 'all') {
+            programCriteria.degree = { $regex: degree, $options: 'i' };
+        }
         
         if (marks) {
             const m = parseFloat(marks);
-            if (!isNaN(m)) postMatch["programs.merit"] = { $lte: m };
+            if (!isNaN(m)) programCriteria.merit = { $lte: m };
         }
 
-        const feeField = {};
-        if (minFee) feeField.$gte = parseFloat(minFee) || 0;
-        if (maxFee) feeField.$lte = parseFloat(maxFee) || 99999999;
-        if (Object.keys(feeField).length > 0) {
-            postMatch.$and = postMatch.$and || [];
-            postMatch.$and.push({
+        // Fee filtering logic: strictly numeric, ignore 0/N/A values
+        const feeCriteria = { $gt: 0 }; 
+        let hasFeeFilter = false;
+
+        if (minFee) {
+            const min = parseFloat(minFee);
+            if (!isNaN(min)) {
+                feeCriteria.$gte = min;
+                hasFeeFilter = true;
+            }
+        }
+        
+        if (maxFee) {
+            const max = parseFloat(maxFee);
+            if (!isNaN(max)) {
+                feeCriteria.$lte = max;
+                hasFeeFilter = true;
+            }
+        }
+
+        if (hasFeeFilter) {
+            programCriteria.$or = [
+                { fee: feeCriteria },
+                { semesterFee: feeCriteria }
+            ];
+        }
+
+        // Initialize postMatch with the program criteria
+        let postMatch = { programs: { $elemMatch: programCriteria } };
+
+        // 3. Search Logic (Apply as an AND condition if present)
+        if (search) {
+            const searchRegex = { $regex: search, $options: 'i' };
+            const searchQueryObj = {
                 $or: [
-                    { "programs.fee": feeField },
-                    { "programs.semesterFee": feeField }
+                    { title: searchRegex },
+                    { city: searchRegex },
+                    { province: searchRegex },
+                    { "programs.discipline": searchRegex },
+                    { "programs.degree": searchRegex }
                 ]
-            });
+            };
+            
+            // Combine program criteria with search query
+            postMatch = { $and: [ postMatch, searchQueryObj ] };
         }
 
         const sortMap = {
@@ -83,8 +115,8 @@ const getAllUniversities = async (req, res) => {
                     }
 
                     // Pick a representative fee
-                    const annualFees = activePrograms.map(p => p.fee).filter(f => f > 0);
-                    const semesterFees = activePrograms.map(p => p.semesterFee).filter(f => f > 0);
+                    const annualFees = activePrograms.map(p => parseFee(p.fee)).filter(f => f > 0);
+                    const semesterFees = activePrograms.map(p => parseFee(p.semesterFee)).filter(f => f > 0);
                     
                     if (annualFees.length > 0) {
                         u.fee = Math.min(...annualFees);
@@ -141,8 +173,8 @@ const getUniversityById = async (req, res) => {
             const validMerits = programs.map(p => p.merit).filter(m => m > 0);
             if (validMerits.length > 0) university.merit = Math.min(...validMerits);
 
-            const annualFees = programs.map(p => p.fee).filter(f => f > 0);
-            const semesterFees = programs.map(p => p.semesterFee).filter(f => f > 0);
+            const annualFees = programs.map(p => parseFee(p.fee)).filter(f => f > 0);
+            const semesterFees = programs.map(p => parseFee(p.semesterFee)).filter(f => f > 0);
             
             if (annualFees.length > 0) {
                 university.fee = Math.min(...annualFees);

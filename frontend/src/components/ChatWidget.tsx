@@ -30,7 +30,11 @@ const ChatWidget = () => {
         setUserName(name);
 
         // Connect to backend
-        const newSocket = io('http://localhost:5001');
+        const newSocket = io(import.meta.env.VITE_API_URL || 'http://localhost:5000', {
+            reconnectionAttempts: 3,
+            reconnectionDelay: 2000,
+            timeout: 5000,
+        });
         setSocket(newSocket);
 
         // Listen for incoming messages

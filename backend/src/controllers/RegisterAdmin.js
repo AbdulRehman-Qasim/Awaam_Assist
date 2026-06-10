@@ -22,7 +22,11 @@ exports.registerAdmin = async (req, res) => {
       return res.status(400).json({ message: "Invalid admin role" });
     }
 
-    const email = admin_email.toLowerCase();
+    const email = admin_email.toLowerCase().trim();
+    if (!/^[^\s@]+@gmail\.com$/.test(email)) {
+      return res.status(400).json({ message: "Please enter a valid @gmail.com email address" });
+    }
+
     const existingEmail = await Admin.findOne({ admin_email: email });
     if (existingEmail) {
       return res.status(400).json({ message: "Email already taken" });

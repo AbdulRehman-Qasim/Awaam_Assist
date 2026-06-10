@@ -102,7 +102,7 @@ export interface HospitalQueryParams {
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
-const BASE = 'http://localhost:5001';
+const BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export const hospitalPublicAPI = {
   /** Fetch all hospitals with optional filter params */
@@ -211,8 +211,15 @@ export const hospitalAdminAPI = {
   // ── Appointment Management ──────────────────────────────────────────────────
 
   getHospitalAppointments: async (hospitalId: string) => {
-    const response = await api.get(`/hospital-admin/appointments/${hospitalId}`);
-    return response.data;
+    try {
+      const response = await api.get(`/hospital-admin/appointments/${hospitalId}`);
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        return { success: true, data: [], count: 0 };
+      }
+      throw error;
+    }
   },
 
   updateAppointmentStatus: async (appointmentId: string, data: { status: string; adminReason?: string }) => {

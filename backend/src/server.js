@@ -171,8 +171,19 @@ const {
 } = require("./controllers/hospitalAdminAuthController");
 
 // Fallback response function for when AI service is unavailable
+function extractUniversityLocation(message) {
+  const match = message.match(/\b(?:university|universities|college|colleges)\s+(?:of|in|at|near|around)\s+([a-z\s\-]+)$/i);
+  if (!match) return "";
+
+  return match[1]
+    .replace(/^the\s+/i, "")
+    .replace(/\s+(university|universities|college|colleges)$/i, "")
+    .trim();
+}
+
 function generateFallbackResponse(message) {
   const msg = message.toLowerCase().trim();
+  const universityLocation = extractUniversityLocation(msg);
 
   // Handle greetings
   if (['hello', 'hi', 'assalam', 'salam', 'hey', 'good morning', 'good evening', 'good afternoon'].some(word => msg.includes(word))) {
@@ -194,6 +205,10 @@ function generateFallbackResponse(message) {
 
   // Handle university queries
   if (['university', 'college', 'education', 'study', 'admission'].some(word => msg.includes(word))) {
+    if (universityLocation) {
+      return `I couldn't find a university match for ${universityLocation.charAt(0).toUpperCase() + universityLocation.slice(1)}. Please try a clearer city or province name such as Lahore, Karachi, Islamabad, Punjab, or KPK.`;
+    }
+
     if (msg.includes('nust')) {
       return "NUST (National University of Sciences and Technology) is Pakistan's top-ranked university. Located in Islamabad, it offers engineering, medical, business, and computer science programs. Admission requires NUST entry test with minimum 60% marks in FSc.";
     } else if (msg.includes('engineering')) {
@@ -207,6 +222,35 @@ function generateFallbackResponse(message) {
 
   // Handle government scheme queries
   if (['scheme', 'government', 'program', 'benefit', 'loan', 'scholarship', 'ehsaas', 'laptop', 'kamyab', 'sehat', 'bisp', 'benazir'].some(word => msg.includes(word))) {
+    // If user asked about schemes for students or women in a province, return a concise curated list
+    const provinces = ['punjab', 'sindh', 'khyber', 'kpk', 'balochistan', 'ajk', 'azad kashmir', 'gilgit', 'gilgit baltistan', 'islamabad', 'federal'];
+    const askedProvince = provinces.find(p => msg.includes(p));
+    const studentAsked = ['student', 'students', 'scholarship', 'undergrad', 'undergraduate', 'tuition', 'fee', 'laptop', 'stipend'].some(k => msg.includes(k));
+    const womenAsked = ['woman', 'women', 'female', 'ladies', 'mother', 'mothers', 'girl', 'girls', 'widow'].some(k => msg.includes(k));
+    if (askedProvince && (studentAsked || womenAsked)) {
+      if (studentAsked) {
+        const curated = [
+          "Ehsaas Undergraduate Scholarship (covers tuition + stipend)",
+          "Prime Minister's Laptop Scheme (laptops for talented students)",
+          "HEC Need-based Scholarships (higher education support)",
+          "Punjab Educational Endowment Fund (province-level scholarships)",
+          "Prime Minister Youth Emergency Skills (vocational training & stipends)",
+          "Provincial merit scholarships and university-specific bursaries"
+        ];
+        return `Student-focused government schemes for ${askedProvince.charAt(0).toUpperCase() + askedProvince.slice(1)}:\n\n1. ${curated.join('\n2. ').replace(/\n2\. /g, '\n2. ')}`;
+      }
+      if (womenAsked) {
+        const curated = [
+          "Women Entrepreneurship and Skill Development Grants (provincial programs)",
+          "Microfinance & Livelihood Programs for Women (e.g., Rozgar schemes)",
+          "Punjab Women’s Empowerment Scholarship & Bursaries",
+          "Health & Maternal Support Programs (prenatal/postnatal)",
+          "Widow & Single Mother Support Stipends"
+        ];
+        return `Women-focused government schemes for ${askedProvince.charAt(0).toUpperCase() + askedProvince.slice(1)}:\n\n1. ${curated.join('\n2. ').replace(/\n2\. /g, '\n2. ')}`;
+      }
+    }
+
     if (msg.includes('ehsaas')) {
       return "Ehsaas Program is Pakistan's largest social protection initiative. Includes Ehsaas Emergency Cash, Ehsaas Scholarship Program, Ehsaas Kafalat, and Ehsaas Nashonuma. Eligibility based on income level and family composition.";
     } else if (msg.includes('laptop')) {
@@ -233,7 +277,7 @@ function generateFallbackResponse(message) {
 }
 
 const app = express();
-const PORT = process.env.PORT || 5001;
+const PORT = process.env.PORT || 5000;
 
 app.use(express.json());
 app.use(cors());

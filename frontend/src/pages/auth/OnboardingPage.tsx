@@ -520,18 +520,19 @@ const OnboardingPage = () => {
   }, [step, activeModule, selectedModules, isEducationDone, isSchemesDone, isHealthcareDone]);
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-6 md:p-12">
-      <div className="w-full max-w-4xl">
-        <div className="mb-12 space-y-3 text-center">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4 py-8 sm:px-6 lg:px-8">
+      <div className="w-full max-w-5xl">
+        <div className="mb-8 space-y-3 text-center">
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <h1 className="text-4xl font-extrabold tracking-tight text-slate-900">
+            <div className="section-label mb-4">Awam Assist Profile</div>
+            <h1 className="text-3xl md:text-4xl font-black tracking-tight text-foreground">
               {step === 1 ? "Personalize Your Experience" : "Please Complete Your Profile"}
             </h1>
-            <p className="text-slate-500 text-lg max-w-xl mx-auto mt-2">
+            <p className="text-muted-foreground text-sm md:text-base max-w-2xl mx-auto mt-3">
               {step === 1
                 ? "Choose the services that match your needs. You can update these preferences anytime later."
                 : "Help us tailor our recommendations by providing a few more details."}
@@ -539,21 +540,21 @@ const OnboardingPage = () => {
           </motion.div>
         </div>
 
-        <div className="mb-12 max-w-2xl mx-auto">
+        <div className="mb-8 max-w-3xl mx-auto bg-card border border-border/70 rounded-2xl shadow-sm p-5">
           <div className="flex justify-between items-end mb-3 px-1">
             <div className="space-y-1">
-              <span className="text-xs font-bold uppercase tracking-wider text-primary/70">Onboarding Progress</span>
-              <div className="text-slate-900 font-semibold">
-                Step {step} <span className="text-slate-400 font-normal">of {totalSteps}</span>
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Onboarding Progress</span>
+              <div className="text-foreground font-bold">
+                Step {step} <span className="text-muted-foreground font-medium">of {totalSteps}</span>
               </div>
             </div>
             <div className="text-right">
-              <span className="text-2xl font-bold text-slate-900">{Math.round(progress)}%</span>
+              <span className="text-2xl font-black text-foreground">{Math.round(progress)}%</span>
             </div>
           </div>
-          <div className="relative h-2 w-full bg-slate-200 rounded-full overflow-hidden">
+          <div className="relative h-2 w-full bg-muted rounded-full overflow-hidden">
             <motion.div
-              className="absolute top-0 left-0 h-full bg-primary"
+              className="absolute top-0 left-0 h-full hero-gradient-ai"
               initial={{ width: 0 }}
               animate={{ width: `${progress}%` }}
               transition={{ duration: 0.8, ease: "easeOut" }}
@@ -569,7 +570,7 @@ const OnboardingPage = () => {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.4 }}
-              className="grid grid-cols-1 md:grid-cols-3 gap-6"
+              className="grid grid-cols-1 md:grid-cols-3 gap-4"
             >
               {[
                 {
@@ -578,7 +579,8 @@ const OnboardingPage = () => {
                   description: "Universities, scholarships, and admissions.",
                   icon: <BookOpen className="w-6 h-6" />,
                   isValid: isEducationDone,
-                  gradient: "from-blue-500/10 to-indigo-500/10",
+                  accent: "primary",
+                  ring: "border-t-primary",
                 },
                 {
                   id: "schemes",
@@ -586,7 +588,8 @@ const OnboardingPage = () => {
                   description: "Financial aid and welfare programs.",
                   icon: <ShieldCheck className="w-6 h-6" />,
                   isValid: isSchemesDone,
-                  gradient: "from-emerald-500/10 to-teal-500/10",
+                  accent: "purple",
+                  ring: "border-t-violet-600",
                 },
                 {
                   id: "healthcare",
@@ -594,7 +597,8 @@ const OnboardingPage = () => {
                   description: "Hospital networks and medical assistance.",
                   icon: <HeartPulse className="w-6 h-6" />,
                   isValid: isHealthcareDone,
-                  gradient: "from-rose-500/10 to-orange-500/10",
+                  accent: "cyan",
+                  ring: "border-t-cyan-600",
                 },
               ].map((module) => {
                 const isSelected = selectedModules.includes(module.id);
@@ -603,16 +607,15 @@ const OnboardingPage = () => {
                 return (
                   <Card
                     key={module.id}
-                    className={`group cursor-pointer transition-all duration-300 relative overflow-hidden border-2 h-full flex flex-col ${isSelected
-                      ? "border-primary bg-white shadow-xl shadow-primary/5 ring-4 ring-primary/5"
-                      : "border-slate-100 bg-white hover:border-slate-300 hover:shadow-lg"
+                    className={`group cursor-pointer transition-all duration-300 relative overflow-hidden border border-t-[3px] ${module.ring} rounded-2xl h-full flex flex-col ${isSelected
+                      ? "border-primary/40 bg-card shadow-lg shadow-primary/10 ring-4 ring-primary/5"
+                      : "border-border/70 bg-card shadow-sm hover:border-primary/25 hover:shadow-lg"
                       }`}
                     onClick={() => toggleModule(module.id)}
                   >
-                    <div className={`absolute inset-0 bg-gradient-to-br ${module.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
                     <div className="relative p-6 flex flex-col h-full z-10">
                       <div className="flex justify-between items-start mb-6">
-                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors duration-300 ${isSelected ? "bg-primary text-white shadow-lg shadow-primary/30" : "bg-slate-100 text-slate-500 group-hover:bg-primary/10 group-hover:text-primary"
+                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors duration-300 ${isSelected ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25" : "bg-accent text-primary group-hover:bg-primary group-hover:text-primary-foreground"
                           }`}>
                           {module.icon}
                         </div>
@@ -620,19 +623,19 @@ const OnboardingPage = () => {
                           <motion.div
                             initial={{ scale: 0 }}
                             animate={{ scale: 1 }}
-                            className={`p-1.5 rounded-full ${isCompleted ? "bg-emerald-500" : "bg-primary"} text-white`}
+                            className={`p-1.5 rounded-full ${isCompleted ? "bg-cyan-600" : "bg-primary"} text-white`}
                           >
                             {isCompleted ? <Check className="w-3 h-3" /> : <div className="w-3 h-3" />}
                           </motion.div>
                         )}
                       </div>
-                      <CardTitle className="text-xl font-bold text-slate-800 mb-2">{module.title}</CardTitle>
-                      <p className="text-slate-500 text-sm leading-relaxed mb-6">{module.description}</p>
+                      <CardTitle className="text-lg font-black text-foreground mb-2">{module.title}</CardTitle>
+                      <p className="text-muted-foreground text-sm leading-relaxed mb-6">{module.description}</p>
                       <div className="mt-auto pt-4 flex items-center gap-2">
-                        <div className={`w-full h-1.5 rounded-full bg-slate-100 overflow-hidden`}>
-                          <div className={`h-full transition-all duration-500 ${isCompleted ? "w-full bg-emerald-500" : "w-0"}`} />
+                        <div className={`w-full h-1.5 rounded-full bg-muted overflow-hidden`}>
+                          <div className={`h-full transition-all duration-500 ${isCompleted ? "w-full bg-cyan-600" : "w-0"}`} />
                         </div>
-                        <span className={`text-[10px] font-bold uppercase tracking-tighter ${isCompleted ? "text-emerald-600" : "text-slate-400"}`}>
+                        <span className={`text-[10px] font-black uppercase tracking-tight ${isCompleted ? "text-cyan-700" : "text-muted-foreground"}`}>
                           {isCompleted ? "Done" : "Pending"}
                         </span>
                       </div>
@@ -649,21 +652,21 @@ const OnboardingPage = () => {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="bg-white p-8 rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100"
+              className="bg-card p-6 md:p-8 rounded-2xl shadow-sm border border-border/70"
             >
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-4">
-                  <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center transition-colors duration-300", isEducationDone ? "bg-emerald-100 text-emerald-600" : "bg-primary/10 text-primary")}>
+                  <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center transition-colors duration-300", isEducationDone ? "bg-cyan-50 text-cyan-700" : "bg-accent text-primary")}>
                     {isEducationDone ? <Check className="w-6 h-6" /> : <BookOpen className="w-6 h-6" />}
                   </div>
                   <div>
-                    <h2 className="text-2xl font-bold text-slate-900">Academic Intelligence</h2>
-                    <p className="text-xs text-slate-400 mt-0.5">{isEducationDone ? "All required fields completed" : "Fill in the required fields below"}</p>
+                    <h2 className="text-2xl font-black text-foreground">Academic Intelligence</h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">{isEducationDone ? "All required fields completed" : "Fill in the required fields below"}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
                   {isEducationDone && (
-                    <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-200">
+                    <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-50 text-cyan-700 text-xs font-bold border border-cyan-200">
                       <Check className="w-3 h-3" /> Complete
                     </span>
                   )}
@@ -675,13 +678,13 @@ const OnboardingPage = () => {
               </div>
               {/* Module completion progress bar */}
               <div className="mb-8">
-                <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                  <div className={cn("h-full rounded-full transition-all duration-700 ease-out", isEducationDone ? "w-full bg-emerald-500" : "w-1/3 bg-primary/40")} />
+                <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                  <div className={cn("h-full rounded-full transition-all duration-700 ease-out", isEducationDone ? "w-full bg-cyan-600" : "w-1/3 bg-primary/40")} />
                 </div>
               </div>
 
               <Accordion type="single" collapsible defaultValue="basic" className="w-full space-y-4">
-                <AccordionItem value="basic" className="border-none bg-slate-50/50 rounded-2xl px-6">
+                <AccordionItem value="basic" className="border border-border/70 bg-muted/35 rounded-2xl px-5">
                   <AccordionTrigger className="hover:no-underline py-4">
                     <span className="font-bold text-slate-700">Core Academic Details</span>
                   </AccordionTrigger>
@@ -783,7 +786,7 @@ const OnboardingPage = () => {
                   </AccordionContent>
                 </AccordionItem>
 
-                <AccordionItem value="interest" className="border-none bg-slate-50/50 rounded-2xl px-6">
+                <AccordionItem value="interest" className="border border-border/70 bg-muted/35 rounded-2xl px-5">
                   <AccordionTrigger className="hover:no-underline py-4">
                     <span className="font-bold text-slate-700">Program & Career Goals</span>
                   </AccordionTrigger>
@@ -850,7 +853,7 @@ const OnboardingPage = () => {
                   </AccordionContent>
                 </AccordionItem>
 
-                <AccordionItem value="preferences" className="border-none bg-slate-50/50 rounded-2xl px-6">
+                <AccordionItem value="preferences" className="border border-border/70 bg-muted/35 rounded-2xl px-5">
                   <AccordionTrigger className="hover:no-underline py-4">
                     <span className="font-bold text-slate-700">Location & Preferences</span>
                   </AccordionTrigger>
@@ -921,7 +924,7 @@ const OnboardingPage = () => {
                   </AccordionContent>
                 </AccordionItem>
 
-                <AccordionItem value="flexibility" className="border-none bg-slate-50/50 rounded-2xl px-6">
+                <AccordionItem value="flexibility" className="border border-border/70 bg-muted/35 rounded-2xl px-5">
                   <AccordionTrigger className="hover:no-underline py-4">
                     <span className="font-bold text-slate-700">Admission Flexibility</span>
                   </AccordionTrigger>
@@ -956,21 +959,21 @@ const OnboardingPage = () => {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="bg-white p-8 rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100"
+              className="bg-card p-6 md:p-8 rounded-2xl shadow-sm border border-border/70"
             >
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-4">
-                  <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center transition-colors duration-300", isSchemesDone ? "bg-emerald-100 text-emerald-600" : "bg-primary/10 text-primary")}>
+                  <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center transition-colors duration-300", isSchemesDone ? "bg-cyan-50 text-cyan-700" : "bg-accent text-primary")}>
                     {isSchemesDone ? <Check className="w-6 h-6" /> : <ShieldCheck className="w-6 h-6" />}
                   </div>
                   <div>
-                    <h2 className="text-2xl font-bold text-slate-900">Scheme Eligibility Intelligence</h2>
-                    <p className="text-sm text-slate-500">{isSchemesDone ? "All required fields completed" : "Deep demographic profiling for accurate scheme matching."}</p>
+                    <h2 className="text-2xl font-black text-foreground">Scheme Eligibility Intelligence</h2>
+                    <p className="text-sm text-muted-foreground">{isSchemesDone ? "All required fields completed" : "Deep demographic profiling for accurate scheme matching."}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
                   {isSchemesDone && (
-                    <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-200">
+                    <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-50 text-cyan-700 text-xs font-bold border border-cyan-200">
                       <Check className="w-3 h-3" /> Complete
                     </span>
                   )}
@@ -988,14 +991,14 @@ const OnboardingPage = () => {
               </div>
               {/* Module completion progress bar */}
               <div className="mb-8">
-                <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                  <div className={cn("h-full rounded-full transition-all duration-700 ease-out", isSchemesDone ? "w-full bg-emerald-500" : "w-1/3 bg-primary/40")} />
+                <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                  <div className={cn("h-full rounded-full transition-all duration-700 ease-out", isSchemesDone ? "w-full bg-cyan-600" : "w-1/3 bg-primary/40")} />
                 </div>
               </div>
 
               <Accordion type="single" collapsible defaultValue="eligibility" className="w-full space-y-4">
                 {/* Section 1: Personal & Financial Eligibility */}
-                <AccordionItem value="eligibility" className="border-none bg-slate-50/50 rounded-2xl px-6">
+                <AccordionItem value="eligibility" className="border border-border/70 bg-muted/35 rounded-2xl px-5">
                   <AccordionTrigger className="hover:no-underline py-4">
                     <div className="flex items-center gap-3">
                       <UserCheck className="w-5 h-5 text-primary" />
@@ -1106,7 +1109,7 @@ const OnboardingPage = () => {
                 </AccordionItem>
 
                 {/* Section 2: Education & Status */}
-                <AccordionItem value="education" className="border-none bg-slate-50/50 rounded-2xl px-6">
+                <AccordionItem value="education" className="border border-border/70 bg-muted/35 rounded-2xl px-5">
                   <AccordionTrigger className="hover:no-underline py-4">
                     <div className="flex items-center gap-3">
                       <GraduationCap className="w-5 h-5 text-primary" />
@@ -1159,7 +1162,7 @@ const OnboardingPage = () => {
                 </AccordionItem>
 
                 {/* Section 3: Household & Support */}
-                <AccordionItem value="household" className="border-none bg-slate-50/50 rounded-2xl px-6">
+                <AccordionItem value="household" className="border border-border/70 bg-muted/35 rounded-2xl px-5">
                   <AccordionTrigger className="hover:no-underline py-4">
                     <div className="flex items-center gap-3">
                       <Home className="w-5 h-5 text-primary" />
@@ -1237,7 +1240,7 @@ const OnboardingPage = () => {
                 </AccordionItem>
 
                 {/* Section 4: Special Status & Needs */}
-                <AccordionItem value="special" className="border-none bg-slate-50/50 rounded-2xl px-6">
+                <AccordionItem value="special" className="border border-border/70 bg-muted/35 rounded-2xl px-5">
                   <AccordionTrigger className="hover:no-underline py-4">
                     <div className="flex items-center gap-3">
                       <Briefcase className="w-5 h-5 text-primary" />
@@ -1351,21 +1354,21 @@ const OnboardingPage = () => {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="bg-white p-8 rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100"
+              className="bg-card p-6 md:p-8 rounded-2xl shadow-sm border border-border/70"
             >
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-4">
-                  <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center transition-colors duration-300", isHealthcareDone ? "bg-emerald-100 text-emerald-600" : "bg-primary/10 text-primary")}>
+                  <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center transition-colors duration-300", isHealthcareDone ? "bg-cyan-50 text-cyan-700" : "bg-accent text-primary")}>
                     {isHealthcareDone ? <Check className="w-6 h-6" /> : <HeartPulse className="w-6 h-6" />}
                   </div>
                   <div>
-                    <h2 className="text-2xl font-bold text-slate-900">Healthcare Accessibility Intelligence</h2>
-                    <p className="text-sm text-slate-500">{isHealthcareDone ? "All required fields completed" : "Medical preference mapping for hospital matching."}</p>
+                    <h2 className="text-2xl font-black text-foreground">Healthcare Accessibility Intelligence</h2>
+                    <p className="text-sm text-muted-foreground">{isHealthcareDone ? "All required fields completed" : "Medical preference mapping for hospital matching."}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
                   {isHealthcareDone && (
-                    <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-200">
+                    <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-50 text-cyan-700 text-xs font-bold border border-cyan-200">
                       <Check className="w-3 h-3" /> Complete
                     </span>
                   )}
@@ -1383,14 +1386,14 @@ const OnboardingPage = () => {
               </div>
               {/* Module completion progress bar */}
               <div className="mb-8">
-                <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                  <div className={cn("h-full rounded-full transition-all duration-700 ease-out", isHealthcareDone ? "w-full bg-emerald-500" : "w-1/3 bg-primary/40")} />
+                <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                  <div className={cn("h-full rounded-full transition-all duration-700 ease-out", isHealthcareDone ? "w-full bg-cyan-600" : "w-1/3 bg-primary/40")} />
                 </div>
               </div>
 
               <Accordion type="single" collapsible defaultValue="location" className="w-full space-y-4">
                 {/* Section 1: Location & Accessibility */}
-                <AccordionItem value="location" className="border-none bg-slate-50/50 rounded-2xl px-6">
+                <AccordionItem value="location" className="border border-border/70 bg-muted/35 rounded-2xl px-5">
                   <AccordionTrigger className="hover:no-underline py-4">
                     <div className="flex items-center gap-3">
                       <MapPin className="w-5 h-5 text-primary" />
@@ -1448,7 +1451,7 @@ const OnboardingPage = () => {
                 </AccordionItem>
 
                 {/* Section 2: Hospital Preference */}
-                <AccordionItem value="preference" className="border-none bg-slate-50/50 rounded-2xl px-6">
+                <AccordionItem value="preference" className="border border-border/70 bg-muted/35 rounded-2xl px-5">
                   <AccordionTrigger className="hover:no-underline py-4">
                     <div className="flex items-center gap-3">
                       <Stethoscope className="w-5 h-5 text-primary" />
@@ -1521,7 +1524,7 @@ const OnboardingPage = () => {
                 </AccordionItem>
 
                 {/* Section 3: Medical Needs & Support */}
-                <AccordionItem value="needs" className="border-none bg-slate-50/50 rounded-2xl px-6">
+                <AccordionItem value="needs" className="border border-border/70 bg-muted/35 rounded-2xl px-5">
                   <AccordionTrigger className="hover:no-underline py-4">
                     <div className="flex items-center gap-3">
                       <HeartPulse className="w-5 h-5 text-primary" />
@@ -1578,7 +1581,7 @@ const OnboardingPage = () => {
                 </AccordionItem>
 
                 {/* Section 4: Transport & Coverage */}
-                <AccordionItem value="transport" className="border-none bg-slate-50/50 rounded-2xl px-6">
+                <AccordionItem value="transport" className="border border-border/70 bg-muted/35 rounded-2xl px-5">
                   <AccordionTrigger className="hover:no-underline py-4">
                     <div className="flex items-center gap-3">
                       <ShieldCheck className="w-5 h-5 text-primary" />
@@ -1662,7 +1665,7 @@ const OnboardingPage = () => {
           )}
         </AnimatePresence>
 
-        <div className="mt-12 flex justify-between items-center max-w-2xl mx-auto">
+        <div className="mt-8 flex justify-between items-center max-w-3xl mx-auto">
           {step > 1 && (
             <Button variant="ghost" onClick={handlePrevStep} className="text-slate-500 hover:text-slate-900 transition-colors gap-2">
               <ChevronLeft className="w-5 h-5" />
@@ -1675,8 +1678,8 @@ const OnboardingPage = () => {
                 onClick={handleNextStep}
                 disabled={!isCurrentModuleComplete}
                 className={cn(
-                  "px-8 h-12 rounded-2xl shadow-lg transition-all gap-2",
-                  isCurrentModuleComplete ? "bg-primary hover:bg-primary/90 text-white shadow-primary/20" : "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none"
+                  "px-8 h-11 rounded-xl shadow-sm transition-all gap-2",
+                  isCurrentModuleComplete ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-primary/20" : "bg-muted text-muted-foreground cursor-not-allowed shadow-none"
                 )}
               >
                 Continue
@@ -1687,10 +1690,10 @@ const OnboardingPage = () => {
                 onClick={onFinalSubmit}
                 disabled={loading || !isOnboardingComplete}
                 className={cn(
-                  "px-10 h-12 rounded-2xl shadow-lg transition-all duration-300 gap-2",
+                  "px-10 h-11 rounded-xl shadow-sm transition-all duration-300 gap-2",
                   isOnboardingComplete
-                    ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200 hover:shadow-emerald-300 hover:scale-[1.02]"
-                    : "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none"
+                    ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-primary/20 hover:shadow-primary/25 hover:scale-[1.02]"
+                    : "bg-muted text-muted-foreground cursor-not-allowed shadow-none"
                 )}
               >
                 {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Check className="w-5 h-5" />}

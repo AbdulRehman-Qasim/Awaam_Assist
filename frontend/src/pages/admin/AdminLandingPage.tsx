@@ -72,7 +72,7 @@ const AdminLandingPage = () => {
         const fetchStats = async () => {
             try {
                 const token = localStorage.getItem('adminToken');
-                const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+                const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
                 // Fetch dashboard data to get dynamic total users
                 const response = await fetch(`${apiUrl}/admin/dashboard`, {

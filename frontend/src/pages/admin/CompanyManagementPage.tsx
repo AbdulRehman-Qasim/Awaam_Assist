@@ -131,7 +131,7 @@ const CompanyManagementPage = () => {
         try {
             setLoading(true);
             const token = localStorage.getItem("adminToken");
-            const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5001";
+            const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
             const response = await fetch(`${apiUrl}/admin/companies`, {
                 headers: {
@@ -226,7 +226,7 @@ const CompanyManagementPage = () => {
 
         try {
             const token = localStorage.getItem("adminToken");
-            const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5001";
+            const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
             const response = await fetch(`${apiUrl}/admin/companies/${id}`, {
                 method: "DELETE",
@@ -259,7 +259,7 @@ const CompanyManagementPage = () => {
         try {
             const newStatus = uni.status === 1 ? 0 : 1;
             const token = localStorage.getItem("adminToken");
-            const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5001";
+            const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
             const identifier = getUniversityIdentifier(uni);
             if (!identifier) {

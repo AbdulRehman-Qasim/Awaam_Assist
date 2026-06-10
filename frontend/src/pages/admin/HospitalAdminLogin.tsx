@@ -18,7 +18,7 @@ const HospitalAdminLogin = () => {
     setLoading(true);
 
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       const response = await fetch(`${apiUrl}/admin/login`, {
         method: 'POST',
         headers: {

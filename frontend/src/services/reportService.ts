@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export interface ReportRecord {
   _id: string;
@@ -44,7 +44,7 @@ export const reportService = {
 
   downloadReport: (url: string) => {
     // Construct full URL if it's relative
-    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
     const fullUrl = url.startsWith('http') ? url : `${baseUrl}${url}`;
     
     // Open in new tab or trigger download

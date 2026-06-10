@@ -91,6 +91,7 @@ const FieldRenderer = ({ field, value, moduleId, updateField }: {
 };
 
 const PersonalizedDashboard = () => {
+  const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [profile, setProfile] = useState<any>(null);
   const [profileError, setProfileError] = useState<string | null>(null);
@@ -117,7 +118,7 @@ const PersonalizedDashboard = () => {
     setLoadingProfile(true);
     setProfileError(null);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/user/profile`, {
+      const response = await fetch(`${apiBaseUrl}/api/user/profile`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       if (!response.ok) throw new Error(`Profile Fetch Failed: ${response.status}`);
@@ -476,7 +477,7 @@ const PersonalizedDashboard = () => {
                     />
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-[20px] font-black text-white leading-none tracking-tight">{metrics.confidence || 0}<span className="text-[12px]">%</span></span>
+                    <span className="text-[18px] font-black text-white leading-none tracking-tight">{metrics.confidence || 0}<span className="text-[12px]">%</span></span>
                   </div>
                 </div>
 

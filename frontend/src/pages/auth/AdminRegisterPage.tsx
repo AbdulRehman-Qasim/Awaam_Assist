@@ -14,7 +14,9 @@ const registerSchema = z.object({
   admin_name: z.string()
     .min(3, "Full Name must be at least 3 characters")
     .regex(/^[a-zA-Z\s]+$/, "Only letters and spaces are allowed"),
-  admin_email: z.string().email("Invalid email address"),
+  admin_email: z.string()
+    .email("Enter a valid email address")
+    .regex(/^[^\s@]+@gmail\.com$/i, "Please enter a valid @gmail.com email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
   confirmPassword: z.string(),
   role: z.string(),
@@ -295,8 +297,10 @@ const AdminRegisterPage = () => {
                     <Input
                       id="admin_email"
                       {...form.register("admin_email")}
-                      placeholder="admin@institution.com"
+                      placeholder="yourname@gmail.com"
                       type="email"
+                      pattern="^[^\s@]+@gmail\.com$"
+                      title="Please enter a valid Gmail address ending with @gmail.com"
                       className={`pl-10 ${inputClass}`}
                     />
                   </div>

@@ -188,7 +188,7 @@ const UniversityForm: React.FC<UniversityFormProps> = ({
 
         try {
             const token = localStorage.getItem("adminToken");
-            const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5001";
+            const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
             const isEditMode = Boolean(university && (university._id || university.id));
             const method = isEditMode ? "PUT" : "POST";

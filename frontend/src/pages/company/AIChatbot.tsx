@@ -1,14 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
-  Send, 
-  Bot, 
-  User, 
-  Paperclip, 
-  MoreHorizontal, 
+import {
+  Send,
+  Bot,
+  User,
+  Paperclip,
+  MoreHorizontal,
   RefreshCw,
   MessageSquare,
   Sparkles,
@@ -16,17 +16,19 @@ import {
   GraduationCap,
   Landmark
 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-
 interface Message {
+  id: string;
   role: 'user' | 'bot';
   content: string;
   timestamp: Date;
 }
 
+const createMessageId = () => `msg_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+
 const AIChatbot = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
+      id: 'welcome_bot',
       role: 'bot',
       content: "Hello! I'm your Awam Assist AI Assistant. How can I help you discover universities, government schemes, or healthcare facilities today?",
       timestamp: new Date()
@@ -34,8 +36,11 @@ const AIChatbot = () => {
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [typingMessageId, setTypingMessageId] = useState<string | null>(null);
+  const [typedContent, setTypedContent] = useState('');
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const userIdRef = useRef<string>('');
+  const typingTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     const storedId = localStorage.getItem('awam_assist_chat_user_id');
@@ -53,6 +58,7 @@ const AIChatbot = () => {
     if (!input.trim() || isLoading) return;
 
     const userMessage: Message = {
+      id: createMessageId(),
       role: 'user',
       content: input,
       timestamp: new Date()
@@ -63,7 +69,7 @@ const AIChatbot = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://localhost:5001/api/chat', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -80,11 +86,14 @@ const AIChatbot = () => {
 
       if (data.success) {
         const botMessage: Message = {
+          id: createMessageId(),
           role: 'bot',
           content: data.reply,
           timestamp: new Date()
         };
         setMessages(prev => [...prev, botMessage]);
+        setTypingMessageId(botMessage.id);
+        setTypedContent('');
       } else {
         throw new Error(data.message || 'Failed to get response');
       }
@@ -106,8 +115,15 @@ const AIChatbot = () => {
   };
 
   const handleRefresh = () => {
+    if (typingTimeoutRef.current) {
+      globalThis.clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
+    setTypingMessageId(null);
+    setTypedContent('');
     setMessages([
       {
+        id: 'reset_bot',
         role: 'bot',
         content: "Chat reset. How can I help you today?",
         timestamp: new Date()
@@ -116,22 +132,54 @@ const AIChatbot = () => {
   };
 
   useEffect(() => {
+    if (!typingMessageId) return;
+
+    const message = messages.find((item) => item.id === typingMessageId);
+    if (!message) return;
+
+    let index = 0;
+    const fullText = message.content;
+
+    const typeNext = () => {
+      index += 1;
+      setTypedContent(fullText.slice(0, index));
+
+      if (index < fullText.length) {
+        typingTimeoutRef.current = globalThis.setTimeout(typeNext, fullText[index - 1] === '\n' ? 18 : 12);
+      } else {
+        typingTimeoutRef.current = null;
+        setTypingMessageId(null);
+      }
+    };
+
+    setTypedContent('');
+    typingTimeoutRef.current = globalThis.setTimeout(typeNext, 12);
+
+    return () => {
+      if (typingTimeoutRef.current) {
+        globalThis.clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = null;
+      }
+    };
+  }, [messages, typingMessageId]);
+
+  useEffect(() => {
     if (scrollAreaRef.current) {
       const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
       if (scrollContainer) {
         scrollContainer.scrollTop = scrollContainer.scrollHeight;
       }
     }
-  }, [messages]);
+  }, [messages, typedContent]);
 
   return (
     <div className="space-y-8 animate-fade-in max-w-5xl mx-auto pb-10">
-      
+
       {/* ── Hero Header ── */}
       <section className="relative overflow-hidden rounded-3xl hero-gradient-ai p-8 md:p-12 text-white shadow-2xl">
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 25% 50%, rgba(255,255,255,0.3) 0%, transparent 60%)' }} />
         <div className="absolute top-4 right-6 w-24 h-24 rounded-full bg-white/5 animate-float" />
-        
+
         <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
           <div className="space-y-4 text-center md:text-left">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 border border-white/20 text-[10px] font-black uppercase tracking-widest">
@@ -142,11 +190,11 @@ const AIChatbot = () => {
               Awam Assist <span className="text-blue-300">AI</span>
             </h1>
             <p className="text-white/70 max-w-xl text-sm md:text-base font-medium">
-              Your personalized digital companion for navigating government services, 
+              Your personalized digital companion for navigating government services,
               education opportunities, and healthcare support in Pakistan.
             </p>
           </div>
-          
+
           <div className="flex flex-col items-center gap-2 p-6 rounded-3xl bg-white/10 backdrop-blur-md border border-white/20 ai-pulse">
             <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-blue-400 to-cyan-400 flex items-center justify-center shadow-lg">
               <Bot className="h-10 w-10 text-white" />
@@ -175,7 +223,7 @@ const AIChatbot = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-             <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-white/50" onClick={handleRefresh} title="Reset Chat">
+            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-white/50" onClick={handleRefresh} title="Reset Chat">
               <RefreshCw className="h-4 w-4 text-muted-foreground" />
             </Button>
             <div className="h-4 w-[1px] bg-border mx-1" />
@@ -184,25 +232,23 @@ const AIChatbot = () => {
             </Button>
           </div>
         </CardHeader>
-        
+
         <CardContent className="flex-grow p-0 relative overflow-hidden bg-slate-50/20">
           <ScrollArea className="h-full p-6" ref={scrollAreaRef}>
             <div className="space-y-6">
-              {messages.map((m, i) => (
-                <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in-up`} style={{ animationDelay: '100ms' }}>
+              {messages.map((m) => (
+                <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in-up`} style={{ animationDelay: '100ms' }}>
                   <div className={`flex gap-3 max-w-[85%] ${m.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
-                    <div className={`flex-shrink-0 h-10 w-10 rounded-2xl flex items-center justify-center shadow-md ${
-                      m.role === 'user' ? 'bg-primary text-white' : 'bg-white text-primary border border-primary/10'
-                    }`}>
+                    <div className={`flex-shrink-0 h-10 w-10 rounded-2xl flex items-center justify-center shadow-md ${m.role === 'user' ? 'bg-primary text-white' : 'bg-white text-primary border border-primary/10'
+                      }`}>
                       {m.role === 'user' ? <User className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
                     </div>
                     <div className="flex flex-col gap-1.5">
-                      <div className={`p-4 rounded-3xl shadow-sm text-sm leading-relaxed ${
-                        m.role === 'user' 
-                          ? 'bg-primary text-white rounded-tr-none' 
+                      <div className={`p-4 rounded-3xl shadow-sm text-sm leading-relaxed whitespace-pre-line break-words ${m.role === 'user'
+                          ? 'bg-primary text-white rounded-tr-none'
                           : 'bg-white text-foreground rounded-tl-none border border-white shadow-lg shadow-primary/5'
-                      }`}>
-                        {m.content}
+                        }`}>
+                        {m.role === 'bot' && m.id === typingMessageId ? typedContent : m.content}
                       </div>
                       <div className={`flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                         {m.role === 'user' ? 'You' : 'Assistant'} • {m.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -231,7 +277,7 @@ const AIChatbot = () => {
 
         <CardFooter className="p-6 bg-white/40 border-t border-white/50 backdrop-blur-md">
           <div className="w-full space-y-4">
-            
+
             {/* Quick Actions */}
             <div className="flex flex-wrap gap-2">
               {[
@@ -239,10 +285,10 @@ const AIChatbot = () => {
                 { label: "Gov Schemes", icon: Landmark, color: "text-purple-500", query: "Tell me about government schemes" },
                 { label: "Hospitals Nearby", icon: Activity, color: "text-rose-500", query: "Find nearest hospitals" }
               ].map((action) => (
-                <Button 
+                <Button
                   key={action.label}
-                  variant="outline" 
-                  size="sm" 
+                  variant="outline"
+                  size="sm"
                   className="h-8 rounded-xl bg-white/50 border-white hover:bg-white transition-all text-[11px] font-bold shadow-sm"
                   onClick={() => handleQuickAction(action.query)}
                 >
@@ -260,25 +306,25 @@ const AIChatbot = () => {
                   placeholder="Ask me anything..."
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                 />
-                <Button 
-                  size="icon" 
-                  variant="ghost" 
+                <Button
+                  size="icon"
+                  variant="ghost"
                   className="absolute right-3 bottom-3 h-8 w-8 rounded-lg text-muted-foreground hover:text-primary transition-colors"
                 >
                   <Paperclip className="h-5 w-5" />
                 </Button>
               </div>
-              <Button 
-                onClick={handleSend} 
+              <Button
+                onClick={handleSend}
                 disabled={!input.trim() || isLoading}
                 className="h-[56px] w-[56px] rounded-[1.25rem] gradient-accent text-white shadow-xl shadow-primary/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
               >
                 <Send className="h-6 w-6" />
               </Button>
             </div>
-            
+
             <p className="text-[10px] text-center font-bold text-muted-foreground/50 uppercase tracking-[0.2em]">
               Powered by AwamAssist Recommendation Engine
             </p>
