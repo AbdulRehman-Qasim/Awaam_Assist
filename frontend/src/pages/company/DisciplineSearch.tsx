@@ -23,6 +23,29 @@ import { cn } from "@/lib/utils";
 import { University } from "@/types/university";
 import { ModuleFeedback } from "@/components/shared/ModuleFeedback";
 
+const API_URL = import.meta.env.VITE_API_URL || "https://awaam-assist.onrender.com";
+
+const fetchJson = async (url: string) => {
+  const response = await fetch(url);
+  const contentType = response.headers.get("content-type") || "";
+
+  if (!response.ok) {
+    console.error("[DisciplineSearch] API request failed:", { url, status: response.status });
+    throw new Error(`Request failed with status ${response.status}`);
+  }
+
+  if (!contentType.includes("application/json")) {
+    console.error("[DisciplineSearch] Expected JSON but received non-JSON response:", {
+      url,
+      status: response.status,
+      contentType,
+    });
+    throw new Error("API returned non-JSON response");
+  }
+
+  return response.json();
+};
+
 const DisciplineSearch = () => {
   const [universities, setUniversities] = useState<University[]>([]);
   const [disciplines, setDisciplines] = useState<string[]>([]);
@@ -34,8 +57,7 @@ const DisciplineSearch = () => {
     const loadDisciplinesData = async () => {
       try {
         // Load disciplines separately for faster initial load
-        const disciplinesResponse = await fetch(`${import.meta.env.VITE_API_URL}/api/disciplines`);
-        const disciplinesResult = await disciplinesResponse.json();
+        const disciplinesResult = await fetchJson(`${API_URL}/api/disciplines`);
 
         if (disciplinesResult.success) {
           setDisciplines(disciplinesResult.data);
@@ -46,8 +68,7 @@ const DisciplineSearch = () => {
 
         // Load universities only when discipline is selected
         if (selectedDiscipline) {
-          const universitiesResponse = await fetch(`${import.meta.env.VITE_API_URL}/api/universities/discipline/${selectedDiscipline}`);
-          const universitiesResult = await universitiesResponse.json();
+          const universitiesResult = await fetchJson(`${API_URL}/api/universities/discipline/${selectedDiscipline}`);
 
           if (universitiesResult.success) {
             setUniversities(universitiesResult.data);
@@ -172,7 +193,7 @@ const DisciplineSearch = () => {
                       <div className="relative h-48 overflow-hidden">
                         <img
                           src={(() => {
-                            const apiUrl = import.meta.env.VITE_API_URL || '';
+                            const apiUrl = API_URL;
                             const s = university.url || university.logo;
                             if (!s) return "https://images.unsplash.com/photo-1562774053-701939374585?w=800&auto=format&fit=crop";
                             if (s.startsWith('data:') || s.startsWith('http')) return s;

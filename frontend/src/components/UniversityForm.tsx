@@ -214,6 +214,21 @@ const UniversityForm: React.FC<UniversityFormProps> = ({
                 body: JSON.stringify(payload),
             });
 
+            const contentType = response.headers.get("content-type") || "";
+            if (!response.ok) {
+                console.error("[UniversityForm] API request failed:", { url, status: response.status });
+                throw new Error(`Request failed with status ${response.status}`);
+            }
+
+            if (!contentType.includes("application/json")) {
+                console.error("[UniversityForm] Expected JSON but received non-JSON response:", {
+                    url,
+                    status: response.status,
+                    contentType,
+                });
+                throw new Error("API returned non-JSON response");
+            }
+
             const data = await response.json();
 
             if (data.success) {

@@ -1,6 +1,29 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { RecommendationEngine } from '@/intelligence/engine/recommendationEngine';
 
+const API_URL = import.meta.env.VITE_API_URL || "https://awaam-assist.onrender.com";
+
+const fetchJson = async (url: string, init?: RequestInit) => {
+  const response = await fetch(url, init);
+  const contentType = response.headers.get("content-type") || "";
+
+  if (!response.ok) {
+    console.error("[useIntelligence] API request failed:", { url, status: response.status });
+    return { data: [] };
+  }
+
+  if (!contentType.includes("application/json")) {
+    console.error("[useIntelligence] Expected JSON but received non-JSON response:", {
+      url,
+      status: response.status,
+      contentType,
+    });
+    return { data: [] };
+  }
+
+  return response.json();
+};
+
 export const useIntelligence = (userProfile: any, userBasics: any, profileVersion: number = 0) => {
   const [loading, setLoading] = useState(true);
   const [fetchedData, setFetchedData] = useState<{unis: any[], schemes: any[], hosps: any[]}>({ unis: [], schemes: [], hosps: [] });
@@ -30,22 +53,15 @@ export const useIntelligence = (userProfile: any, userBasics: any, profileVersio
           "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json"
         };
-        const apiUrl = import.meta.env.VITE_API_URL;
+        const apiUrl = API_URL;
         // Cache buster tied to profileVersion ensures browser never serves stale responses
         const cacheBuster = `v=${profileVersion}&t=${Date.now()}`;
 
-        const [uniRes, schemeRes, hospRes, feedbackRes] = await Promise.all([
-          fetch(`${apiUrl}/api/universities?${cacheBuster}`, { headers, signal: abortController.signal }),
-          fetch(`${apiUrl}/api/schemes?${cacheBuster}`, { headers, signal: abortController.signal }),
-          fetch(`${apiUrl}/api/hospitals?${cacheBuster}`, { headers, signal: abortController.signal }),
-          fetch(`${apiUrl}/api/feedback/user-history`, { headers, signal: abortController.signal })
-        ]);
-
         const [unis, schemes, hosps, feedback] = await Promise.all([
-          uniRes.ok ? uniRes.json() : { data: [] },
-          schemeRes.ok ? schemeRes.json() : { data: [] },
-          hospRes.ok ? hospRes.json() : { data: [] },
-          feedbackRes.ok ? feedbackRes.json() : { data: [] }
+          fetchJson(`${apiUrl}/api/universities?${cacheBuster}`, { headers, signal: abortController.signal }),
+          fetchJson(`${apiUrl}/api/schemes?${cacheBuster}`, { headers, signal: abortController.signal }),
+          fetchJson(`${apiUrl}/api/hospitals?${cacheBuster}`, { headers, signal: abortController.signal }),
+          fetchJson(`${apiUrl}/api/feedback/user-history`, { headers, signal: abortController.signal })
         ]);
 
         const safeUnis = Array.isArray(unis) ? unis : (unis?.data && Array.isArray(unis.data) ? unis.data : []);

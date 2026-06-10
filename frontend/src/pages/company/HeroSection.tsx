@@ -63,6 +63,29 @@ import {
   Linkedin,
 } from "lucide-react";
 
+const API_URL = import.meta.env.VITE_API_URL || "https://awaam-assist.onrender.com";
+
+const fetchJson = async (url: string) => {
+  const response = await fetch(url);
+  const contentType = response.headers.get("content-type") || "";
+
+  if (!response.ok) {
+    console.error("[HeroSection] API request failed:", { url, status: response.status });
+    throw new Error(`Request failed with status ${response.status}`);
+  }
+
+  if (!contentType.includes("application/json")) {
+    console.error("[HeroSection] Expected JSON but received non-JSON response:", {
+      url,
+      status: response.status,
+      contentType,
+    });
+    throw new Error("API returned non-JSON response");
+  }
+
+  return response.json();
+};
+
 // ==================== DATA TYPES ====================
 export interface University {
   id: string;
@@ -127,9 +150,7 @@ const useLiveData = () => {
   useEffect(() => {
     const fetchLiveStats = async () => {
       try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/universities/live-stats`);
-        if (!res.ok) return;
-        const data = await res.json();
+        const data = await fetchJson(`${API_URL}/api/universities/live-stats`);
         if (data.success) {
           setStats(data.stats);
           setFilterOptions(data.filters);
@@ -177,12 +198,8 @@ const useUniversities = () => {
       if (params.sortBy)      qs.set('sortBy',     params.sortBy);
 
       console.log('[HeroSection] Fetching universities with params:', params);
-      const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/universities?${qs.toString()}&t=${Date.now()}`
-      );
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      
-      const data = await res.json();
+      const url = `${API_URL}/api/universities?${qs.toString()}&t=${Date.now()}`;
+      const data = await fetchJson(url);
       if (data.success) {
         setUniversities(
           (data.data as any[]).map((u) => ({
@@ -709,7 +726,7 @@ interface UniversityCardProps {
 
 /** Resolve the best available image URL with a fallback chain */
 const resolveImage = (u: University): string => {
-  const apiUrl = import.meta.env.VITE_API_URL || '';
+  const apiUrl = API_URL;
   
   // Try url field first, then logo
   const candidates = [u.url, u.logo].filter(s => !!s);

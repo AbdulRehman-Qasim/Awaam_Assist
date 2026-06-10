@@ -17,6 +17,29 @@ import {
 import { University } from "@/types/university";
 import { GenerateReportButton } from "@/components/shared/GenerateReportButton";
 
+const API_URL = import.meta.env.VITE_API_URL || "https://awaam-assist.onrender.com";
+
+const fetchJson = async (url: string) => {
+  const response = await fetch(url);
+  const contentType = response.headers.get("content-type") || "";
+
+  if (!response.ok) {
+    console.error("[RankingSearch] API request failed:", { url, status: response.status });
+    throw new Error(`Request failed with status ${response.status}`);
+  }
+
+  if (!contentType.includes("application/json")) {
+    console.error("[RankingSearch] Expected JSON but received non-JSON response:", {
+      url,
+      status: response.status,
+      contentType,
+    });
+    throw new Error("API returned non-JSON response");
+  }
+
+  return response.json();
+};
+
 const RankingSearch = () => {
   const [universities, setUniversities] = useState<University[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -30,8 +53,7 @@ const RankingSearch = () => {
     const loadUniversitiesData = async () => {
       try {
         // Use optimized top universities endpoint
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/universities/top`);
-        const result = await response.json();
+        const result = await fetchJson(`${API_URL}/api/universities/top`);
 
         if (result.success) {
           setUniversities(result.data);
@@ -70,11 +92,10 @@ const RankingSearch = () => {
 
     try {
       // Search directly from MongoDB Atlas via API - get all results
-      const searchUrl = `${import.meta.env.VITE_API_URL}/api/universities/search?query=${encodeURIComponent(searchQuery)}&limit=20`;
+      const searchUrl = `${API_URL}/api/universities/search?query=${encodeURIComponent(searchQuery)}&limit=20`;
       console.log('Searching MongoDB Atlas for:', searchQuery);
 
-      const response = await fetch(searchUrl);
-      const result = await response.json();
+      const result = await fetchJson(searchUrl);
 
       console.log('MongoDB Atlas search result:', result);
 
@@ -289,7 +310,7 @@ const RankingSearch = () => {
                     <div className="hidden sm:block flex-shrink-0 w-20 h-14 rounded-lg overflow-hidden">
                       <img
                         src={(() => {
-                          const apiUrl = import.meta.env.VITE_API_URL || '';
+                          const apiUrl = API_URL;
                           const s = uni.url || uni.logo;
                           if (!s) return "https://images.unsplash.com/photo-1562774053-701939374585?w=200&auto=format&fit=crop";
                           if (s.startsWith('data:') || s.startsWith('http')) return s;
