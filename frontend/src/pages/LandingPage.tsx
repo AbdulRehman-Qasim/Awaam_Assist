@@ -22,8 +22,8 @@ import {
 /* ─── HERO STAT ─── */
 const Stat = ({ icon: Icon, value, label }: { icon: any; value: string; label: string }) => (
   <div className="flex flex-col items-center gap-1.5 group">
-    <div className="w-11 h-11 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center group-hover:bg-white/20 transition-colors">
-      <Icon className="w-5 h-5 text-white/80" />
+    <div className="w-11 h-11 rounded-xl bg-white/12 border border-white/20 flex items-center justify-center shadow-lg shadow-blue-950/10 group-hover:bg-white/20 transition-colors">
+      <Icon className="w-5 h-5 text-cyan-100" />
     </div>
     <div className="text-2xl font-black text-white">{value}</div>
     <div className="text-[11px] font-bold text-white/60 uppercase tracking-wider">{label}</div>
@@ -129,40 +129,41 @@ const LandingPage = () => {
     <MarketingLayout>
 
       {/* ─── HERO ─── */}
-      <section className="relative overflow-hidden hero-gradient min-h-[calc(100svh-4rem)] flex items-center">
+      <section className="relative overflow-hidden min-h-[calc(100svh-4rem)] flex items-center bg-[radial-gradient(circle_at_18%_20%,rgba(56,189,248,0.28),transparent_28%),radial-gradient(circle_at_82%_30%,rgba(16,185,129,0.22),transparent_26%),linear-gradient(135deg,#071a3f_0%,#1236a3_42%,#2563eb_72%,#0891b2_100%)]">
 
         {/* Decorative grid */}
-        <div className="absolute inset-0 opacity-[0.04]"
-          style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,.5) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.5) 1px,transparent 1px)', backgroundSize: '48px 48px' }} />
+        <div className="absolute inset-0 opacity-[0.07]"
+          style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,.55) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.55) 1px,transparent 1px)', backgroundSize: '52px 52px' }} />
 
         {/* Glow blobs */}
-        <div className="absolute top-1/4 left-1/3 w-80 h-80 bg-blue-500/20 rounded-full blur-[120px] pointer-events-none" />
-        <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-indigo-500/15 rounded-full blur-[100px] pointer-events-none" />
+        <div className="absolute top-1/4 left-1/4 w-80 h-80 bg-cyan-300/20 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-1/4 right-1/4 w-72 h-72 bg-emerald-300/16 rounded-full blur-[110px] pointer-events-none" />
+        <div className="absolute bottom-0 left-1/2 h-40 w-[42rem] -translate-x-1/2 bg-blue-300/10 blur-[90px] pointer-events-none" />
 
         <div className="page-container relative z-10 py-10 sm:py-14 lg:py-16 w-full">
           <div className="max-w-4xl mx-auto text-center">
 
             {/* Label */}
-            <div className="inline-flex items-center gap-2 glass-dark rounded-full px-4 py-2 mb-5 sm:mb-6">
-              <Sparkles className="w-3.5 h-3.5 text-blue-300 animate-pulse" />
+            <div className="inline-flex items-center gap-2 rounded-full border border-cyan-100/25 bg-white/12 px-4 py-2 mb-5 sm:mb-6 shadow-lg shadow-blue-950/10 backdrop-blur-md">
+              <Sparkles className="w-3.5 h-3.5 text-cyan-200 animate-pulse" />
               <span className="text-[11px] font-black text-white/80 uppercase tracking-widest">
                 Pakistan's Citizen Intelligence Platform
               </span>
             </div>
 
             {/* Headline */}
-            <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black text-white mb-2 sm:mb-3 leading-none tracking-tight">
+            <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black text-white mb-2 sm:mb-3 leading-none tracking-tight drop-shadow-[0_14px_34px_rgba(7,26,63,0.28)]">
               AwamAssist
             </h1>
 
             {/* Animated sub-headline */}
             <div className="h-10 sm:h-12 flex items-center justify-center mb-4 sm:mb-5 overflow-hidden">
-              <p key={tick} className="text-xl sm:text-2xl font-bold text-blue-300 animate-fade-in-up">
+              <p key={tick} className="text-xl sm:text-2xl font-bold text-cyan-100 animate-fade-in-up">
                 {headlines[tick]}
               </p>
             </div>
 
-            <p className="text-sm sm:text-lg text-white/70 font-medium max-w-2xl mx-auto mb-7 sm:mb-9 leading-relaxed">
+            <p className="text-sm sm:text-lg text-white/76 font-medium max-w-2xl mx-auto mb-7 sm:mb-9 leading-relaxed">
               AI-powered personalized recommendations for universities, government schemes,
               and healthcare — built for every Pakistani citizen.
             </p>
@@ -170,20 +171,20 @@ const LandingPage = () => {
             {/* CTAs */}
             <div className="flex flex-col sm:flex-row gap-3 justify-center mb-8 sm:mb-10 lg:mb-12">
               <Link to="/login">
-                <button className="btn-primary text-sm px-8 h-12 shadow-lg shadow-primary/30">
+                <button className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-white px-8 text-sm font-black text-blue-700 shadow-xl shadow-blue-950/20 transition-all hover:-translate-y-0.5 hover:bg-cyan-50 active:scale-[0.98]">
                   Get Started Free
                   <ChevronRight className="w-4 h-4" />
                 </button>
               </Link>
               <a href="#services">
-                <button className="btn-secondary h-12 px-8 text-sm bg-white/10 border-white/20 text-white hover:bg-white/20">
+                <button className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-cyan-100/25 bg-white/10 px-8 text-sm font-black text-white shadow-lg shadow-blue-950/10 backdrop-blur-md transition-all hover:-translate-y-0.5 hover:bg-white/18 active:scale-[0.98]">
                   Explore Services
                 </button>
               </a>
             </div>
 
             {/* Stats Row */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-5 sm:gap-8 max-w-2xl mx-auto border-t border-white/10 pt-6 sm:pt-8">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-5 sm:gap-8 max-w-2xl mx-auto rounded-3xl border border-white/12 bg-white/8 px-5 py-5 shadow-xl shadow-blue-950/10 backdrop-blur-md">
               <Stat icon={BookOpen}  value="200+" label="Universities" />
               <Stat icon={Building2} value="100+" label="Schemes" />
               <Stat icon={Users}     value="50K+"  label="Citizens" />
@@ -194,7 +195,7 @@ const LandingPage = () => {
       </section>
 
       {/* ─── SERVICES ─── */}
-      <section id="services" className="section bg-background scroll-mt-20">
+      <section id="services" className="section scroll-mt-20 bg-[radial-gradient(circle_at_12%_8%,rgba(37,99,235,0.08),transparent_28%),radial-gradient(circle_at_88%_18%,rgba(6,182,212,0.1),transparent_24%),#f3f5fa]">
         <div className="page-container">
           <div className="text-center mb-14">
             <div className="section-label">
@@ -362,7 +363,7 @@ const LandingPage = () => {
       </section>
 
       {/* ─── CTA BANNER ─── */}
-      <section className="hero-gradient relative overflow-hidden">
+      <section className="relative overflow-hidden bg-[radial-gradient(circle_at_20%_20%,rgba(56,189,248,0.24),transparent_26%),radial-gradient(circle_at_80%_10%,rgba(16,185,129,0.18),transparent_28%),linear-gradient(135deg,#071a3f_0%,#1236a3_48%,#0891b2_100%)]">
         <div className="absolute inset-0 opacity-[0.03]"
           style={{ backgroundImage: 'radial-gradient(circle, rgba(255,255,255,.8) 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
         <div className="page-container py-20 relative z-10">
