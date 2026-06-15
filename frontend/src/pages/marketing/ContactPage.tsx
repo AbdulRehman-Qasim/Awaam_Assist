@@ -116,7 +116,7 @@ const ContactPage = () => {
     <MarketingLayout>
 
       {/* ─── HERO BANNER ─── */}
-      <section className="hero-gradient relative overflow-hidden py-20 lg:py-28">
+      <section className="hero-gradient relative flex min-h-[calc(100svh-4rem)] items-center overflow-hidden py-12 sm:py-16 lg:py-20">
         {/* Grid */}
         <div className="absolute inset-0 opacity-[0.04]"
           style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,.6) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.6) 1px,transparent 1px)', backgroundSize: '48px 48px' }} />
