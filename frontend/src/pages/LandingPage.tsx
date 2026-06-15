@@ -129,7 +129,7 @@ const LandingPage = () => {
     <MarketingLayout>
 
       {/* ─── HERO ─── */}
-      <section className="relative overflow-hidden hero-gradient min-h-[88vh] flex items-center">
+      <section className="relative overflow-hidden hero-gradient min-h-[calc(100svh-4rem)] flex items-center">
 
         {/* Decorative grid */}
         <div className="absolute inset-0 opacity-[0.04]"
@@ -139,11 +139,11 @@ const LandingPage = () => {
         <div className="absolute top-1/4 left-1/3 w-80 h-80 bg-blue-500/20 rounded-full blur-[120px] pointer-events-none" />
         <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-indigo-500/15 rounded-full blur-[100px] pointer-events-none" />
 
-        <div className="page-container relative z-10 py-24 lg:py-32 w-full">
+        <div className="page-container relative z-10 py-10 sm:py-14 lg:py-16 w-full">
           <div className="max-w-4xl mx-auto text-center">
 
             {/* Label */}
-            <div className="inline-flex items-center gap-2 glass-dark rounded-full px-4 py-2 mb-8">
+            <div className="inline-flex items-center gap-2 glass-dark rounded-full px-4 py-2 mb-5 sm:mb-6">
               <Sparkles className="w-3.5 h-3.5 text-blue-300 animate-pulse" />
               <span className="text-[11px] font-black text-white/80 uppercase tracking-widest">
                 Pakistan's Citizen Intelligence Platform
@@ -151,24 +151,24 @@ const LandingPage = () => {
             </div>
 
             {/* Headline */}
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black text-white mb-3 leading-none tracking-tight">
+            <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black text-white mb-2 sm:mb-3 leading-none tracking-tight">
               AwamAssist
             </h1>
 
             {/* Animated sub-headline */}
-            <div className="h-12 flex items-center justify-center mb-6 overflow-hidden">
+            <div className="h-10 sm:h-12 flex items-center justify-center mb-4 sm:mb-5 overflow-hidden">
               <p key={tick} className="text-xl sm:text-2xl font-bold text-blue-300 animate-fade-in-up">
                 {headlines[tick]}
               </p>
             </div>
 
-            <p className="text-base sm:text-lg text-white/70 font-medium max-w-2xl mx-auto mb-12 leading-relaxed">
+            <p className="text-sm sm:text-lg text-white/70 font-medium max-w-2xl mx-auto mb-7 sm:mb-9 leading-relaxed">
               AI-powered personalized recommendations for universities, government schemes,
               and healthcare — built for every Pakistani citizen.
             </p>
 
             {/* CTAs */}
-            <div className="flex flex-col sm:flex-row gap-3 justify-center mb-16">
+            <div className="flex flex-col sm:flex-row gap-3 justify-center mb-8 sm:mb-10 lg:mb-12">
               <Link to="/login">
                 <button className="btn-primary text-sm px-8 h-12 shadow-lg shadow-primary/30">
                   Get Started Free
@@ -183,7 +183,7 @@ const LandingPage = () => {
             </div>
 
             {/* Stats Row */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 max-w-2xl mx-auto border-t border-white/10 pt-12">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-5 sm:gap-8 max-w-2xl mx-auto border-t border-white/10 pt-6 sm:pt-8">
               <Stat icon={BookOpen}  value="200+" label="Universities" />
               <Stat icon={Building2} value="100+" label="Schemes" />
               <Stat icon={Users}     value="50K+"  label="Citizens" />
