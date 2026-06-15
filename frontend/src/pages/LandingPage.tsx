@@ -163,7 +163,7 @@ const LandingPage = () => {
               </p>
             </div>
 
-            <p className="text-sm sm:text-lg text-white/76 font-medium max-w-2xl mx-auto mb-7 sm:mb-9 leading-relaxed">
+            <p className="text-sm sm:text-lg text-white font-semibold max-w-2xl mx-auto mb-7 sm:mb-9 leading-relaxed">
               AI-powered personalized recommendations for universities, government schemes,
               and healthcare — built for every Pakistani citizen.
             </p>
