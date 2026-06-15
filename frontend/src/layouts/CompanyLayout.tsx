@@ -16,11 +16,11 @@ import {
   LogOut,
   Menu,
   X,
-  Sparkles,
 } from 'lucide-react';
 import Loading from '@/components/ui/loading';
 import ChatWidget from '@/components/ChatWidget';
 import { MODULE_CONFIG, CORE_MODULES } from '@/config/modules';
+import myLogo from '@/assets/mylogo.png';
 
 const CompanyLayout = () => {
   const [userName, setUserName] = useState('');
@@ -118,10 +118,11 @@ const CompanyLayout = () => {
 
               <Link to="/company/dashboard" className="flex items-center gap-2.5 group">
                 <div className="relative">
-                  <div className="h-9 w-9 rounded-xl flex items-center justify-center shadow-sm overflow-hidden"
-                    style={{ background: 'linear-gradient(135deg, hsl(234 89% 54%), hsl(194 100% 43%))' }}>
-                    <Sparkles className="h-5 w-5 text-white" />
-                  </div>
+                  <img
+                    src={myLogo}
+                    alt="AwamAssist Logo"
+                    className="h-10 w-10 rounded-full object-cover shadow-sm ring-2 ring-white transition-all group-hover:ring-primary/30"
+                  />
                   <div className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 bg-emerald-400 rounded-full border-2 border-white" />
                 </div>
                 <span className="text-xl font-black text-foreground tracking-tight hidden sm:block">
@@ -224,10 +225,11 @@ const CompanyLayout = () => {
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b border-border/50">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl flex items-center justify-center"
-                  style={{ background: 'linear-gradient(135deg, hsl(234 89% 54%), hsl(194 100% 43%))' }}>
-                  <Sparkles className="h-5 w-5 text-white" />
-                </div>
+                <img
+                  src={myLogo}
+                  alt="AwamAssist Logo"
+                  className="h-10 w-10 rounded-full object-cover shadow-sm ring-2 ring-slate-100"
+                />
                 <span className="text-xl font-black text-foreground">
                   Awam<span className="text-primary">Assist</span>
                 </span>
