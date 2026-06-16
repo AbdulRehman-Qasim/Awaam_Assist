@@ -9,8 +9,8 @@ import { useToast } from '@/hooks/use-toast';
 import myLogo from '@/assets/mylogo.png';
 import {
   Mail, Phone, MessageSquare, ArrowRight, CheckCircle2,
-  Sparkles, Clock, Shield, GraduationCap, Building2, Heart,
-  Send, MapPin,
+  Clock, Shield, GraduationCap, Building2, Heart,
+  Send, MapPin, Headphones, LifeBuoy,
 } from 'lucide-react';
 
 /* ─── CONTACT INFO CARD ─── */
@@ -116,33 +116,49 @@ const ContactPage = () => {
     <MarketingLayout>
 
       {/* ─── HERO BANNER ─── */}
-      <section className="hero-gradient relative flex min-h-[calc(100svh-4rem)] items-center overflow-hidden py-12 sm:py-16 lg:py-20">
-        {/* Grid */}
-        <div className="absolute inset-0 opacity-[0.04]"
-          style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,.6) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.6) 1px,transparent 1px)', backgroundSize: '48px 48px' }} />
-        {/* Glow */}
-        <div className="absolute top-1/3 left-1/4 w-72 h-72 bg-blue-400/20 rounded-full blur-[110px] pointer-events-none" />
-        <div className="absolute bottom-1/4 right-1/4 w-56 h-56 bg-indigo-400/15 rounded-full blur-[90px] pointer-events-none" />
+      <section className="relative overflow-hidden bg-[#f6f9fc]">
+        <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-blue-50 to-transparent" />
+        <div className="page-container relative py-14 sm:py-18 lg:py-20">
+          <div className="grid grid-cols-1 items-center gap-8 lg:grid-cols-[1fr_0.9fr]">
+            <div>
+              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-blue-100 bg-white px-4 py-2 shadow-sm">
+                <LifeBuoy className="h-3.5 w-3.5 text-blue-600" />
+                <span className="text-[11px] font-black uppercase tracking-widest text-slate-500">Support Desk</span>
+              </div>
+              <h1 className="max-w-3xl text-4xl font-black leading-tight text-slate-950 sm:text-5xl">
+                Questions, support, and partnership requests.
+              </h1>
+              <p className="mt-5 max-w-2xl text-base font-medium leading-relaxed text-slate-600 sm:text-lg">
+                Reach the AwamAssist team for help with universities, government schemes, healthcare access, or platform support.
+              </p>
+            </div>
 
-        <div className="page-container relative z-10 text-center space-y-6">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 bg-white/10 border border-white/15 rounded-full px-4 py-2">
-            <Sparkles className="w-3.5 h-3.5 text-blue-300 animate-pulse" />
-            <span className="text-[10px] font-black text-white/80 uppercase tracking-widest">We're here to help</span>
-          </div>
-
-          <h1 className="text-4xl sm:text-5xl font-black text-white leading-tight tracking-tight">
-            Get in <span className="text-blue-300">Touch</span>
-          </h1>
-          <p className="text-white/60 font-medium text-lg max-w-xl mx-auto leading-relaxed">
-            Have a question about universities, government schemes, or healthcare? Our team responds within 24 hours.
-          </p>
-
-          {/* Stats */}
-          <div className="flex justify-center gap-12 pt-6 border-t border-white/10 max-w-md mx-auto">
-            <StatChip value="24h" label="Response time" />
-            <StatChip value="100%" label="Free support" />
-            <StatChip value="3+" label="Modules covered" />
+            <div className="relative">
+              <div className="absolute -inset-4 rounded-[2rem] bg-gradient-to-br from-blue-100 via-cyan-50 to-emerald-50 blur-2xl" />
+              <div className="relative rounded-[2rem] border border-white bg-white p-5 shadow-2xl shadow-blue-100/70">
+                <div className="mb-5 flex items-center gap-3 border-b border-slate-100 pb-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-500 text-white">
+                    <Headphones className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Response Promise</p>
+                    <h2 className="text-lg font-black text-slate-950">Usually within 24 hours</h2>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    ['24h', 'Response'],
+                    ['100%', 'Free'],
+                    ['3+', 'Modules'],
+                  ].map(([value, label]) => (
+                    <div key={label} className="rounded-2xl bg-slate-50 p-3 text-center">
+                      <div className="text-xl font-black text-blue-700">{value}</div>
+                      <div className="text-[9px] font-black uppercase tracking-wider text-slate-400">{label}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
