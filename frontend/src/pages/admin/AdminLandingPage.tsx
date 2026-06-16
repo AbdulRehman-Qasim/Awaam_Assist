@@ -138,7 +138,7 @@ const AdminLandingPage = () => {
                 {/* Logo Area */}
                 <div className="h-16 flex items-center px-4 border-b border-gray-700">
                     <img
-                        src="/favicon.jpg"
+                        src="/Logo%20Awaam%20Assist.png"
                         alt="Logo"
                         className="h-10 w-10 rounded-full object-cover"
                     />

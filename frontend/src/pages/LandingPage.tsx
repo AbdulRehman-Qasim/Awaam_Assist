@@ -21,12 +21,12 @@ import {
 
 /* ─── HERO STAT ─── */
 const Stat = ({ icon: Icon, value, label }: { icon: any; value: string; label: string }) => (
-  <div className="flex flex-col items-center gap-1.5 group">
-    <div className="w-11 h-11 rounded-xl bg-white/12 border border-white/20 flex items-center justify-center shadow-lg shadow-blue-950/10 group-hover:bg-white/20 transition-colors">
-      <Icon className="w-5 h-5 text-cyan-100" />
+  <div className="flex flex-col items-center gap-1 group sm:gap-1.5">
+    <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-white/12 border border-white/20 flex items-center justify-center shadow-lg shadow-blue-950/10 group-hover:bg-white/20 transition-colors">
+      <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-100" />
     </div>
-    <div className="text-2xl font-black text-white">{value}</div>
-    <div className="text-[11px] font-bold text-white/60 uppercase tracking-wider">{label}</div>
+    <div className="text-xl sm:text-2xl font-black text-white">{value}</div>
+    <div className="text-[9px] sm:text-[11px] font-bold text-white/60 uppercase tracking-wider">{label}</div>
   </div>
 );
 
@@ -88,6 +88,21 @@ const Feature = ({ icon: Icon, title, description }: any) => (
   </div>
 );
 
+const PremiumFeature = ({ icon: Icon, title, description, accent = "bg-gradient-to-br from-blue-600 to-cyan-500" }: any) => (
+  <div className="group relative overflow-hidden rounded-2xl border border-white/70 bg-white p-5 shadow-lg shadow-slate-200/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-blue-100/70">
+    <div className={`absolute inset-x-0 top-0 h-1 ${accent}`} />
+    <div className="flex items-start gap-4">
+      <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${accent} text-white shadow-lg transition-transform duration-300 group-hover:scale-105`}>
+        <Icon className="h-5 w-5" />
+      </div>
+      <div>
+        <h4 className="mb-1.5 text-base font-black text-slate-950">{title}</h4>
+        <p className="text-sm font-medium leading-relaxed text-slate-500">{description}</p>
+      </div>
+    </div>
+  </div>
+);
+
 /* ─── STEP ─── */
 const Step = ({ number, color, title, description }: any) => (
   <div className="flex gap-4">
@@ -98,6 +113,26 @@ const Step = ({ number, color, title, description }: any) => (
       <h4 className="font-black text-slate-900 mb-1">{title}</h4>
       <p className="text-sm text-slate-500 font-medium leading-relaxed">{description}</p>
     </div>
+  </div>
+);
+
+const ProcessStep = ({ icon: Icon, title, description, accent, showArrow = false }: any) => (
+  <div className="group relative rounded-3xl border border-white/70 bg-white p-5 shadow-lg shadow-slate-200/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-blue-100/80">
+    {showArrow && (
+      <>
+        <div className="pointer-events-none absolute -right-5 top-1/2 z-20 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-xl shadow-blue-200/80 lg:flex">
+          <ArrowRight className="h-4 w-4" />
+        </div>
+        <div className="pointer-events-none absolute -bottom-5 left-1/2 z-20 flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full border border-white bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-xl shadow-blue-200/80 md:hidden">
+          <ArrowRight className="h-4 w-4 rotate-90" />
+        </div>
+      </>
+    )}
+    <div className={`mb-5 flex h-12 w-12 items-center justify-center rounded-2xl ${accent} text-white shadow-lg transition-transform duration-300 group-hover:scale-105`}>
+      <Icon className="h-5 w-5" />
+    </div>
+    <h4 className="mb-2 text-lg font-black text-slate-950">{title}</h4>
+    <p className="text-sm font-medium leading-relaxed text-slate-500">{description}</p>
   </div>
 );
 
@@ -140,51 +175,51 @@ const LandingPage = () => {
         <div className="absolute bottom-1/4 right-1/4 w-72 h-72 bg-emerald-300/16 rounded-full blur-[110px] pointer-events-none" />
         <div className="absolute bottom-0 left-1/2 h-40 w-[42rem] -translate-x-1/2 bg-blue-300/10 blur-[90px] pointer-events-none" />
 
-        <div className="page-container relative z-10 py-10 sm:py-14 lg:py-16 w-full">
+        <div className="page-container relative z-10 py-5 sm:py-10 lg:py-16 w-full">
           <div className="max-w-4xl mx-auto text-center">
 
             {/* Label */}
-            <div className="inline-flex items-center gap-2 rounded-full border border-cyan-100/25 bg-white/12 px-4 py-2 mb-5 sm:mb-6 shadow-lg shadow-blue-950/10 backdrop-blur-md">
-              <Sparkles className="w-3.5 h-3.5 text-cyan-200 animate-pulse" />
-              <span className="text-[11px] font-black text-white/80 uppercase tracking-widest">
+            <div className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-cyan-100/25 bg-white/12 px-3 py-1.5 mb-3 sm:mb-6 shadow-lg shadow-blue-950/10 backdrop-blur-md">
+              <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-cyan-200 animate-pulse" />
+              <span className="text-[9px] sm:text-[11px] font-black text-white/80 uppercase tracking-wider sm:tracking-widest">
                 Pakistan's Citizen Intelligence Platform
               </span>
             </div>
 
             {/* Headline */}
-            <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black text-white mb-2 sm:mb-3 leading-none tracking-tight drop-shadow-[0_14px_34px_rgba(7,26,63,0.28)]">
+            <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black text-white mb-1.5 sm:mb-3 leading-none tracking-tight drop-shadow-[0_14px_34px_rgba(7,26,63,0.28)]">
               AwamAssist
             </h1>
 
             {/* Animated sub-headline */}
-            <div className="h-10 sm:h-12 flex items-center justify-center mb-4 sm:mb-5 overflow-hidden">
-              <p key={tick} className="text-xl sm:text-2xl font-bold text-cyan-100 animate-fade-in-up">
+            <div className="h-8 sm:h-12 flex items-center justify-center mb-3 sm:mb-5 overflow-hidden">
+              <p key={tick} className="text-lg sm:text-2xl font-bold text-cyan-100 animate-fade-in-up">
                 {headlines[tick]}
               </p>
             </div>
 
-            <p className="text-sm sm:text-lg text-white font-semibold max-w-2xl mx-auto mb-7 sm:mb-9 leading-relaxed">
+            <p className="text-sm sm:text-lg text-white font-semibold max-w-2xl mx-auto mb-5 sm:mb-9 leading-relaxed">
               AI-powered personalized recommendations for universities, government schemes,
               and healthcare — built for every Pakistani citizen.
             </p>
 
             {/* CTAs */}
-            <div className="flex flex-col sm:flex-row gap-3 justify-center mb-8 sm:mb-10 lg:mb-12">
+            <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3 justify-center mb-5 sm:mb-10 lg:mb-12">
               <Link to="/login">
-                <button className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-white px-8 text-sm font-black text-blue-700 shadow-xl shadow-blue-950/20 transition-all hover:-translate-y-0.5 hover:bg-cyan-50 active:scale-[0.98]">
+                <button className="inline-flex h-11 sm:h-12 items-center justify-center gap-2 rounded-xl bg-white px-7 sm:px-8 text-sm font-black text-blue-700 shadow-xl shadow-blue-950/20 transition-all hover:-translate-y-0.5 hover:bg-cyan-50 active:scale-[0.98]">
                   Get Started Free
                   <ChevronRight className="w-4 h-4" />
                 </button>
               </Link>
               <a href="#services">
-                <button className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-cyan-100/25 bg-white/10 px-8 text-sm font-black text-white shadow-lg shadow-blue-950/10 backdrop-blur-md transition-all hover:-translate-y-0.5 hover:bg-white/18 active:scale-[0.98]">
+                <button className="inline-flex h-11 sm:h-12 items-center justify-center gap-2 rounded-xl border border-cyan-100/25 bg-white/10 px-7 sm:px-8 text-sm font-black text-white shadow-lg shadow-blue-950/10 backdrop-blur-md transition-all hover:-translate-y-0.5 hover:bg-white/18 active:scale-[0.98]">
                   Explore Services
                 </button>
               </a>
             </div>
 
             {/* Stats Row */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-5 sm:gap-8 max-w-2xl mx-auto rounded-3xl border border-white/12 bg-white/8 px-5 py-5 shadow-xl shadow-blue-950/10 backdrop-blur-md">
+            <div className="grid grid-cols-4 gap-2 sm:gap-8 max-w-2xl mx-auto rounded-2xl sm:rounded-3xl border border-white/12 bg-white/8 px-3 py-3 sm:px-5 sm:py-5 shadow-xl shadow-blue-950/10 backdrop-blur-md">
               <Stat icon={BookOpen}  value="200+" label="Universities" />
               <Stat icon={Building2} value="100+" label="Schemes" />
               <Stat icon={Users}     value="50K+"  label="Citizens" />
@@ -267,28 +302,29 @@ const LandingPage = () => {
       </section>
 
       {/* ─── WHY AWAMASSIST ─── */}
-      <section className="section bg-white">
+      <section className="section relative overflow-hidden bg-[radial-gradient(circle_at_12%_18%,rgba(37,99,235,0.08),transparent_30%),radial-gradient(circle_at_88%_30%,rgba(6,182,212,0.1),transparent_28%),#ffffff]">
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-blue-200 to-transparent" />
         <div className="page-container">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-center">
 
             {/* Left: Features grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <Feature
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-5">
+              <PremiumFeature
                 icon={Sparkles}
                 title="AI-Powered Ranking"
                 description="Recommendations scored by location, marks, income, and interests — not generic lists."
               />
-              <Feature
+              <PremiumFeature
                 icon={Shield}
                 title="Eligibility Checked"
                 description="Each result is pre-filtered to match your actual profile. No irrelevant results."
               />
-              <Feature
+              <PremiumFeature
                 icon={Scale}
                 title="Side-by-Side Compare"
                 description="Compare multiple universities, schemes, or hospitals before making decisions."
               />
-              <Feature
+              <PremiumFeature
                 icon={Award}
                 title="Transparent Scoring"
                 description="Every recommendation shows a match %, ranked factors, and why it was chosen."
@@ -296,31 +332,49 @@ const LandingPage = () => {
             </div>
 
             {/* Right: Headline */}
-            <div className="space-y-6">
+            <div className="relative">
+              <div className="absolute -inset-4 rounded-[2rem] bg-gradient-to-br from-blue-100/70 via-cyan-50/60 to-emerald-50/70 blur-2xl" />
+              <div className="relative overflow-hidden rounded-3xl border border-white/80 bg-white/85 p-6 sm:p-8 shadow-2xl shadow-blue-100/70 backdrop-blur">
+                <div className="absolute right-0 top-0 h-32 w-32 rounded-bl-full bg-gradient-to-br from-blue-500/12 to-cyan-400/12" />
               <div className="section-label">
                 <Star className="w-3.5 h-3.5" />
                 Why AwamAssist
               </div>
-              <h2 className="text-4xl font-black text-slate-900 leading-tight">
+              <h2 className="text-3xl sm:text-4xl font-black text-slate-950 leading-tight">
                 Built for the average Pakistani citizen — not just tech users.
               </h2>
-              <p className="text-slate-500 font-medium leading-relaxed">
+              <p className="mt-5 text-slate-600 font-medium leading-relaxed">
                 Most platforms overwhelm you with raw data. AwamAssist does the heavy lifting —
                 analyzing your profile, running eligibility checks, and surfacing only what is
                 genuinely relevant to you.
               </p>
-              <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <div className="mt-6 grid grid-cols-3 gap-3 border-y border-slate-100 py-4">
+                <div>
+                  <div className="text-lg font-black text-blue-700">Smart</div>
+                  <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">Matching</div>
+                </div>
+                <div>
+                  <div className="text-lg font-black text-cyan-700">Clear</div>
+                  <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">Reasons</div>
+                </div>
+                <div>
+                  <div className="text-lg font-black text-emerald-700">Useful</div>
+                  <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">Results</div>
+                </div>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3 pt-6">
                 <Link to="/login">
-                  <button className="btn-primary">
+                  <button className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 px-6 text-sm font-black text-white shadow-lg shadow-blue-500/25 transition-all hover:-translate-y-0.5 hover:shadow-xl hover:shadow-cyan-400/25 active:scale-[0.98]">
                     Try It Now
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </Link>
                 <Link to="/about">
-                  <button className="btn-secondary">
+                  <button className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-6 text-sm font-black text-slate-700 shadow-sm transition-all hover:-translate-y-0.5 hover:border-blue-200 hover:text-blue-700 hover:shadow-md active:scale-[0.98]">
                     Learn More
                   </button>
                 </Link>
+              </div>
               </div>
             </div>
           </div>
@@ -328,7 +382,8 @@ const LandingPage = () => {
       </section>
 
       {/* ─── HOW IT WORKS ─── */}
-      <section className="section bg-background">
+      <section className="section relative overflow-hidden bg-[radial-gradient(circle_at_10%_10%,rgba(16,185,129,0.08),transparent_28%),radial-gradient(circle_at_90%_20%,rgba(37,99,235,0.1),transparent_30%),#f3f5fa]">
+        <div className="absolute inset-x-0 top-1/2 hidden h-px bg-gradient-to-r from-transparent via-blue-200 to-transparent lg:block" />
         <div className="page-container">
           <div className="text-center mb-14">
             <div className="section-label">
@@ -341,23 +396,42 @@ const LandingPage = () => {
             </p>
           </div>
 
-          <div className="max-w-3xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
-            <Step number="1" color="bg-blue-600"
+          <div className="relative mx-auto max-w-6xl">
+            <div className="absolute left-1/2 top-12 hidden h-[calc(100%-6rem)] w-px -translate-x-1/2 bg-gradient-to-b from-blue-200 via-cyan-200 to-emerald-200 lg:block" />
+            <div className="grid grid-cols-1 gap-7 md:grid-cols-2 md:gap-5 lg:grid-cols-4">
+              <ProcessStep
+              icon={GraduationCap}
               title="Choose Your Category"
               description="Pick Education, Government Schemes, or Healthcare based on what you need today."
+              accent="bg-gradient-to-br from-blue-600 to-cyan-500"
+              showArrow
             />
-            <Step number="2" color="bg-emerald-600"
+              <ProcessStep
+              icon={Users}
               title="Build Your Profile"
               description="Enter your city, marks, income level, and interests. Takes under 2 minutes."
+              accent="bg-gradient-to-br from-emerald-500 to-cyan-500"
+              showArrow
             />
-            <Step number="3" color="bg-indigo-600"
+              <ProcessStep
+              icon={BrainCircuit}
               title="Receive AI Recommendations"
               description="Our engine scores and ranks opportunities against your exact profile context."
+              accent="bg-gradient-to-br from-indigo-600 to-blue-500"
+              showArrow
             />
-            <Step number="4" color="bg-violet-600"
+              <ProcessStep
+              icon={Scale}
               title="Compare & Decide"
               description="Review match accuracy, eligibility reasons, and apply directly from the platform."
+              accent="bg-gradient-to-br from-violet-600 to-blue-500"
             />
+            </div>
+            <div className="mt-8 rounded-3xl border border-white/70 bg-white/70 p-4 text-center shadow-lg shadow-blue-100/50 backdrop-blur">
+              <p className="text-sm font-bold text-slate-600">
+                From profile to practical options in minutes, with every recommendation explained clearly.
+              </p>
+            </div>
           </div>
         </div>
       </section>
