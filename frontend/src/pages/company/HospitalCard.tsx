@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   MapPin, Building2, Activity, Info, Heart, Scale, ExternalLink,
-  Stethoscope, Star, ShieldCheck, Zap, Phone, Globe, Clock, BadgeCheck
+  Stethoscope, Star, ShieldCheck, Zap, Phone, Globe, Clock, BadgeCheck,
+  MessageCircle, Users
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
@@ -11,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import api from "@/services/schemeAPI";
 import { HospitalRecord } from "@/services/hospitalAPI";
 import AppointmentModal from "./AppointmentModal";
+import HospitalCategoryRatings from "./HospitalCategoryRatings";
 
 interface HospitalCardProps {
   hospital: HospitalRecord;
@@ -32,6 +34,7 @@ export const HospitalCard: React.FC<HospitalCardProps> = ({ hospital }) => {
   const [inCompare, setInCompare] = useState(false);
   const [isOpeningWebsite, setIsOpeningWebsite] = useState(false);
   const [isAppointmentOpen, setIsAppointmentOpen] = useState(false);
+  const [modalTab, setModalTab] = useState<'info' | 'community'>('info');
 
   const name = hospital['Hospital Name'] || hospital.hospitalName || '';
   const category = hospital.Cateogry || hospital.category || '';
@@ -246,133 +249,184 @@ export const HospitalCard: React.FC<HospitalCardProps> = ({ hospital }) => {
                 </div>
               </div>
 
-              <div className="p-6 space-y-5 bg-card">
-                {/* Basic info grid */}
-                <div className="grid grid-cols-2 gap-3">
+              {/* Tab switcher */}
+              <div className="px-6 pt-5 pb-0">
+                <div className="flex rounded-xl overflow-hidden border border-border/50 bg-muted/30">
                   {[
-                    { label: 'Location', icon: MapPin,    value: hospital.City },
-                    { label: 'Tehsil',   icon: Building2, value: hospital.Tehsil },
-                    { label: 'Category', icon: Activity,  value: category },
-                    { label: 'Reg. No',  icon: BadgeCheck, value: `#${hospital.SerialNum || 'N/A'}` },
-                    { label: 'Wait Time', icon: Clock,     value: hospital.waitingTime || 'Immediate' },
-                    { label: 'Severity', icon: ShieldCheck, value: hospital.severitySupport || 'Basic' },
-                  ].map(({ label, icon: Icon, value }) => (
-                    <div key={label} className="p-3.5 rounded-xl bg-muted/50 border border-border/50">
-                      <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">{label}</p>
-                      <div className="flex items-center gap-2">
-                        <Icon className="h-4 w-4 text-cyan-500 flex-shrink-0" />
-                        <p className="text-sm font-bold text-foreground truncate">{value}</p>
-                      </div>
-                    </div>
+                    { id: 'info',      label: 'Hospital Info',       icon: Info },
+                    { id: 'community', label: 'Community Ratings',   icon: MessageCircle },
+                  ].map(({ id, label, icon: Icon }) => (
+                    <button
+                      key={id}
+                      onClick={() => setModalTab(id as 'info' | 'community')}
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold transition-all ${
+                        modalTab === id
+                          ? 'bg-white text-cyan-700 shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <Icon className="h-3.5 w-3.5" />
+                      {label}
+                    </button>
                   ))}
                 </div>
+              </div>
 
-                {/* Description */}
-                {hospital.description && (
-                  <div className="p-4 rounded-xl bg-muted/50 border border-border/50">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">About</p>
-                    <p className="text-sm text-muted-foreground leading-relaxed">{hospital.description}</p>
-                  </div>
-                )}
-
-                {/* Treatment Features */}
-                {hospital.supportFeatures && hospital.supportFeatures.length > 0 && (
-                  <div className="p-4 rounded-xl bg-muted/50 border border-border/50">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-3">Facility Features</p>
-                    <div className="flex flex-wrap gap-2">
-                      {hospital.supportFeatures.map(f => (
-                        <span key={f} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-card text-xs font-bold text-slate-700 border border-border/60">
-                           <Zap className="h-3 w-3 text-emerald-500" /> {f}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Appointment Requirements */}
-                <div className="p-4 rounded-xl bg-emerald-50/50 border border-emerald-100">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <ShieldCheck className="h-4 w-4 text-emerald-600" />
-                      <p className="text-sm font-bold text-emerald-900">Appointment Required</p>
-                    </div>
-                    <Badge variant="outline" className={hospital.appointmentRequired ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-slate-100 text-slate-600 border-slate-200"}>
-                      {hospital.appointmentRequired ? 'YES' : 'NO'}
-                    </Badge>
-                  </div>
-                </div>
-
-                {/* Treatments */}
-                {hasTreatments && (
-                  <div className="p-4 rounded-xl bg-muted/50 border border-border/50">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-3">
-                      Available Treatments ({hospital.treatments.length})
-                    </p>
-                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                      {hospital.treatments.map(t => (
-                        <div key={t._id} className="flex items-center justify-between p-3 rounded-xl bg-card border border-border/50">
-                          <div>
-                            <p className="text-sm font-bold text-foreground">{t.treatmentName}</p>
-                            {t.specialization && <p className="text-xs text-muted-foreground">{t.specialization}</p>}
-                            <div className="flex items-center gap-2 mt-1">
-                              <span className={`h-1.5 w-1.5 rounded-full ${
-                                t.availability === 'Available' ? 'bg-emerald-400' :
-                                t.availability === 'Limited' ? 'bg-amber-400' : 'bg-slate-300'
-                              }`} />
-                              <span className="text-[10px] font-semibold text-muted-foreground">{t.availability}</span>
-                              {t.isEmergency && <span className="text-[10px] font-black text-rose-600">• Emergency</span>}
-                            </div>
+              <div className="p-6 space-y-5 bg-card">
+                {/* ── Info Tab ──────────────────────────────────────────── */}
+                {modalTab === 'info' && (
+                  <>
+                    {/* Basic info grid */}
+                    <div className="grid grid-cols-2 gap-3">
+                      {[
+                        { label: 'Location', icon: MapPin,    value: hospital.City },
+                        { label: 'Tehsil',   icon: Building2, value: hospital.Tehsil },
+                        { label: 'Category', icon: Activity,  value: category },
+                        { label: 'Reg. No',  icon: BadgeCheck, value: `#${hospital.SerialNum || 'N/A'}` },
+                        { label: 'Wait Time', icon: Clock,     value: hospital.waitingTime || 'Immediate' },
+                        { label: 'Severity', icon: ShieldCheck, value: hospital.severitySupport || 'Basic' },
+                      ].map(({ label, icon: Icon, value }) => (
+                        <div key={label} className="p-3.5 rounded-xl bg-muted/50 border border-border/50">
+                          <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">{label}</p>
+                          <div className="flex items-center gap-2">
+                            <Icon className="h-4 w-4 text-cyan-500 flex-shrink-0" />
+                            <p className="text-sm font-bold text-foreground truncate">{value}</p>
                           </div>
-                          {t.treatmentCost > 0 && (
-                            <div className="text-right">
-                              <p className="text-sm font-black text-emerald-600">PKR {t.treatmentCost.toLocaleString()}</p>
-                              {t.estimatedWaitTime && <p className="text-[10px] text-muted-foreground">{t.estimatedWaitTime}</p>}
-                            </div>
-                          )}
                         </div>
                       ))}
                     </div>
-                  </div>
-                )}
 
-                {/* Flat treatment fallback */}
-                {!hasTreatments && (
-                  <div className="p-4 rounded-xl bg-muted/50 border border-border/50">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-3">Treatment Details</p>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-xs text-muted-foreground">Estimated Cost</p>
-                        <p className="text-lg font-black text-emerald-600">PKR {(hospital.treatmentCost || 0).toLocaleString()}</p>
+                    {/* Description */}
+                    {hospital.description && (
+                      <div className="p-4 rounded-xl bg-muted/50 border border-border/50">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">About</p>
+                        <p className="text-sm text-muted-foreground leading-relaxed">{hospital.description}</p>
                       </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Availability</p>
-                        <p className="text-base font-bold">{hospital.availability || 'Available'}</p>
+                    )}
+
+                    {/* Treatment Features */}
+                    {hospital.supportFeatures && hospital.supportFeatures.length > 0 && (
+                      <div className="p-4 rounded-xl bg-muted/50 border border-border/50">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-3">Facility Features</p>
+                        <div className="flex flex-wrap gap-2">
+                          {hospital.supportFeatures.map(f => (
+                            <span key={f} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-card text-xs font-bold text-slate-700 border border-border/60">
+                               <Zap className="h-3 w-3 text-emerald-500" /> {f}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Appointment Requirements */}
+                    <div className="p-4 rounded-xl bg-emerald-50/50 border border-emerald-100">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                          <p className="text-sm font-bold text-emerald-900">Appointment Required</p>
+                        </div>
+                        <Badge variant="outline" className={hospital.appointmentRequired ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-slate-100 text-slate-600 border-slate-200"}>
+                          {hospital.appointmentRequired ? 'YES' : 'NO'}
+                        </Badge>
                       </div>
                     </div>
-                    {hospital.info && (
-                      <p className="mt-3 text-sm text-muted-foreground leading-relaxed p-3 bg-background/60 rounded-lg">{hospital.info}</p>
+
+                    {/* Treatments */}
+                    {hasTreatments && (
+                      <div className="p-4 rounded-xl bg-muted/50 border border-border/50">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-3">
+                          Available Treatments ({hospital.treatments.length})
+                        </p>
+                        <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                          {hospital.treatments.map(t => (
+                            <div key={t._id} className="flex items-center justify-between p-3 rounded-xl bg-card border border-border/50">
+                              <div>
+                                <p className="text-sm font-bold text-foreground">{t.treatmentName}</p>
+                                {t.specialization && <p className="text-xs text-muted-foreground">{t.specialization}</p>}
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className={`h-1.5 w-1.5 rounded-full ${
+                                    t.availability === 'Available' ? 'bg-emerald-400' :
+                                    t.availability === 'Limited' ? 'bg-amber-400' : 'bg-slate-300'
+                                  }`} />
+                                  <span className="text-[10px] font-semibold text-muted-foreground">{t.availability}</span>
+                                  {t.isEmergency && <span className="text-[10px] font-black text-rose-600">• Emergency</span>}
+                                </div>
+                              </div>
+                              {t.treatmentCost > 0 && (
+                                <div className="text-right">
+                                  <p className="text-sm font-black text-emerald-600">PKR {t.treatmentCost.toLocaleString()}</p>
+                                  {t.estimatedWaitTime && <p className="text-[10px] text-muted-foreground">{t.estimatedWaitTime}</p>}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     )}
+
+                    {/* Flat treatment fallback */}
+                    {!hasTreatments && (
+                      <div className="p-4 rounded-xl bg-muted/50 border border-border/50">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-3">Treatment Details</p>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-xs text-muted-foreground">Estimated Cost</p>
+                            <p className="text-lg font-black text-emerald-600">PKR {(hospital.treatmentCost || 0).toLocaleString()}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Availability</p>
+                            <p className="text-base font-bold">{hospital.availability || 'Available'}</p>
+                          </div>
+                        </div>
+                        {hospital.info && (
+                          <p className="mt-3 text-sm text-muted-foreground leading-relaxed p-3 bg-background/60 rounded-lg">{hospital.info}</p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Website */}
+                    <div className="p-4 rounded-xl bg-muted/50 border border-border/50">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-3">Official Website</p>
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <p className="text-sm text-muted-foreground">Open the hospital's official website.</p>
+                        <Button variant="outline" className="sm:w-auto w-full rounded-xl font-semibold"
+                          onClick={openHospitalLink} disabled={isOpeningWebsite}>
+                          <ExternalLink className="h-4 w-4 mr-2" />
+                          {isOpeningWebsite ? 'Opening...' : 'Visit Website'}
+                        </Button>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* ── Community Ratings Tab ──────────────────────────────── */}
+                {modalTab === 'community' && (
+                  <div className="space-y-4">
+                    {/* Banner */}
+                    <div
+                      className="p-4 rounded-xl text-white"
+                      style={{ background: 'linear-gradient(135deg, #1e293b, #0f172a)' }}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <MessageCircle className="h-4 w-4 text-orange-400" />
+                        <span className="text-xs font-black text-orange-400 uppercase tracking-wider">Reddit Community</span>
+                      </div>
+                      <p className="text-sm text-white/80">
+                        These ratings are automatically generated from real Reddit community discussions about this hospital — not entered by administrators.
+                      </p>
+                    </div>
+
+                    {/* The 6 category rating bars */}
+                    <HospitalCategoryRatings hospitalId={hospital._id} />
                   </div>
                 )}
 
-                {/* Website */}
-                <div className="p-4 rounded-xl bg-muted/50 border border-border/50">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-3">Official Website</p>
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <p className="text-sm text-muted-foreground">Open the hospital's official website.</p>
-                    <Button variant="outline" className="sm:w-auto w-full rounded-xl font-semibold"
-                      onClick={openHospitalLink} disabled={isOpeningWebsite}>
-                      <ExternalLink className="h-4 w-4 mr-2" />
-                      {isOpeningWebsite ? 'Opening...' : 'Visit Website'}
-                    </Button>
-                  </div>
-                </div>
-
+                {/* ── Footer buttons (always visible) ───────────────────── */}
                 <div className="flex items-center gap-3 pt-2">
                   <DialogTrigger asChild>
                     <Button variant="ghost" className="flex-1 rounded-xl font-bold text-slate-500">Close</Button>
                   </DialogTrigger>
-                  <Button 
+                  <Button
                     className="flex-[2] bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold h-11"
                     onClick={() => setIsAppointmentOpen(true)}
                   >

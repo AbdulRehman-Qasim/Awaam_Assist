@@ -43,6 +43,17 @@ export interface UserProfileContext {
     city?: string;
     tehsil?: string;
     hospitalCategory?: string;
+    treatmentType?: string;
+    budgetRange?: number;
+    urgencyLevel?: string;
+    travelPreference?: string;
+    medicalSupport?: string[];
+    maxBudget?: number;
+    maxDistance?: string;
+    distanceTolerance?: string;
+    hasInsurance?: string;
+    medicalInsurance?: string;
+    financialAssistance?: string;
   };
   interests: string[];
 }

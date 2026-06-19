@@ -1,6 +1,6 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const HospitalAdmin = require('../models/HospitalAdminSchema');
+const Admin = require('../models/AdminSchema');
 const Hospital = require('../models/HospitalSchema');
 
 const slugify = (value) =>
@@ -10,34 +10,6 @@ const slugify = (value) =>
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '.')
     .replace(/^\.+|\.+$/g, '');
-
-const ensureUniqueGeneratedEmail = async (baseLocalPart) => {
-  const safeBase = baseLocalPart || 'hospital';
-  let candidate = `${safeBase}@hospital.local`;
-  let index = 1;
-
-  while (await HospitalAdmin.findOne({ admin_email: candidate })) {
-    candidate = `${safeBase}.${index}@hospital.local`;
-    index += 1;
-  }
-
-  return candidate;
-};
-
-const linkLegacyHospitalsToAdmin = async (hospitalAdmin) => {
-  // Keep old DB records; only claim matching, unowned rows for this admin.
-  const nameRegex = new RegExp(`^${hospitalAdmin.hospital_name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
-  await Hospital.updateMany(
-    {
-      'Hospital Name': nameRegex,
-      $or: [
-        { createdByHospitalAdmin: null },
-        { createdByHospitalAdmin: { $exists: false } },
-      ],
-    },
-    { $set: { createdByHospitalAdmin: hospitalAdmin._id } }
-  );
-};
 
 const registerHospitalAdmin = async (req, res) => {
   try {
@@ -50,7 +22,7 @@ const registerHospitalAdmin = async (req, res) => {
       });
     }
 
-    const existing = await HospitalAdmin.findOne({ admin_email: admin_email.toLowerCase().trim() });
+    const existing = await Admin.findOne({ admin_email: admin_email.toLowerCase().trim() });
     if (existing) {
       return res.status(400).json({ success: false, message: 'Email already registered' });
     }
@@ -58,24 +30,46 @@ const registerHospitalAdmin = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    const admin = await HospitalAdmin.create({
+    const admin = await Admin.create({
       admin_name,
       admin_email: admin_email.toLowerCase().trim(),
       password: hashedPassword,
-      hospital_name,
+      role: 'hospital_admin',
+      isApproved: false,
+      status: 'active',
+      is_onboarded: true,
+      entity_name: hospital_name,
+      entity_type: 'hospital',
     });
 
-    await linkLegacyHospitalsToAdmin(admin);
+    // Link any existing unowned hospital with this name
+    const nameRegex = new RegExp(`^${hospital_name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
+    const linkedHospital = await Hospital.findOneAndUpdate(
+      {
+        'Hospital Name': nameRegex,
+        $or: [
+          { createdByHospitalAdmin: null },
+          { createdByHospitalAdmin: { $exists: false } },
+        ],
+      },
+      { $set: { createdByHospitalAdmin: admin._id } },
+      { new: true }
+    );
+
+    if (linkedHospital) {
+      admin.managed_entity_id = linkedHospital._id;
+      await admin.save();
+    }
 
     return res.status(201).json({
       success: true,
-      message: 'Hospital admin registered successfully',
+      message: 'Hospital admin registered successfully and pending approval',
       admin: {
         id: admin._id,
         name: admin.admin_name,
         email: admin.admin_email,
         role: 'hospital_admin',
-        hospital_name: admin.hospital_name,
+        hospital_name: hospital_name,
       },
     });
   } catch (error) {
@@ -92,7 +86,7 @@ const loginHospitalAdmin = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Email and password are required' });
     }
 
-    const admin = await HospitalAdmin.findOne({ admin_email: admin_email.toLowerCase().trim() });
+    const admin = await Admin.findOne({ admin_email: admin_email.toLowerCase().trim(), role: 'hospital_admin' });
     if (!admin) {
       return res.status(400).json({ success: false, message: 'Invalid credentials' });
     }
@@ -110,10 +104,11 @@ const loginHospitalAdmin = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Account is pending approval' });
     }
 
-    await linkLegacyHospitalsToAdmin(admin);
-
     // Find the hospital linked to this admin for the dashboard
-    const linkedHospital = await Hospital.findOne({ createdByHospitalAdmin: admin._id });
+    let linkedHospital = await Hospital.findOne({ createdByHospitalAdmin: admin._id });
+    if (!linkedHospital && admin.managed_entity_id) {
+      linkedHospital = await Hospital.findById(admin.managed_entity_id);
+    }
 
     const token = jwt.sign(
       {
@@ -136,9 +131,9 @@ const loginHospitalAdmin = async (req, res) => {
         name: admin.admin_name,
         email: admin.admin_email,
         role: 'hospital_admin',
-        hospital_name: admin.hospital_name,
+        hospital_name: admin.entity_name || '',
         managed_entity_id: linkedHospital ? linkedHospital._id : null,
-        entity_name: admin.hospital_name, // for compatibility with unified dashboard
+        entity_name: admin.entity_name || '',
       },
     });
   } catch (error) {
@@ -160,17 +155,20 @@ const bootstrapHospitalAdminsFromExistingHospitals = async (req, res) => {
       const hospitalName = (hospitalNameRaw || '').trim();
       if (!hospitalName) continue;
 
-      let admin = await HospitalAdmin.findOne({ hospital_name: hospitalName });
+      const adminEmail = `admin.${slugify(hospitalName)}@gmail.com`;
+      let admin = await Admin.findOne({ admin_email: adminEmail });
 
       if (!admin) {
-        const generatedBase = slugify(hospitalName) || 'hospital';
-        const generatedEmail = await ensureUniqueGeneratedEmail(generatedBase);
-
-        admin = await HospitalAdmin.create({
-          admin_name: hospitalName,
-          admin_email: generatedEmail,
+        admin = await Admin.create({
+          admin_name: `Admin of ${hospitalName}`,
+          admin_email: adminEmail,
           password: hashedPassword,
-          hospital_name: hospitalName,
+          role: 'hospital_admin',
+          isApproved: true,
+          status: 'active',
+          is_onboarded: true,
+          entity_name: hospitalName,
+          entity_type: 'hospital',
         });
         created += 1;
       }
@@ -186,12 +184,20 @@ const bootstrapHospitalAdminsFromExistingHospitals = async (req, res) => {
         { $set: { createdByHospitalAdmin: admin._id } }
       );
 
+      if ((result.modifiedCount > 0 || !admin.managed_entity_id)) {
+        const h = await Hospital.findOne({ 'Hospital Name': hospitalName }).lean();
+        if (h) {
+          admin.managed_entity_id = h._id;
+          await admin.save();
+        }
+      }
+
       linked += result.modifiedCount || 0;
     }
 
     return res.status(200).json({
       success: true,
-      message: 'Bootstrap completed. Existing hospitals and data were preserved.',
+      message: 'Bootstrap completed into admins collection. Existing hospitals and data were preserved.',
       data: {
         hospitalsFound: distinctHospitalNames.length,
         loginsCreated: created,

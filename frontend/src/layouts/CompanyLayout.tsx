@@ -16,6 +16,8 @@ import {
   LogOut,
   Menu,
   X,
+  Heart,
+  Scale,
 } from 'lucide-react';
 import Loading from '@/components/ui/loading';
 import ChatWidget from '@/components/ChatWidget';
@@ -32,6 +34,7 @@ const CompanyLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const prefix = location.pathname.startsWith('/education') ? '/education' : '/company';
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 10);
@@ -75,11 +78,37 @@ const CompanyLayout = () => {
     const nav = [{ ...CORE_MODULES.dashboard }];
     selectedModules.forEach(moduleId => {
       const config = MODULE_CONFIG[moduleId];
-      if (config) nav.push({ id: config.id, label: config.label, route: config.route, icon: config.icon, color: config.color });
+      if (config) {
+        if (moduleId === 'healthcare') {
+          nav.push({
+            id: 'healthcare',
+            label: 'Search Hospitals',
+            route: prefix === '/education' ? '/education/hospital-search' : '/company/healthcare',
+            icon: config.icon,
+            color: config.color
+          });
+          nav.push({
+            id: 'healthcare-favorites',
+            label: 'Hospital Favorites',
+            route: prefix === '/education' ? '/education/hospital-favorites' : '/company/healthcare-favorites',
+            icon: Heart,
+            color: 'text-rose-500'
+          });
+          nav.push({
+            id: 'healthcare-compare',
+            label: 'Hospital Compare',
+            route: prefix === '/education' ? '/education/hospital-compare' : '/company/healthcare-compare',
+            icon: Scale,
+            color: 'text-amber-500'
+          });
+        } else {
+          nav.push({ id: config.id, label: config.label, route: config.route, icon: config.icon, color: config.color });
+        }
+      }
     });
     nav.push({ ...CORE_MODULES.chatbot });
     return nav;
-  }, [selectedModules]);
+  }, [selectedModules, prefix]);
 
   const handleLogout = () => {
     localStorage.removeItem('user');

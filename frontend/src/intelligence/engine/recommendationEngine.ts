@@ -248,7 +248,14 @@ export class RecommendationEngine {
       healthcare: {
         city: profile.healthcare?.city,
         tehsil: profile.healthcare?.tehsil,
-        hospitalCategory: profile.healthcare?.hospitalCategory
+        hospitalCategory: profile.healthcare?.hospitalCategory,
+        treatmentType: profile.healthcare?.treatmentType,
+        budgetRange: profile.healthcare?.budgetRange,
+        urgencyLevel: profile.healthcare?.urgencyLevel,
+        travelPreference: profile.healthcare?.travelPreference,
+        medicalSupport: profile.healthcare?.medicalSupport,
+        medicalInsurance: profile.healthcare?.medicalInsurance,
+        financialAssistance: profile.healthcare?.financialAssistance
       },
       interests: raw?.selectedModules || []
     };

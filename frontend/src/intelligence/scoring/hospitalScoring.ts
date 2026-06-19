@@ -76,10 +76,16 @@ export const calculateHospitalScore = (
 
   const userCatPref = (hc.hospitalCategory || '').toLowerCase();
   const hospitalCat = (hospital.Cateogry || hospital.hospitalCategory || '').toLowerCase();
+  
+  const isUserPrefGov = userCatPref === 'public' || userCatPref === 'government';
+  const isHospGov = hospitalCat === 'government' || hospitalCat === 'public';
+  const isUserPrefPriv = userCatPref === 'private';
+  const isHospPriv = hospitalCat === 'private';
+
   if (userCatPref && userCatPref !== 'both' && hospitalCat) {
-    if (hospitalCat.includes(userCatPref)) {
+    if ((isUserPrefGov && isHospGov) || (isUserPrefPriv && isHospPriv)) {
       specialtyScore = Math.min(1.0, specialtyScore + 0.1);
-      tags.push(userCatPref === 'government' ? 'Public Hospital' : 'Private Facility');
+      tags.push(isHospGov ? 'Public Hospital' : 'Private Facility');
     }
   }
 
@@ -91,7 +97,14 @@ export const calculateHospitalScore = (
   const maxDistance = hc.maxDistance || hc.distanceTolerance || 'No Limit';
   
   if (userCity === hospitalCity) {
-    if (userTehsil && hospitalTehsil === userTehsil) {
+    const isTehsilMatch = userTehsil && (
+      hospitalTehsil === userTehsil || 
+      hospitalTehsil.includes(userTehsil) || 
+      userTehsil.includes(hospitalTehsil) ||
+      (userTehsil.includes('cantt') && hospitalTehsil.includes('cantonment')) ||
+      (userTehsil.includes('cantonment') && hospitalTehsil.includes('cantt'))
+    );
+    if (isTehsilMatch) {
       locationScore = 1.0;
       priorityLevel = 'Local';
       tags.push("Very Close");

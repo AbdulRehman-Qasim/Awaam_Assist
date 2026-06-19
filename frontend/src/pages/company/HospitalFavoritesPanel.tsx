@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +17,8 @@ interface Hospital {
 
 const HospitalFavoritesPanel = () => {
     const navigate = useNavigate();
+    const location = useLocation();
+    const prefix = location.pathname.startsWith('/education') ? '/education' : '/company';
     const { toast } = useToast();
     const [favoriteHospitals, setFavoriteHospitals] = useState<Hospital[]>([]);
     const [compareList, setCompareList] = useState<string[]>([]);
@@ -80,7 +82,7 @@ const HospitalFavoritesPanel = () => {
                 </div>
                 <div className="flex items-center gap-3">
                     {compareList.length > 0 && (
-                        <Button variant="outline" size="sm" onClick={() => navigate("/company/hospital-compare")} className="gap-2">
+                        <Button variant="outline" size="sm" onClick={() => navigate(`${prefix}/hospital-compare`)} className="gap-2">
                             <Scale className="h-4 w-4" />
                             Compare ({compareList.length})
                         </Button>
@@ -103,7 +105,7 @@ const HospitalFavoritesPanel = () => {
                     <p className="text-gray-500 mb-6 max-w-sm">
                         Browse hospitals and click the heart icon to save them here for quick access.
                     </p>
-                    <Button onClick={() => navigate("/company/hospital-search")} className="gap-2 bg-cyan-500 hover:bg-cyan-600 text-white">
+                    <Button onClick={() => navigate(`${prefix}/hospital-search`)} className="gap-2 bg-cyan-500 hover:bg-cyan-600 text-white">
                         <Search className="h-4 w-4" />
                         Search Hospitals
                     </Button>
