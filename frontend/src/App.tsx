@@ -260,8 +260,11 @@ const App = () => (
             <Route path="ranking-search" element={<RankingSearch />} />
             <Route path="discipline-search" element={<DisciplineSearch />} />
             <Route path="healthcare" element={<HospitalSearch />} />
+            <Route path="hospital-search" element={<HospitalSearch />} />
             <Route path="healthcare-favorites" element={<HospitalFavoritesPanel />} />
+            <Route path="hospital-favorites" element={<HospitalFavoritesPanel />} />
             <Route path="healthcare-compare" element={<HospitalComparePanel />} />
+            <Route path="hospital-compare" element={<HospitalComparePanel />} />
             <Route path="ai-chatbot" element={<AIChatbot />} />
 
           </Route>

@@ -29,15 +29,15 @@ const scoreHospital = (hospital, hProfile) => {
   let score = 50; // base
   const reasons = [];
 
-  const userCity    = (hProfile.treatmentCity || hProfile.city || '').toLowerCase();
-  const userTehsil  = (hProfile.tehsil || '').toLowerCase();
-  const userCat     = (hProfile.hospitalCategory || '').toLowerCase();
-  const treatType   = (hProfile.treatmentType || '').toLowerCase();
-  const maxBudget   = Number(hProfile.maxBudget) || 0;
-  const isEmergency = hProfile.emergencyRequirement === 'Yes';
+  const userCity    = (hProfile.city || hProfile.treatmentCity || '').toLowerCase().trim();
+  const userTehsil  = (hProfile.tehsil || '').toLowerCase().trim();
+  const userCat     = (hProfile.hospitalCategory || '').toLowerCase().trim();
+  const treatType   = (hProfile.treatmentType || '').toLowerCase().trim();
+  const maxBudget   = Number(hProfile.budgetRange) || Number(hProfile.maxBudget) || 0;
+  const isEmergency = hProfile.urgencyLevel === 'Emergency' || hProfile.emergencyRequirement === 'Yes';
 
   // ── City match (+20 / +10 fuzzy) ─────────────────────────────────────────
-  const hospCity = (hospital.City || '').toLowerCase();
+  const hospCity = (hospital.City || '').toLowerCase().trim();
   if (userCity && hospCity === userCity) {
     score += 20;
     reasons.push('In your city');
@@ -47,25 +47,37 @@ const scoreHospital = (hospital, hProfile) => {
   }
 
   // ── Tehsil match (+10) ────────────────────────────────────────────────────
-  const hospTehsil = (hospital.Tehsil || '').toLowerCase();
-  if (userTehsil && hospTehsil.includes(userTehsil)) {
-    score += 10;
-    reasons.push('Matched your tehsil');
+  const hospTehsil = (hospital.Tehsil || '').toLowerCase().trim();
+  if (userTehsil && hospTehsil) {
+    const isTehsilMatch = hospTehsil === userTehsil || 
+                          hospTehsil.includes(userTehsil) || 
+                          userTehsil.includes(hospTehsil) ||
+                          (userTehsil.includes('cantt') && hospTehsil.includes('cantonment')) ||
+                          (userTehsil.includes('cantonment') && hospTehsil.includes('cantt'));
+    if (isTehsilMatch) {
+      score += 10;
+      reasons.push('Matched your tehsil');
+    }
   }
 
   // ── Category match (+15) ──────────────────────────────────────────────────
-  const hospCat = (hospital.Cateogry || '').toLowerCase();
-  if (userCat && hospCat === userCat) {
-    score += 15;
-    reasons.push('Preferred category');
+  const hospCat = (hospital.Cateogry || '').toLowerCase().trim();
+  if (userCat && userCat !== 'both') {
+    const isGovMatch = (userCat === 'public' || userCat === 'government') && (hospCat === 'government' || hospCat === 'public');
+    const isPrivMatch = userCat === 'private' && hospCat === 'private';
+    if (isGovMatch || isPrivMatch) {
+      score += 15;
+      reasons.push('Preferred category');
+    }
   }
 
   // ── Emergency services (+15 if user needs emergency) ─────────────────────
-  if (isEmergency && hospital.emergencyServices) {
+  const hospitalEmergency = hospital.emergencyServices || (hospital.treatments || []).some(t => t.isEmergency || t.severitySupport === 'Emergency' || t.severitySupport === 'Critical');
+  if (isEmergency && hospitalEmergency) {
     score += 15;
     reasons.push('Emergency services available');
-  } else if (isEmergency && !hospital.emergencyServices) {
-    score -= 10; // penalize if user needs emergency but hospital doesn't offer it
+  } else if (isEmergency && !hospitalEmergency) {
+    score -= 15; // penalize if user needs emergency but hospital doesn't offer it
   }
 
   // ── Treatment-type / specialization match ─────────────────────────────────
@@ -88,8 +100,9 @@ const scoreHospital = (hospital, hProfile) => {
 
   // ── Affordability match (+10 flat / +5 treatments) ───────────────────────
   if (maxBudget > 0) {
-    const flatAffordable = hospital.treatmentCost > 0 && hospital.treatmentCost <= maxBudget;
-    const treatmentAffordable = (hospital.treatments || []).some(
+    const isGovt = hospCat === 'government' || hospCat === 'public';
+    const flatAffordable = isGovt || (hospital.treatmentCost > 0 && hospital.treatmentCost <= maxBudget);
+    const treatmentAffordable = isGovt || (hospital.treatments || []).some(
       (t) => t.treatmentCost > 0 && t.treatmentCost <= maxBudget
     );
 

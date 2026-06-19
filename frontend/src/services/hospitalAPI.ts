@@ -81,6 +81,39 @@ export interface HospitalFilters {
   specializations: string[];
 }
 
+// ── Community Review Types (Reddit-sourced, AI-analyzed) ─────────────────────
+
+export interface CategoryRatings {
+  doctorQuality:       number | null;
+  cleanliness:         number | null;
+  waitTime:            number | null;
+  staffBehavior:       number | null;
+  facilitiesEquipment: number | null;
+  costValue:           number | null;
+}
+
+export interface RedditPost {
+  title:     string;
+  url:       string;
+  subreddit: string;
+  score:     number;
+  snippet:   string;
+  postedAt:  string | null;
+}
+
+export interface HospitalReviewData {
+  hospitalId:    string;
+  hospitalName:  string;
+  city:          string;
+  ratings:       CategoryRatings;
+  overallRating: number;
+  totalMentions: number;
+  summary:       string;
+  redditPosts:   RedditPost[];
+  status:        'pending' | 'scraping' | 'analyzed' | 'no_data' | 'error';
+  lastScrapedAt: string | null;
+}
+
 export interface HospitalDashboardStats {
   overview: {
     totalHospitals: number;
@@ -137,6 +170,39 @@ export const hospitalPublicAPI = {
   getMyAppointments: async () => {
     const response = await userApi.get('/api/healthcare/appointments/my');
     return response.data;
+  },
+
+  /**
+   * Fetch Reddit-sourced community review data for a single hospital.
+   * Returns { status, ratings, overallRating, summary, totalMentions, redditPosts }
+   */
+  getHospitalReviews: async (hospitalId: string): Promise<HospitalReviewData | null> => {
+    try {
+      const res = await fetch(`${BASE}/api/hospitals/${hospitalId}/reviews`);
+      const json = await res.json();
+      return json.data ?? null;
+    } catch {
+      return null;
+    }
+  },
+
+  /**
+   * Fetch community review data for multiple hospitals at once (for compare panel).
+   * @param ids  Array of hospital _id strings (max 3)
+   * @returns Record<hospitalId, HospitalReviewData | null>
+   */
+  getCompareReviews: async (
+    ids: string[]
+  ): Promise<Record<string, HospitalReviewData | null>> => {
+    try {
+      const res = await fetch(
+        `${BASE}/api/hospitals/reviews/compare?ids=${ids.join(',')}`
+      );
+      const json = await res.json();
+      return json.data ?? {};
+    } catch {
+      return {};
+    }
   },
 };
 

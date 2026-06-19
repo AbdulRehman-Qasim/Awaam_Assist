@@ -44,6 +44,13 @@ const {
   deleteTreatment,
 } = require("./controllers/hospitalController");
 
+// Import hospital review controller (Reddit community reviews)
+const {
+  getHospitalReviews,
+  getCompareReviews,
+  runBackgroundScraper,
+} = require("./controllers/hospitalReviewController");
+
 // Import company authentication controllers
 const { googleRegisterCompany } = require("./controllers/googleRegisterCompany");
 const { googleLoginCompany } = require("./controllers/googleLoginCompany");
@@ -371,6 +378,9 @@ app.get("/api/education/options", getEducationOptions);
 const { getHealthcareOptions } = require("./controllers/healthcareDataController");
 app.get("/api/hospitals", getAllHospitals);
 app.get("/api/hospitals/filters", getHospitalFilters);
+// Community reviews routes (Reddit-sourced, AI-analyzed)
+app.get("/api/hospitals/reviews/compare", getCompareReviews);
+app.get("/api/hospitals/:id/reviews", getHospitalReviews);
 app.get("/api/hospitals/:id/website", getHospitalWebsite);
 app.get("/api/healthcare/options", getHealthcareOptions);
 
@@ -505,6 +515,15 @@ mongoose.connect(process.env.MONGO_URI)
     });
 
     server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+    // ── Boot hospital community review scraper ──────────────────────────────
+    // Starts 15 seconds after DB connects so the server is fully ready.
+    // Runs silently in the background — scrapes Reddit + analyzes with AI.
+    setTimeout(() => {
+      runBackgroundScraper().catch((err) =>
+        console.error('[BackgroundScraper] Unexpected error:', err.message)
+      );
+    }, 15000);
   })
   .catch((error) => {
     console.log("MongoDB connection error:", error.message);

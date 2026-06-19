@@ -140,16 +140,30 @@ HospitalSchema.methods.getTreatmentsBySpecialization = function (spec) {
 HospitalSchema.statics.buildRecommendationQuery = function (profile = {}) {
   const query = { status: 'approved' };
 
-  const city = profile.treatmentCity || profile.city;
+  const city = profile.city || profile.treatmentCity;
   if (city) query.City = new RegExp(city, 'i');
-  if (profile.tehsil) query.Tehsil = new RegExp(profile.tehsil, 'i');
-  if (profile.hospitalCategory) query.Cateogry = profile.hospitalCategory;
+  
+  // Tehsil search: support flexible matches
+  if (profile.tehsil) {
+    query.Tehsil = new RegExp(profile.tehsil, 'i');
+  }
+
+  // Handle hospitalCategory selection: 'Public' / 'Government' / 'Private' / 'Both'
+  if (profile.hospitalCategory && profile.hospitalCategory !== 'Both' && profile.hospitalCategory !== 'both') {
+    if (profile.hospitalCategory === 'Public' || profile.hospitalCategory === 'Government' || profile.hospitalCategory === 'public' || profile.hospitalCategory === 'government') {
+      query.Cateogry = 'Government';
+    } else if (profile.hospitalCategory === 'Private' || profile.hospitalCategory === 'private') {
+      query.Cateogry = 'Private';
+    }
+  }
 
   // Budget filter: match flat treatmentCost OR cheapest treatment inside treatments[]
-  if (profile.maxBudget && Number(profile.maxBudget) > 0) {
+  const maxBudget = Number(profile.budgetRange) || Number(profile.maxBudget) || 0;
+  if (maxBudget > 0) {
     query.$or = [
-      { treatmentCost: { $lte: Number(profile.maxBudget) } },
-      { 'treatments.treatmentCost': { $lte: Number(profile.maxBudget) } },
+      { Cateogry: 'Government' }, // Government care is free or highly subsidized, always match
+      { treatmentCost: { $lte: maxBudget } },
+      { 'treatments.treatmentCost': { $lte: maxBudget } },
     ];
   }
 
